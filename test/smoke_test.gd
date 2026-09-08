@@ -1,0 +1,91 @@
+extends Node
+## Prueba de humo headless: simula input y verifica las mecánicas principales.
+## Estados de Player: 0 IDLE, 1 RUN, 2 JUMP, 3 DIVEKICK, 4 ATTACK, 5 STUNNED, 6 KNOCKDOWN, 7 DEAD.
+
+var game: Node
+var p1: CharacterBody2D
+var p2: CharacterBody2D
+var fails: Array[String] = []
+
+
+func _check(cond: bool, what: String) -> void:
+	if cond:
+		print("  ok  - " + what)
+	else:
+		fails.append(what)
+		print("  FALLO - " + what)
+
+
+func _ready() -> void:
+	game = load("res://scenes/main.tscn").instantiate()
+	add_child(game)
+	await get_tree().create_timer(0.2).timeout
+	p1 = game.players[0]
+	p2 = game.players[1]
+	# Suelo seguro, lejos del foso central (2210-2380)
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1800.0, 531.0)
+
+	# 1. Movimiento P1 a la derecha
+	var x0: float = p1.position.x
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.25).timeout
+	Input.action_release("p1_right")
+	_check(p1.position.x > x0 + 60.0, "P1 se mueve a la derecha")
+
+	# 2. Salto
+	Input.action_press("p1_jump")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_release("p1_jump")
+	_check(not p1.is_on_floor(), "P1 salta")
+	await get_tree().create_timer(0.9).timeout
+
+	# 3. Choque de espadas: misma estancia (MID vs MID) -> ambos aturdidos
+	p2.position = p1.position + Vector2(70.0, 0.0)
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.14).timeout
+	Input.action_release("p1_attack")
+	_check(p2.state == 5 and p1.state == 5, "Choque con estancias iguales (ambos STUNNED)")
+	await get_tree().create_timer(1.1).timeout
+
+	# 4. Muerte: P2 defiende en HIGH, P1 ataca MID
+	p2.position = p1.position + Vector2(70.0, 0.0)
+	p1.facing = 1
+	Input.action_press("p2_up")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.16).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p2_up")
+	_check(p2.state == 7, "Estancia distinta mata (P2 DEAD)")
+	_check(game.right_of_way == p1, "P1 gana el paso")
+	_check(game.scores[0] == 0, "Todavía sin puntos")
+
+	# 5. Meta: P1 corre a su zona derecha
+	p1.position = Vector2(4770.0, 500.0)
+	await get_tree().create_timer(0.12).timeout
+	_check(game.scores[0] == 1, "P1 anota al llegar a su meta")
+	_check(game.round_lock > 0.0, "Ronda bloqueada tras el punto")
+	await get_tree().create_timer(0.5).timeout
+	_check(p2.state == 7, "P2 sigue muerto durante la celebración")
+
+	# 6. La ronda se reinicia sola
+	await get_tree().create_timer(1.5).timeout
+	_check(p2.state == 0 and p1.state == 0, "Ronda reiniciada (ambos IDLE)")
+
+	# 7. Lanzamiento de espada
+	Input.action_press("p1_throw")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_release("p1_throw")
+	_check(not p1.has_sword, "P1 lanza su espada (queda desarmado)")
+	_check(game.projectiles.size() == 1, "Proyectil de espada en vuelo")
+
+	print("")
+	if fails.is_empty():
+		print("SMOKE OK - todas las mecánicas funcionan")
+		get_tree().quit(0)
+	else:
+		print("SMOKE FAIL: " + ", ".join(fails))
+		get_tree().quit(1)
