@@ -72,7 +72,7 @@ func _ready() -> void:
 	_check(p2.state == 7, "P2 sigue muerto durante la celebración")
 
 	# 6. La ronda se reinicia sola
-	await get_tree().create_timer(1.5).timeout
+	await get_tree().create_timer(2.4).timeout
 	_check(p2.state == 0 and p1.state == 0, "Ronda reiniciada (ambos IDLE)")
 
 	# 7. Lanzamiento de espada
@@ -81,6 +81,86 @@ func _ready() -> void:
 	Input.action_release("p1_throw")
 	_check(not p1.has_sword, "P1 lanza su espada (queda desarmado)")
 	_check(game.projectiles.size() == 1, "Proyectil de espada en vuelo")
+
+	# 8. Patada voladora derriba al rival
+	for s in game.projectiles:
+		s.queue_free()
+	game.projectiles.clear()
+	p1.position = Vector2(2900.0, 380.0)
+	p2.position = Vector2(2955.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.05).timeout
+	Input.action_release("p1_attack")
+	await get_tree().create_timer(0.5).timeout
+	_check(p2.state == 6, "Patada voladora derriba al rival (KNOCKDOWN)")
+	await get_tree().create_timer(1.2).timeout
+
+	# 9. Caer al foso central mata (colocándolo bajo la plataforma)
+	p1.position = Vector2(2295.0, 500.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(1.2).timeout
+	_check(p1.state == 7, "Caer al foso central mata")
+
+	# 10. La guardia media desvía la espada lanzada
+	await get_tree().create_timer(1.5).timeout
+	for pk in game.pickups:
+		pk.queue_free()
+	game.pickups.clear()
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1750.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.facing = 1
+	p1.has_sword = true
+	await get_tree().physics_frame
+	Input.action_press("p1_throw")
+	await get_tree().create_timer(0.05).timeout
+	Input.action_release("p1_throw")
+	await get_tree().create_timer(0.35).timeout
+	_check(p2.state != 7, "La guardia media desvía la espada lanzada")
+	_check(game.pickups.size() == 1, "La espada desviada cae al suelo")
+
+	# 11. El rival reaparece delante del corredor, hacia su meta
+	p1.has_sword = true
+	p2.has_sword = true
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1670.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.facing = 1
+	Input.action_press("p2_up")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.16).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p2_up")
+	_check(p2.state == 7, "P2 muere de nuevo")
+	var x_p1: float = p1.position.x
+	await get_tree().create_timer(2.6).timeout
+	_check(p2.state != 7, "P2 reaparece tras el retardo")
+	_check(p2.position.x > x_p1 + 400.0, "Reaparece delante del corredor, hacia la meta de P1")
+
+	# 12. Revancha: el tercer punto termina el partido y R lo reinicia
+	game.scores = [2, 0]
+	game.right_of_way = game.players[0]
+	p1.position = Vector2(4770.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(0.2).timeout
+	_check(game.match_over, "El tercer punto termina el partido")
+	Input.action_press("restart")
+	await get_tree().create_timer(0.05).timeout
+	Input.action_release("restart")
+	await get_tree().create_timer(0.3).timeout
+	_check(game.scores == [0, 0] and not game.match_over, "R reinicia el marcador")
+	_check(p1.state == 0 and p2.state == 0, "R reinicia la ronda")
 
 	print("")
 	if fails.is_empty():
