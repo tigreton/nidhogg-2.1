@@ -12,3 +12,6 @@ Thumbs.db
 
 # ZCode local
 .zcode/
+
+# Capturas de desarrollo
+screens/

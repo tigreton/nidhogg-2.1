@@ -162,6 +162,84 @@ func _ready() -> void:
 	_check(game.scores == [0, 0] and not game.match_over, "R reinicia el marcador")
 	_check(p1.state == 0 and p2.state == 0, "R reinicia la ronda")
 
+	# 13. Alturas nuevas: peldaño de roca, tejado de la casa y puente alto
+	p1.position = Vector2(2902.0, 480.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(0.3).timeout
+	_check(p1.is_on_floor() and absf(p1.position.y - 487.0) < 6.0, "Se puede subir al peldaño de roca")
+	p1.position = Vector2(950.0, 436.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(0.3).timeout
+	_check(p1.is_on_floor() and absf(p1.position.y - 443.0) < 6.0, "El tejado de la casa es subible")
+	p1.position = Vector2(2300.0, 220.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(0.5).timeout
+	_check(p1.is_on_floor() and absf(p1.position.y - 259.0) < 6.0 and p1.state != 7, "El puente alto cruza sobre el foso")
+
+	# 14. Modo caos: lluvia de rocas (una roca directa mata)
+	game.set_chaos(true)
+	game.chaos_timer = 0.05
+	var tries := 0
+	while game.rocks.size() == 0 and tries < 200:
+		await get_tree().physics_frame
+		tries += 1
+	_check(game.rocks.size() > 0, "La lluvia de rocas genera rocas")
+	_check(game.chaos_count >= 1, "Contador de rocas del modo caos")
+	var rock: FallingRock = game.rocks[0]
+	rock.phase = "fall"
+	rock.position.y = rock.target_y - 220.0
+	p2.position = Vector2(rock.position.x, rock.target_y - 29.0)
+	p2.velocity = Vector2.ZERO
+	p2.state = 0
+	p2.invuln_time = 0.0
+	await get_tree().create_timer(0.4).timeout
+	_check(p2.state == 7, "Una roca directa mata")
+	game.set_chaos(false)
+	_check(game.rocks.is_empty(), "Desactivar el modo caos limpia las rocas")
+
+	# 15. Modo 2v2: equipos, sin fuego amigo y punto por equipos
+	game.set_mode_2v2(true)
+	_check(game.players.size() == 4, "2v2: cuatro duelistas")
+	var p3: CharacterBody2D = game.players[2]
+	var p4: CharacterBody2D = game.players[3]
+	p3.is_bot = false
+	p4.is_bot = false
+	for q in [p1, p2, p3, p4]:
+		q.has_sword = true
+		q.velocity = Vector2.ZERO
+		q.state = 0
+		q.invuln_time = 0.0
+	p1.position = Vector2(1600.0, 531.0)
+	p3.position = Vector2(1670.0, 531.0)
+	p2.position = Vector2(4000.0, 531.0)
+	p4.position = Vector2(4200.0, 531.0)
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.16).timeout
+	Input.action_release("p1_attack")
+	_check(p3.state != 7, "2v2: sin fuego amigo")
+	await get_tree().create_timer(0.4).timeout
+	p2.position = p1.position + Vector2(70.0, 0.0)
+	p2.velocity = Vector2.ZERO
+	p2.state = 0
+	p2.invuln_time = 0.0
+	Input.action_press("p2_up")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.16).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p2_up")
+	_check(p2.state == 7, "2v2: P1 mata a P2")
+	_check(game.right_of_way == p1, "2v2: el paso es del asesino")
+	p1.position = Vector2(4770.0, 500.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(0.12).timeout
+	_check(game.scores[0] == 1, "2v2: el punto es por equipos")
+	game.set_mode_2v2(false)
+	_check(game.players.size() == 2, "Desactivar 2v2 vuelve al duelo")
+	_check(game.scores == [0, 0], "Al cambiar de modo el marcador se reinicia")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

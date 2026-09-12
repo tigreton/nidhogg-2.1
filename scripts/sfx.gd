@@ -38,6 +38,10 @@ static func stream(id: String) -> AudioStreamWAV:
 			data = _sweep(0.07, 540.0, 700.0, 0.22, true)
 		"point":
 			data = _arp([523.0, 659.0, 784.0], 0.11, 0.22)
+		"alert":
+			data = _arp([880.0, 880.0], 0.06, 0.14)
+		"crash":
+			data = _noise(0.3, 13.0, 0.55)
 		_:
 			data = _noise(0.05, 40.0, 0.2)
 	var wav := AudioStreamWAV.new()
