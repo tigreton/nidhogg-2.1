@@ -64,5 +64,14 @@ func _ready() -> void:
 		await _snap("08_lluvia_rocas_cayendo.png")
 	game.set_chaos(false)
 
+	# arena 2: Templo del Alba
+	game.set_arena(1)
+	await get_tree().create_timer(0.3).timeout
+	for z in [[700.0, "09_alba_torre"], [2300.0, "10_alba_puente"], [3140.0, "11_alba_foso"], [3970.0, "12_alba_casa"]]:
+		_place(z[0])
+		await get_tree().create_timer(0.25).timeout
+		await _snap(z[1] + ".png")
+	game.set_arena(0)
+
 	print("CAPTURAS OK")
 	get_tree().quit(0)

@@ -22,6 +22,7 @@ reaparece delante para frenarlo. Primero en llegar 3 veces gana el partido.
 | Bot vs bot (todos los duelistas) | N |
 | Modo 2v2 por equipos | V |
 | Lluvia de rocas (modo caos) | T |
+| Cambiar de arena | C |
 | Música / pausa | M / ESC |
 
 En el aire, el botón de ataque hace una **patada voladora** que derriba al rival.
@@ -37,7 +38,9 @@ En el aire, el botón de ataque hace una **patada voladora** que derriba al riva
 - **Foso central**: caer dentro es muerte. Hay una plataforma para cruzar… y un **puente alto** de madera.
 - **Reaparición**: el muerto reaparece cayendo del cielo, delante del corredor y hacia su meta, con 1,3 s de invulnerabilidad.
 
-## El mapa: alturas por zonas
+## Los mapas: alturas por zonas (tecla C para cambiar)
+
+**Ruinas de Medianoche** — noche azulada con luna:
 
 - **Aldea (izquierda)**: una casa con tejado subible en dos faldones, chimenea
   con humo, ventana cálida, valla y antorchas. El muro es decorativo: se pasa
@@ -47,6 +50,12 @@ En el aire, el botón de ataque hace una **patada voladora** que derriba al riva
   que cruza el foso central por arriba. Ruta arriesgada pero rápida.
 - **Zona rocosa (derecha)**: peldaños de piedra, un gran peñasco y una torre
   con gallardete. Tres alturas para emboscar con patadas voladoras.
+
+**Templo del Alba** — amanecer cálido con sol:
+
+- **Torre y peñasco a la izquierda**: la zona alta está junto a la meta de P2.
+- **Casa junto a la meta derecha** y un foso pequeño que cruzar de un salto.
+- Mismo puente alto sobre el foso central: domina la carrera por arriba.
 
 ## Modos de juego
 
@@ -75,7 +84,7 @@ godot --headless --path . res://test/smoke_test.tscn
 
 Verifica movimiento, salto, choque de espadas, muerte, paso, meta, marcador,
 reinicio de ronda, lanzamiento de espada, las alturas nuevas (peldaño, tejado,
-puente), la lluvia de rocas y el modo 2v2.
+puente), la lluvia de rocas, el modo 2v2 y el cambio de arena.
 
 ## Capturas de las zonas
 

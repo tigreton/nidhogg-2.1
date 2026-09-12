@@ -240,6 +240,22 @@ func _ready() -> void:
 	_check(game.players.size() == 2, "Desactivar 2v2 vuelve al duelo")
 	_check(game.scores == [0, 0], "Al cambiar de modo el marcador se reinicia")
 
+	# 16. Selector de arenas (C): reconstruye el nivel y reinicia el partido
+	game.set_arena(1)
+	_check(game.arena_id == 1, "Arena cambiada a Templo del Alba")
+	_check(game.PIT2_X0 == 3050.0, "La arena 2 mueve el foso pequeño")
+	_check(game.players.size() == 2, "El cambio de arena mantiene el duelo")
+	p1.position = Vector2(784.0, 296.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(0.4).timeout
+	_check(p1.is_on_floor() and absf(p1.position.y - 301.0) < 6.0, "Arena 2: torre a la izquierda subible")
+	p1.position = Vector2(3900.0, 436.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(0.4).timeout
+	_check(p1.is_on_floor() and absf(p1.position.y - 443.0) < 6.0, "Arena 2: casa junto a la meta derecha")
+	game.set_arena(0)
+	_check(game.arena_id == 0 and game.PIT2_X0 == 700.0, "Vuelta a Ruinas de Medianoche")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

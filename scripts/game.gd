@@ -7,13 +7,32 @@ extends Node2D
 
 const LEVEL_W := 4800.0
 const GROUND_Y := 560.0
-const PIT_X0 := 2210.0
-const PIT_X1 := 2380.0
-const PIT2_X0 := 700.0
-const PIT2_X1 := 880.0
-const PLAT_X0 := PIT_X0 - 80.0
-const PLAT_X1 := PIT_X1 + 80.0
-const PLAT_Y := 448.0
+# --- geometría por arena (la fija _load_arena; estos son los valores de la arena 0) ---
+var PIT_X0 := 2210.0
+var PIT_X1 := 2380.0
+var PIT2_X0 := 700.0
+var PIT2_X1 := 880.0
+var PLAT_X0 := 2130.0
+var PLAT_X1 := 2460.0
+var PLAT_Y := 448.0
+# --- paleta por arena ---
+var col_sky := Color(0.055, 0.05, 0.09)
+var col_hill_far := Color(0.075, 0.068, 0.115)
+var col_hill_near := Color(0.065, 0.06, 0.10)
+var col_pillar := Color(0.085, 0.08, 0.135)
+var col_pillar_cap := Color(0.11, 0.10, 0.17)
+var col_pit := Color(0.30, 0.07, 0.09)
+var col_floor := Color(0.14, 0.13, 0.19)
+var col_floor_top := Color(0.30, 0.27, 0.37)
+var col_plat := Color(0.20, 0.18, 0.27)
+var col_plat_top := Color(0.34, 0.31, 0.42)
+var col_wall := Color(0.11, 0.10, 0.16)
+var cel_pos := Vector2(2400.0, 118.0)
+var cel_col := Color(0.14, 0.13, 0.20)
+var cel_detail := Color(0.10, 0.09, 0.15)
+var arena_id := 0
+var level_root: Node2D
+
 const GRASS_X0 := 1150.0
 const GRASS_X1 := 1450.0
 const GOAL_W := 130.0
@@ -21,36 +40,40 @@ const WIN_SCORE := 3
 const VIEW_W := 1152.0
 const VIEW_H := 648.0
 const RESPAWN_DELAY := 2.4
+const ARENA_NAMES := ["RUINAS DE MEDIANOCHE", "TEMPLO DEL ALBA"]
 const BOT_CFG := [
 	{"react": 0.26, "atk": 0.12, "err": 0.35},  # FÁCIL
 	{"react": 0.13, "atk": 0.30, "err": 0.10},  # NORMAL
 	{"react": 0.07, "atk": 0.50, "err": 0.02},  # DIFÍCIL
 ]
 # ruta alta: puente de madera sobre el foso central
-const BRIDGE_X0 := 1900.0
-const BRIDGE_X1 := 2690.0
-const BRIDGE_Y := 288.0
-# casa con tejado subible (dos faldones escalonados)
-const ROOF_L_X0 := 908.0
-const ROOF_L_X1 := 1010.0
-const ROOF_L_Y := 472.0
-const ROOF_H_X0 := 1020.0
-const ROOF_H_X1 := 1152.0
-const ROOF_H_Y := 406.0
-# zona rocosa (derecha del foso): peldaño, peñasco y torre
-const STEP_R_X0 := 2856.0
-const STEP_R_X1 := 2948.0
-const STEP_R_Y := 516.0
-const BOULDER_X0 := 3116.0
-const BOULDER_X1 := 3344.0
-const BOULDER_Y := 440.0
-const TOWER_X0 := 3476.0
-const TOWER_X1 := 3644.0
-const TOWER_Y := 330.0
+var BRIDGE_X0 := 1900.0
+var BRIDGE_X1 := 2690.0
+var BRIDGE_Y := 288.0
+# casa con tejado subible (dos faldones escalonados), anclada a HOUSE_X
+var HOUSE_X := 908.0
+var ROOF_L_X0 := 908.0
+var ROOF_L_X1 := 1010.0
+var ROOF_L_Y := 472.0
+var ROOF_H_X0 := 1020.0
+var ROOF_H_X1 := 1152.0
+var ROOF_H_Y := 406.0
+# zona rocosa: peldaños, peñasco y torre
+var STEP_R_X0 := 2856.0
+var STEP_R_X1 := 2948.0
+var STEP_R_Y := 516.0
+var BOULDER_X0 := 3116.0
+var BOULDER_X1 := 3344.0
+var BOULDER_Y := 440.0
+var TOWER_X0 := 3476.0
+var TOWER_X1 := 3644.0
+var TOWER_Y := 330.0
 # peldaño rocoso cerca de la meta izquierda
-const STEP_L_X0 := 500.0
-const STEP_L_X1 := 592.0
-const STEP_L_Y := 516.0
+var STEP_L_X0 := 500.0
+var STEP_L_X1 := 592.0
+var STEP_L_Y := 516.0
+var FENCE_X0 := 600.0
+var FENCE_X1 := 690.0
 
 const ROCK_WARN_TIME := 0.85
 const ROCK_FALL_SPEED := 1900.0
@@ -103,6 +126,9 @@ func _fresh_stats() -> Array[Dictionary]:
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_setup_input()
+	level_root = Node2D.new()
+	add_child(level_root)
+	_load_arena(0)
 	_build_level()
 	_build_players()
 	stats = _fresh_stats()
@@ -176,6 +202,7 @@ func _setup_input() -> void:
 		"toggle_bot": [KEY_B], "toggle_music": [KEY_M],
 		"pause": [KEY_ESCAPE], "bot_vs_bot": [KEY_N],
 		"toggle_ally": [KEY_H], "toggle_2v2": [KEY_V], "toggle_chaos": [KEY_T],
+		"toggle_arena": [KEY_C],
 		# P3/P4 solo se controlan por bot: acciones registradas vacías
 		"p3_left": [], "p3_right": [], "p3_up": [], "p3_down": [],
 		"p3_jump": [], "p3_attack": [], "p3_throw": [],
@@ -219,23 +246,28 @@ func _setup_input() -> void:
 
 
 func _build_level() -> void:
-	_poly(PackedVector2Array([Vector2(0, 0), Vector2(LEVEL_W, 0), Vector2(LEVEL_W, 720), Vector2(0, 720)]), Color(0.055, 0.05, 0.09), -10)
-	_poly(_circle_points(LEVEL_W * 0.5, 118.0, 74.0), Color(0.14, 0.13, 0.20), -9)
-	_poly(_circle_points(LEVEL_W * 0.5 - 30.0, 92.0, 13.0), Color(0.10, 0.09, 0.15), -9)
-	_poly(_circle_points(LEVEL_W * 0.5 + 26.0, 150.0, 9.0), Color(0.10, 0.09, 0.15), -9)
+	_poly(PackedVector2Array([Vector2(0, 0), Vector2(LEVEL_W, 0), Vector2(LEVEL_W, 720), Vector2(0, 720)]), col_sky, -10)
+	_poly(_circle_points(cel_pos.x, cel_pos.y, 74.0), cel_col, -9)
+	_poly(_circle_points(cel_pos.x - 30.0, cel_pos.y - 26.0, 13.0), cel_detail, -9)
+	_poly(_circle_points(cel_pos.x + 26.0, cel_pos.y + 32.0, 9.0), cel_detail, -9)
 	_hills()
 	_clouds()
 	var px := 340.0
 	while px < LEVEL_W - 200.0:
 		if not (px > PIT_X0 - 130.0 and px < PIT_X1 + 130.0):
-			_poly(PackedVector2Array([Vector2(px - 26, GROUND_Y), Vector2(px + 26, GROUND_Y), Vector2(px + 26, 130.0), Vector2(px - 26, 130.0)]), Color(0.085, 0.08, 0.135), -5)
-			_poly(PackedVector2Array([Vector2(px - 36, 142.0), Vector2(px + 36, 142.0), Vector2(px + 36, 122.0), Vector2(px - 36, 122.0)]), Color(0.11, 0.10, 0.17), -5)
+			_poly(PackedVector2Array([Vector2(px - 26, GROUND_Y), Vector2(px + 26, GROUND_Y), Vector2(px + 26, 130.0), Vector2(px - 26, 130.0)]), col_pillar, -5)
+			_poly(PackedVector2Array([Vector2(px - 36, 142.0), Vector2(px + 36, 142.0), Vector2(px + 36, 122.0), Vector2(px - 36, 122.0)]), col_pillar_cap, -5)
 		px += 640.0
-	_floor_segment(0.0, PIT2_X0)
-	_floor_segment(PIT2_X1, PIT_X0)
-	_floor_segment(PIT_X1, LEVEL_W)
-	_poly(PackedVector2Array([Vector2(PIT_X0, GROUND_Y + 4), Vector2(PIT_X1, GROUND_Y + 4), Vector2(PIT_X1 - 26, 800.0), Vector2(PIT_X0 + 26, 800.0)]), Color(0.30, 0.07, 0.09), -6)
-	_poly(PackedVector2Array([Vector2(PIT2_X0, GROUND_Y + 4), Vector2(PIT2_X1, GROUND_Y + 4), Vector2(PIT2_X1 - 26, 800.0), Vector2(PIT2_X0 + 26, 800.0)]), Color(0.30, 0.07, 0.09), -6)
+	# suelo entre los fosos, ordenados por posición (valgan donde valgan)
+	var pits := [[PIT_X0, PIT_X1], [PIT2_X0, PIT2_X1]]
+	pits.sort_custom(func(u, v): return u[0] < v[0])
+	var seg_a := 0.0
+	for b in pits:
+		_floor_segment(seg_a, b[0])
+		seg_a = b[1]
+	_floor_segment(seg_a, LEVEL_W)
+	_poly(PackedVector2Array([Vector2(PIT_X0, GROUND_Y + 4), Vector2(PIT_X1, GROUND_Y + 4), Vector2(PIT_X1 - 26, 800.0), Vector2(PIT_X0 + 26, 800.0)]), col_pit, -6)
+	_poly(PackedVector2Array([Vector2(PIT2_X0, GROUND_Y + 4), Vector2(PIT2_X1, GROUND_Y + 4), Vector2(PIT2_X1 - 26, 800.0), Vector2(PIT2_X0 + 26, 800.0)]), col_pit, -6)
 	_platform(PLAT_X0, PLAT_X1, PLAT_Y)
 	_bridge()
 	_house()
@@ -257,11 +289,128 @@ func _build_level() -> void:
 	_goal_zone(0.0, GOAL_W, P2_COLOR)
 	_torch_at(210.0)
 	_torch_at(LEVEL_W - 210.0)
-	_torch_at(1032.0)
+	_torch_at(HOUSE_X + 124.0)
+	_fence(FENCE_X0, FENCE_X1)
 
 
 func _register_top(x0: float, x1: float, y: float) -> void:
 	_tops.append({"x0": x0, "x1": x1, "y": y})
+
+
+func _load_arena(id: int) -> void:
+	arena_id = id % ARENA_NAMES.size()
+	match arena_id:
+		1:
+			# Templo del alba: amanecer cálido, rocas y torre a la izquierda,
+			# foso pequeño y casa junto a la meta derecha
+			PIT_X0 = 2210.0
+			PIT_X1 = 2380.0
+			PIT2_X0 = 3050.0
+			PIT2_X1 = 3230.0
+			PLAT_X0 = 2130.0
+			PLAT_X1 = 2460.0
+			PLAT_Y = 448.0
+			BRIDGE_X0 = 1900.0
+			BRIDGE_X1 = 2690.0
+			BRIDGE_Y = 288.0
+			HOUSE_X = 3850.0
+			STEP_R_X0 = 2740.0
+			STEP_R_X1 = 2832.0
+			STEP_R_Y = 516.0
+			BOULDER_X0 = 380.0
+			BOULDER_X1 = 608.0
+			BOULDER_Y = 440.0
+			TOWER_X0 = 700.0
+			TOWER_X1 = 868.0
+			TOWER_Y = 330.0
+			STEP_L_X0 = 4180.0
+			STEP_L_X1 = 4272.0
+			STEP_L_Y = 516.0
+			FENCE_X0 = 940.0
+			FENCE_X1 = 1030.0
+			col_sky = Color(0.16, 0.09, 0.105)
+			col_hill_far = Color(0.215, 0.115, 0.115)
+			col_hill_near = Color(0.175, 0.095, 0.10)
+			col_pillar = Color(0.15, 0.10, 0.10)
+			col_pillar_cap = Color(0.19, 0.13, 0.12)
+			col_pit = Color(0.42, 0.12, 0.06)
+			col_floor = Color(0.235, 0.16, 0.13)
+			col_floor_top = Color(0.47, 0.33, 0.24)
+			col_plat = Color(0.31, 0.21, 0.16)
+			col_plat_top = Color(0.52, 0.37, 0.26)
+			col_wall = Color(0.20, 0.14, 0.12)
+			cel_pos = Vector2(3560.0, 120.0)
+			cel_col = Color(0.55, 0.32, 0.16)
+			cel_detail = Color(0.48, 0.27, 0.13)
+		_:
+			# Ruinas de medianoche: noche azulada con luna (valores por defecto)
+			PIT_X0 = 2210.0
+			PIT_X1 = 2380.0
+			PIT2_X0 = 700.0
+			PIT2_X1 = 880.0
+			PLAT_X0 = 2130.0
+			PLAT_X1 = 2460.0
+			PLAT_Y = 448.0
+			BRIDGE_X0 = 1900.0
+			BRIDGE_X1 = 2690.0
+			BRIDGE_Y = 288.0
+			HOUSE_X = 908.0
+			STEP_R_X0 = 2856.0
+			STEP_R_X1 = 2948.0
+			STEP_R_Y = 516.0
+			BOULDER_X0 = 3116.0
+			BOULDER_X1 = 3344.0
+			BOULDER_Y = 440.0
+			TOWER_X0 = 3476.0
+			TOWER_X1 = 3644.0
+			TOWER_Y = 330.0
+			STEP_L_X0 = 500.0
+			STEP_L_X1 = 592.0
+			STEP_L_Y = 516.0
+			FENCE_X0 = 600.0
+			FENCE_X1 = 690.0
+			col_sky = Color(0.055, 0.05, 0.09)
+			col_hill_far = Color(0.075, 0.068, 0.115)
+			col_hill_near = Color(0.065, 0.06, 0.10)
+			col_pillar = Color(0.085, 0.08, 0.135)
+			col_pillar_cap = Color(0.11, 0.10, 0.17)
+			col_pit = Color(0.30, 0.07, 0.09)
+			col_floor = Color(0.14, 0.13, 0.19)
+			col_floor_top = Color(0.30, 0.27, 0.37)
+			col_plat = Color(0.20, 0.18, 0.27)
+			col_plat_top = Color(0.34, 0.31, 0.42)
+			col_wall = Color(0.11, 0.10, 0.16)
+			cel_pos = Vector2(2400.0, 118.0)
+			cel_col = Color(0.14, 0.13, 0.20)
+			cel_detail = Color(0.10, 0.09, 0.15)
+	# tejados derivados del anclaje de la casa
+	ROOF_L_X0 = HOUSE_X
+	ROOF_L_X1 = HOUSE_X + 102.0
+	ROOF_L_Y = 472.0
+	ROOF_H_X0 = HOUSE_X + 112.0
+	ROOF_H_X1 = HOUSE_X + 244.0
+	ROOF_H_Y = 406.0
+
+
+func set_arena(id: int) -> void:
+	if id % ARENA_NAMES.size() == arena_id:
+		return
+	_load_arena(id)
+	if level_root != null:
+		level_root.queue_free()
+	level_root = Node2D.new()
+	add_child(level_root)
+	goal_polys.clear()
+	_tops.clear()
+	_build_level()
+	scores = [0, 0]
+	stats = _fresh_stats()
+	match_over = false
+	stats_label.visible = false
+	set_chaos(false)
+	_update_hud()
+	_start_round()
+	show_msg("ARENA: %s" % ARENA_NAMES[arena_id], 1.2)
 
 
 func _top_below(x: float, from_y: float) -> float:
@@ -274,19 +423,19 @@ func _top_below(x: float, from_y: float) -> float:
 
 
 func _hills() -> void:
-	# dos capas de colinas nocturnas tras las ruinas
+	# dos capas de colinas tras las ruinas
 	var cx := -100.0
 	var i := 0
 	while cx < LEVEL_W + 200.0:
 		var r := 150.0 + 90.0 * ((i * 37) % 5)
-		_poly(_circle_points(cx, 700.0, r), Color(0.075, 0.068, 0.115), -8)
+		_poly(_circle_points(cx, 700.0, r), col_hill_far, -8)
 		cx += r * 0.9
 		i += 1
 	cx = -150.0
 	i = 2
 	while cx < LEVEL_W + 200.0:
 		var r := 90.0 + 60.0 * ((i * 53) % 4)
-		_poly(_circle_points(cx, 720.0, r), Color(0.065, 0.06, 0.10), -7)
+		_poly(_circle_points(cx, 720.0, r), col_hill_near, -7)
 		cx += r * 1.1
 		i += 1
 
@@ -318,7 +467,7 @@ func _clouds() -> void:
 		var c := Cloud.new(6.0 + 4.0 * ((i * 29) % 4), LEVEL_W)
 		c.position = Vector2(200.0 + 730.0 * i + 120.0 * ((i * 41) % 3), 70.0 + 46.0 * ((i * 17) % 4))
 		c.z_index = -6
-		add_child(c)
+		_add_level(c)
 
 
 class Torch extends Node2D:
@@ -346,7 +495,7 @@ func _torch_at(x: float) -> void:
 	var t := Torch.new()
 	t.position = Vector2(x, GROUND_Y)
 	t.z_index = 1
-	add_child(t)
+	_add_level(t)
 
 
 class GlowSpot extends Node2D:
@@ -381,26 +530,27 @@ func _bridge() -> void:
 
 func _house() -> void:
 	# fachada y tejado de la aldea; el muro es decorativo: se pasa por la puerta
+	var bx := HOUSE_X
 	var wall_col := Color(0.23, 0.17, 0.15)
 	var wall_lite := Color(0.29, 0.22, 0.19)
-	_poly(PackedVector2Array([Vector2(920, GROUND_Y), Vector2(1140, GROUND_Y), Vector2(1140, 430.0), Vector2(920, 430.0)]), wall_col, -5)
-	_poly(PackedVector2Array([Vector2(920, 430.0), Vector2(1140, 430.0), Vector2(1140, 424.0), Vector2(920, 424.0)]), wall_lite, -5)
+	_poly(PackedVector2Array([Vector2(bx + 12, GROUND_Y), Vector2(bx + 232, GROUND_Y), Vector2(bx + 232, 430.0), Vector2(bx + 12, 430.0)]), wall_col, -5)
+	_poly(PackedVector2Array([Vector2(bx + 12, 430.0), Vector2(bx + 232, 430.0), Vector2(bx + 232, 424.0), Vector2(bx + 12, 424.0)]), wall_lite, -5)
 	# puerta (paso libre) y ventana cálida
-	_poly(PackedVector2Array([Vector2(956, GROUND_Y), Vector2(1008, GROUND_Y), Vector2(1008, 498.0), Vector2(982, 486.0), Vector2(956, 498.0)]), Color(0.12, 0.08, 0.07), -4)
-	_poly(PackedVector2Array([Vector2(999, 530.0), Vector2(1003, 530.0), Vector2(1003, 534.0), Vector2(999, 534.0)]), Color(0.75, 0.62, 0.30), -3)
+	_poly(PackedVector2Array([Vector2(bx + 48, GROUND_Y), Vector2(bx + 100, GROUND_Y), Vector2(bx + 100, 498.0), Vector2(bx + 74, 486.0), Vector2(bx + 48, 498.0)]), Color(0.12, 0.08, 0.07), -4)
+	_poly(PackedVector2Array([Vector2(bx + 91, 530.0), Vector2(bx + 95, 530.0), Vector2(bx + 95, 534.0), Vector2(bx + 91, 534.0)]), Color(0.75, 0.62, 0.30), -3)
 	var win := GlowSpot.new()
-	win.position = Vector2(1072, 514)
+	win.position = Vector2(bx + 164, 514)
 	win.radius = 34.0
 	win.z_index = -3
-	add_child(win)
-	_poly(PackedVector2Array([Vector2(1050, 494.0), Vector2(1094, 494.0), Vector2(1094, 534.0), Vector2(1050, 534.0)]), Color(1.0, 0.78, 0.35, 0.85), -4)
-	_poly(PackedVector2Array([Vector2(1070, 494.0), Vector2(1074, 494.0), Vector2(1074, 534.0), Vector2(1070, 534.0)]), Color(0.14, 0.10, 0.08), -3)
-	_poly(PackedVector2Array([Vector2(1050, 512.0), Vector2(1094, 512.0), Vector2(1094, 516.0), Vector2(1050, 516.0)]), Color(0.14, 0.10, 0.08), -3)
+	_add_level(win)
+	_poly(PackedVector2Array([Vector2(bx + 142, 494.0), Vector2(bx + 186, 494.0), Vector2(bx + 186, 534.0), Vector2(bx + 142, 534.0)]), Color(1.0, 0.78, 0.35, 0.85), -4)
+	_poly(PackedVector2Array([Vector2(bx + 162, 494.0), Vector2(bx + 166, 494.0), Vector2(bx + 166, 534.0), Vector2(bx + 162, 534.0)]), Color(0.14, 0.10, 0.08), -3)
+	_poly(PackedVector2Array([Vector2(bx + 142, 512.0), Vector2(bx + 186, 512.0), Vector2(bx + 186, 516.0), Vector2(bx + 142, 516.0)]), Color(0.14, 0.10, 0.08), -3)
 	# chimenea con humo
-	_poly(PackedVector2Array([Vector2(1088, 330.0), Vector2(1116, 330.0), Vector2(1116, 412.0), Vector2(1088, 412.0)]), Color(0.20, 0.15, 0.14), -4)
-	_poly(PackedVector2Array([Vector2(1084, 330.0), Vector2(1120, 330.0), Vector2(1120, 320.0), Vector2(1084, 320.0)]), Color(0.26, 0.19, 0.17), -4)
+	_poly(PackedVector2Array([Vector2(bx + 180, 330.0), Vector2(bx + 208, 330.0), Vector2(bx + 208, 412.0), Vector2(bx + 180, 412.0)]), Color(0.20, 0.15, 0.14), -4)
+	_poly(PackedVector2Array([Vector2(bx + 176, 330.0), Vector2(bx + 212, 330.0), Vector2(bx + 212, 320.0), Vector2(bx + 176, 320.0)]), Color(0.26, 0.19, 0.17), -4)
 	var smoke := CPUParticles2D.new()
-	smoke.position = Vector2(1102, 314)
+	smoke.position = Vector2(bx + 194, 314)
 	smoke.z_index = -3
 	smoke.amount = 10
 	smoke.lifetime = 2.6
@@ -412,7 +562,7 @@ func _house() -> void:
 	smoke.scale_amount_min = 3.0
 	smoke.scale_amount_max = 7.0
 	smoke.color = Color(0.5, 0.5, 0.55, 0.16)
-	add_child(smoke)
+	_add_level(smoke)
 	# faldones de tejado subibles (superficies reales)
 	_roof_slab(ROOF_L_X0, ROOF_L_X1, ROOF_L_Y)
 	_roof_slab(ROOF_H_X0, ROOF_H_X1, ROOF_H_Y)
@@ -425,8 +575,6 @@ func _house() -> void:
 		while sx < x1 - 8.0:
 			_poly(PackedVector2Array([Vector2(sx, y + 16.0), Vector2(sx + 10.0, y + 16.0), Vector2(sx + 16.0, y + 30.0), Vector2(sx + 6.0, y + 30.0)]), Color(0.16, 0.10, 0.10), -4)
 			sx += 26.0
-	# valla entre el peldaño rocoso y el foso pequeño
-	_fence(600.0, 690.0)
 
 
 func _roof_slab(x0: float, x1: float, y: float) -> void:
@@ -490,9 +638,13 @@ func _rocks_zone() -> void:
 	# gallardete en la torre
 	_poly(PackedVector2Array([Vector2((TOWER_X0 + TOWER_X1) * 0.5, TOWER_Y - 2.0), Vector2((TOWER_X0 + TOWER_X1) * 0.5, TOWER_Y - 52.0)]), Color(0.30, 0.22, 0.14), -3)
 	_poly(PackedVector2Array([Vector2((TOWER_X0 + TOWER_X1) * 0.5, TOWER_Y - 50.0), Vector2((TOWER_X0 + TOWER_X1) * 0.5 + 34.0, TOWER_Y - 44.0), Vector2((TOWER_X0 + TOWER_X1) * 0.5, TOWER_Y - 30.0)]), Color(0.75, 0.30, 0.22), -3)
-	# piedras sueltas decorativas
-	for r in [[2560.0, 12.0], [3760.0, 16.0], [4180.0, 10.0], [640.0, 11.0]]:
+	# piedras sueltas decorativas (en sitios libres en todas las arenas)
+	for r in [[1700.0, 12.0], [2050.0, 16.0], [2600.0, 10.0], [4420.0, 11.0]]:
 		_poly(_circle_points(r[0], GROUND_Y - r[1] * 0.4, r[1], 9), Color(0.19, 0.18, 0.23), -3)
+
+
+func _add_level(node: Node) -> void:
+	level_root.add_child(node)
 
 
 func _poly(points: PackedVector2Array, col: Color, z: int) -> Polygon2D:
@@ -500,7 +652,7 @@ func _poly(points: PackedVector2Array, col: Color, z: int) -> Polygon2D:
 	p.polygon = points
 	p.color = col
 	p.z_index = z
-	add_child(p)
+	_add_level(p)
 	return p
 
 
@@ -522,25 +674,25 @@ func _static_box(x0: float, y0: float, x1: float, y1: float) -> void:
 	cs.shape = rect
 	cs.position = Vector2((x0 + x1) * 0.5, (y0 + y1) * 0.5)
 	body.add_child(cs)
-	add_child(body)
+	_add_level(body)
 
 
 func _floor_segment(x0: float, x1: float) -> void:
 	_static_box(x0, GROUND_Y, x1, GROUND_Y + 140.0)
-	_poly(PackedVector2Array([Vector2(x0, GROUND_Y), Vector2(x1, GROUND_Y), Vector2(x1, GROUND_Y + 140.0), Vector2(x0, GROUND_Y + 140.0)]), Color(0.14, 0.13, 0.19), -4)
-	_poly(PackedVector2Array([Vector2(x0, GROUND_Y), Vector2(x1, GROUND_Y), Vector2(x1, GROUND_Y + 6), Vector2(x0, GROUND_Y + 6)]), Color(0.30, 0.27, 0.37), -4)
+	_poly(PackedVector2Array([Vector2(x0, GROUND_Y), Vector2(x1, GROUND_Y), Vector2(x1, GROUND_Y + 140.0), Vector2(x0, GROUND_Y + 140.0)]), col_floor, -4)
+	_poly(PackedVector2Array([Vector2(x0, GROUND_Y), Vector2(x1, GROUND_Y), Vector2(x1, GROUND_Y + 6), Vector2(x0, GROUND_Y + 6)]), col_floor_top, -4)
 
 
 func _platform(x0: float, x1: float, y: float) -> void:
 	_static_box(x0, y, x1, y + 16.0)
 	_register_top(x0, x1, y)
-	_poly(PackedVector2Array([Vector2(x0, y), Vector2(x1, y), Vector2(x1, y + 16.0), Vector2(x0, y + 16.0)]), Color(0.20, 0.18, 0.27), -4)
-	_poly(PackedVector2Array([Vector2(x0, y), Vector2(x1, y), Vector2(x1, y + 5), Vector2(x0, y + 5)]), Color(0.34, 0.31, 0.42), -4)
+	_poly(PackedVector2Array([Vector2(x0, y), Vector2(x1, y), Vector2(x1, y + 16.0), Vector2(x0, y + 16.0)]), col_plat, -4)
+	_poly(PackedVector2Array([Vector2(x0, y), Vector2(x1, y), Vector2(x1, y + 5), Vector2(x0, y + 5)]), col_plat_top, -4)
 
 
 func _wall(x0: float, x1: float) -> void:
 	_static_box(x0, 0.0, x1, GROUND_Y + 140.0)
-	_poly(PackedVector2Array([Vector2(x0, 0.0), Vector2(x1, 0.0), Vector2(x1, GROUND_Y + 140.0), Vector2(x0, GROUND_Y + 140.0)]), Color(0.11, 0.10, 0.16), -4)
+	_poly(PackedVector2Array([Vector2(x0, 0.0), Vector2(x1, 0.0), Vector2(x1, GROUND_Y + 140.0), Vector2(x0, GROUND_Y + 140.0)]), col_wall, -4)
 
 
 func _goal_zone(x0: float, x1: float, col: Color) -> void:
@@ -684,7 +836,7 @@ func _build_hud() -> void:
 	cl.add_child(msg_label)
 
 	var hint := Label.new()
-	hint.text = "P1: A/D mover · W saltar/arriba · S agachar · F atacar · G lanzar    P2: ←/→ · ↑ · ↓ · K atacar · L lanzar    R: revancha\nB: bot P2 · H: aliado P3 · N: bot vs bot · V: 2v2 · T: lluvia de rocas · M: música · Mando: stick mover · A saltar · X atacar · B lanzar"
+	hint.text = "P1: A/D mover · W saltar/arriba · S agachar · F atacar · G lanzar    P2: ←/→ · ↑ · ↓ · K atacar · L lanzar    R: revancha\nB: bot P2 · H: aliado P3 · N: bot vs bot · V: 2v2 · T: lluvia de rocas · C: cambiar arena · M: música · Mando: stick · A saltar · X atacar · B lanzar"
 	hint.position = Vector2(22, VIEW_H - 64)
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.62, 0.60, 0.72))
@@ -854,6 +1006,8 @@ func _physics_process(delta: float) -> void:
 		show_msg("BOT vs BOT %s" % ("ACTIVADO" if on else "DESACTIVADO"), 0.7)
 	if Input.is_action_just_pressed("toggle_2v2"):
 		set_mode_2v2(not mode_2v2)
+	if Input.is_action_just_pressed("toggle_arena"):
+		set_arena(arena_id + 1)
 	if Input.is_action_just_pressed("toggle_chaos"):
 		set_chaos(not chaos)
 	if Input.is_action_just_pressed("toggle_music"):
