@@ -536,6 +536,20 @@ func _ready() -> void:
 	await get_tree().create_timer(2.2).timeout
 	_check(game.corpses.is_empty(), "Cadáver: se limpia al reaparecer el jugador")
 
+	# 27. Gusano de victoria
+	game.scores = [2, 0]
+	game.right_of_way = game.players[0]
+	p1.position = Vector2(4770.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p1.state = 0
+	await get_tree().create_timer(0.3).timeout
+	_check(game.match_over and game.worm != null, "Gusano: baja al ganar el partido")
+	Input.action_press("restart")
+	await get_tree().create_timer(0.05).timeout
+	Input.action_release("restart")
+	await get_tree().create_timer(0.3).timeout
+	_check(game.worm == null, "Gusano: la revancha lo limpia")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

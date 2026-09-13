@@ -109,6 +109,7 @@ var chaos := false
 var chaos_timer := 0.0
 var chaos_count := 0
 var mode_2v2 := false
+var worm: Node = null
 var sections_mode := false
 var section_index := 3
 var sect_conquered := [0, 0]
@@ -526,6 +527,39 @@ class GlowSpot extends Node2D:
 	func _draw() -> void:
 		var f := 0.8 + 0.2 * sin(t * 2.2)
 		draw_circle(Vector2.ZERO, radius * f, Color(1.0, 0.75, 0.3, 0.10))
+
+
+class VictoryWorm extends Node2D:
+	## El gusano del Nidhogg: baja del techo y envuelve al ganador.
+	var t := 0.0
+	var target := Vector2.ZERO
+	var col := Color(0.22, 0.5, 0.2)
+
+	func _init(pos: Vector2) -> void:
+		target = pos
+		position = pos + Vector2(0, -620.0)
+
+	func _process(delta: float) -> void:
+		t = minf(t + delta / 1.2, 1.0)
+		position.y = lerpf(target.y - 620.0, target.y - 10.0, t)
+		queue_redraw()
+
+	func _draw() -> void:
+		var chomp := 0.35 + 0.65 * t
+		for i in 6:
+			var r := 34.0 - 3.0 * float(i)
+			draw_circle(Vector2(0, -float(i) * 44.0 - 30.0), r, col.darkened(0.05 * i))
+		draw_circle(Vector2(0, -30.0), 36.0, col)
+		var open_ang := 1.2 * (1.0 - chomp)
+		for s in [-1.0, 1.0]:
+			var pts := PackedVector2Array([
+				Vector2(0, -20),
+				Vector2(s * 44.0 * cos(open_ang), -20.0 + 44.0 * sin(open_ang)),
+				Vector2(s * 10.0, 26.0),
+			])
+			draw_colored_polygon(pts, col.darkened(0.15))
+		draw_circle(Vector2(-12, -34), 4.0, Color.YELLOW)
+		draw_circle(Vector2(12, -34), 4.0, Color.YELLOW)
 
 
 class Corpse extends Node2D:
@@ -1135,6 +1169,9 @@ func _build_hud() -> void:
 
 
 func _start_round() -> void:
+	if worm != null:
+		worm.queue_free()
+		worm = null
 	for s in projectiles:
 		s.queue_free()
 	projectiles.clear()
@@ -1924,16 +1961,27 @@ func _point(p: Player) -> void:
 	right_of_way = null
 	if scores[_team(p)] >= WIN_SCORE:
 		match_over = true
+		_spawn_worm(p)
 		if mode_2v2:
 			var team_name := "NARANJA" if _team(p) == 0 else "CYAN"
 			show_msg("¡GANA EL EQUIPO %s!  ·  R: revancha" % team_name, 12.0)
 		else:
 			show_msg("¡GANA P%d!  ·  R: revancha" % p.player_id, 12.0)
 		stats_label.text = _stats_text()
-		stats_label.visible = true
+		get_tree().create_timer(1.5).timeout.connect(func():
+			if match_over:
+				stats_label.visible = true)
 	else:
 		round_lock = 1.4
 		show_msg("¡PUNTO!", 1.0)
+
+
+func _spawn_worm(p: Player) -> void:
+	if worm != null:
+		worm.queue_free()
+	worm = VictoryWorm.new(p.position + Vector2(0, -30.0))
+	worm.z_index = 30
+	add_child(worm)
 
 
 func _stats_text() -> String:
