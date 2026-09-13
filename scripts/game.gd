@@ -118,6 +118,11 @@ var run_label: Label
 var dim: ColorRect
 var pause_label: Label
 var stats_label: Label
+var fight_label: Label
+var fight_tween: Tween
+var pips: Array[Pip] = []
+var pips_row: Node2D
+var respawn_bar: RespawnBar
 var score_labels: Array[Label] = []
 var msg_tween: Tween
 var music: Music
@@ -518,6 +523,30 @@ class GlowSpot extends Node2D:
 	func _draw() -> void:
 		var f := 0.8 + 0.2 * sin(t * 2.2)
 		draw_circle(Vector2.ZERO, radius * f, Color(1.0, 0.75, 0.3, 0.10))
+
+
+class Pip extends Node2D:
+	## Cuadro del HUD de secciones: hueco o relleno del color conquistador.
+	var fill_col := Color(0, 0, 0, 0)
+	var edge_col := Color(0.65, 0.63, 0.72)
+
+	func _draw() -> void:
+		draw_rect(Rect2(-16, -10, 32, 20), edge_col, false, 2.5)
+		if fill_col.a > 0.0:
+			draw_rect(Rect2(-12, -6, 24, 12), fill_col)
+
+
+class RespawnBar extends Node2D:
+	## Barra de progreso sobre el punto de reaparición.
+	var frac := 0.0
+	var col := Color.WHITE
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		draw_rect(Rect2(-30, -6, 60, 12), Color(0, 0, 0, 0.55))
+		draw_rect(Rect2(-28, -4, 56.0 * clampf(frac, 0.0, 1.0), 8.0), col)
 
 
 class SectionGate extends Node2D:
@@ -998,6 +1027,35 @@ func _build_hud() -> void:
 	stats_label.visible = false
 	cl.add_child(stats_label)
 
+	pips_row = Node2D.new()
+	pips_row.position = Vector2(VIEW_W * 0.5 - 2.0 * 44.0 + 16.0, 36.0)
+	pips_row.visible = false
+	cl.add_child(pips_row)
+	pips.clear()
+	for k in SECTION_COUNT:
+		var pip := Pip.new()
+		pip.position = Vector2(44.0 * float(k), 0.0)
+		pips_row.add_child(pip)
+		pips.append(pip)
+
+	respawn_bar = RespawnBar.new()
+	respawn_bar.visible = false
+	respawn_bar.z_index = 40
+	cl.add_child(respawn_bar)
+
+	fight_label = Label.new()
+	fight_label.text = "¡FIGHT!"
+	fight_label.position = Vector2(0, VIEW_H * 0.30)
+	fight_label.size = Vector2(VIEW_W, 110)
+	fight_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fight_label.add_theme_font_size_override("font_size", 88)
+	fight_label.add_theme_color_override("font_color", Color.WHITE)
+	fight_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	fight_label.add_theme_constant_override("outline_size", 16)
+	fight_label.pivot_offset = Vector2(VIEW_W * 0.5, 55.0)
+	fight_label.visible = false
+	cl.add_child(fight_label)
+
 
 func _start_round() -> void:
 	for s in projectiles:
@@ -1024,7 +1082,7 @@ func _start_round() -> void:
 	for i in players.size():
 		var o: float = offs[i]
 		players[i].reset_to(Vector2(LEVEL_W * 0.5 + o, GROUND_Y - 29.0), -1 if o > 0.0 else 1)
-	show_msg("¡LUCHA!", 1.0)
+	_show_fight()
 
 
 func show_msg(text: String, dur: float) -> void:
@@ -1035,6 +1093,19 @@ func show_msg(text: String, dur: float) -> void:
 	msg_tween = msg_label.create_tween()
 	msg_tween.tween_interval(dur)
 	msg_tween.tween_property(msg_label, "modulate:a", 0.0, 0.4)
+
+
+func _show_fight() -> void:
+	fight_label.visible = true
+	fight_label.modulate.a = 1.0
+	fight_label.scale = Vector2(1.7, 1.7)
+	if fight_tween:
+		fight_tween.kill()
+	fight_tween = fight_label.create_tween()
+	fight_tween.tween_property(fight_label, "scale", Vector2.ONE, 0.22)
+	fight_tween.tween_interval(0.45)
+	fight_tween.tween_property(fight_label, "modulate:a", 0.0, 0.3)
+	fight_tween.tween_callback(func(): fight_label.visible = false)
 
 
 func _hitstop(dur: float) -> void:
@@ -1060,6 +1131,38 @@ func _update_hud() -> void:
 	else:
 		score_labels[0].text = "P1  %d  »" % scores[0]
 		score_labels[1].text = "«  %d  P2" % scores[1]
+	_update_pips()
+
+
+func _update_pips() -> void:
+	pips_row.visible = sections_mode
+	if not sections_mode:
+		return
+	for k in SECTION_COUNT:
+		var fill := Color(0, 0, 0, 0)
+		var edge := Color(0.65, 0.63, 0.72)
+		if k < 3 and sect_conquered[1] >= 3 - k:
+			fill = P2_COLOR
+			edge = P2_COLOR
+		elif k > 3 and sect_conquered[0] >= k - 3:
+			fill = P1_COLOR
+			edge = P1_COLOR
+		pips[k].fill_col = fill
+		pips[k].edge_col = edge
+		pips[k].queue_redraw()
+
+
+func _update_respawn_bar() -> void:
+	var shown := false
+	for i in players.size():
+		if respawn_timers[i] > 0.0:
+			var p := players[i]
+			respawn_bar.position = _respawn_pos(p) + Vector2(0, -96)
+			respawn_bar.col = p.color
+			respawn_bar.frac = respawn_timers[i] / RESPAWN_DELAY
+			shown = true
+			break
+	respawn_bar.visible = shown
 
 
 func _burst(pos: Vector2, col: Color, amount := 24, speed := 380.0) -> void:
@@ -1156,6 +1259,7 @@ func _physics_process(delta: float) -> void:
 			respawn_timers[i] -= delta
 			if respawn_timers[i] <= 0.0:
 				_respawn(players[i])
+	_update_respawn_bar()
 	for p in players:
 		if p.state != Player.State.DEAD and p.position.y > 820.0:
 			_kill(p, null)

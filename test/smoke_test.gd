@@ -347,6 +347,33 @@ func _ready() -> void:
 	game.set_sections(false)
 	_check(not game.sections_mode and game.gates.is_empty(), "Pantallas: desactivar quita las rejas")
 
+	# 20. HUD: pips de secciones y barra de reaparición
+	game.set_sections(true)
+	_check(game.pips_row.visible and game.pips.size() == 7, "HUD: fila de 7 pips en modo pantallas")
+	game.sect_conquered = [1, 0]
+	game._update_hud()
+	_check(game.pips[4].fill_col == game.P1_COLOR, "HUD: pip conquistado del color del atacante")
+	p1.position = Vector2(2200.0, 531.0)
+	p2.position = Vector2(2270.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p2.invuln_time = 0.0
+	p2.has_sword = true
+	await get_tree().physics_frame
+	Input.action_press("p2_up")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.16).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p2_up")
+	await get_tree().create_timer(0.3).timeout
+	_check(p2.state == 7 and game.respawn_bar.visible, "HUD: barra de reaparición visible")
+	_check(game.fight_tween != null, "HUD: cartel FIGHT lanzado en la ronda")
+	game.set_sections(false)
+	_check(not game.pips_row.visible, "HUD: sin modo pantallas no hay pips")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
