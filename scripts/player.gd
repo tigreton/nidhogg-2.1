@@ -12,6 +12,7 @@ enum H { LOW, MID, HIGH }
 
 const SPEED := 330.0
 const DUCK_SPEED := 150.0
+const UNARMED_SPEED_MULT := 1.15
 const JUMP_VELOCITY := -700.0
 const GRAVITY := 1700.0
 const ATTACK_DURATION := 0.30
@@ -186,7 +187,7 @@ func _physics_process(delta: float) -> void:
 
 	match state:
 		State.IDLE, State.RUN:
-			var sp := DUCK_SPEED if stance == H.LOW else SPEED * run_mult()
+			var sp := DUCK_SPEED if stance == H.LOW else SPEED * (UNARMED_SPEED_MULT if not has_sword else run_mult())
 			velocity.x = dir * sp
 			state = State.RUN if absf(velocity.x) > 5.0 else State.IDLE
 			run_phase += velocity.x * delta * 0.045

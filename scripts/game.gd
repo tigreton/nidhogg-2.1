@@ -1301,7 +1301,7 @@ func _resolve_attacks() -> void:
 			outcome = "kill"
 		else:
 			var d: int = def.stance
-			if d == h and def.weapon_id != "arco":
+			if d == h and atk.has_sword and def.weapon_id != "arco":
 				outcome = "clash"
 			elif h == Player.H.HIGH and d == Player.H.LOW:
 				outcome = "miss"
@@ -1351,11 +1351,21 @@ func _melee_hit(atk: Player, def: Player) -> void:
 	elif atk.has_sword:
 		_kill(def, atk)
 	else:
-		# el puñetazo derriba, no mata
 		var push := 1 if def.position.x >= atk.position.x else -1
-		def.knockdown(push)
-		_burst(def.position, Color(1, 1, 1), 8, 200.0)
-		sfx(def.position, "hit", -10.0)
+		if def.has_sword and atk.stance != Player.H.LOW:
+			# puñetazo de pie: desarma y aturde
+			def.has_sword = false
+			_drop_sword(def.position + Vector2(-float(def.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), def.weapon_id)
+			def.state = Player.State.STUNNED
+			def.stun_time = 0.5
+			def.velocity = Vector2(push * 160.0, -120.0)
+			_burst(def.position + Vector2(0, -20), Color(0.95, 0.95, 1.0), 8, 240.0)
+			sfx(def.position, "throw", -12.0)
+		else:
+			# patada baja (agachado) o rival ya desarmado: derriba
+			def.knockdown(push)
+			_burst(def.position, Color(1, 1, 1), 8, 200.0)
+			sfx(def.position, "hit", -10.0)
 
 
 func _clash(a: Player, b: Player) -> void:
@@ -1392,6 +1402,10 @@ func _resolve_divekicks() -> void:
 		else:
 			var push := 1 if def.position.x >= p.position.x else -1
 			def.knockdown(push)
+			# la patada voladora hace soltar el arma a su víctima
+			if def.has_sword:
+				def.has_sword = false
+				_drop_sword(def.position + Vector2(0.0, -20.0), Color(0.87, 0.9, 0.95), def.weapon_id)
 			p.state = Player.State.JUMP
 			p.velocity = Vector2(-p.facing * 210.0, -440.0)
 			_burst(def.position, Color(1, 1, 1), 10, 240.0)

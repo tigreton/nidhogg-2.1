@@ -391,6 +391,45 @@ func _ready() -> void:
 	Input.action_release("p1_down")
 	_check(p2.state == 7, "Stomp: pisotón sobre el derribado mata")
 
+	# 22. Desarmado: el puñetazo desarma y la patada baja derriba
+	game.round_lock = 0.0
+	# limpiar armas caídas (el stomp de la sección 21 deja una junto a P1)
+	for pk in game.pickups:
+		pk.queue_free()
+	game.pickups.clear()
+	p1.has_sword = false
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1645.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p2.has_sword = true
+	p2.invuln_time = 0.0
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.2).timeout
+	Input.action_release("p1_attack")
+	_check(p2.has_sword == false and p2.state == 5, "Desarmado: el puñetazo desarma y aturde")
+	p2.state = 0
+	p2.has_sword = true
+	p2.invuln_time = 0.0
+	p2.position = Vector2(1645.0, 531.0)
+	p2.velocity = Vector2.ZERO
+	Input.action_press("p1_down")
+	# esperar a que P1 salga del ATTACK del puñetazo (0,30 s) antes de patear
+	await get_tree().create_timer(0.15).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.2).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p1_down")
+	_check(p2.state == 6, "Desarmado: la patada baja derriba")
+	for pk in game.pickups:
+		pk.queue_free()
+	game.pickups.clear()
+	p1.has_sword = true
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
