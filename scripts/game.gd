@@ -41,7 +41,7 @@ const WIN_SCORE := 3
 const VIEW_W := 1152.0
 const VIEW_H := 648.0
 const RESPAWN_DELAY := 2.4
-const ARENA_NAMES := ["RUINAS DE MEDIANOCHE", "TEMPLO DEL ALBA"]
+const ARENA_NAMES := ["RUINAS DE MEDIANOCHE", "TEMPLO DEL ALBA", "CRIPTA DEL OCASO"]
 const BOT_CFG := [
 	{"react": 0.26, "atk": 0.12, "err": 0.35},  # FÁCIL
 	{"react": 0.13, "atk": 0.30, "err": 0.10},  # NORMAL
@@ -307,6 +307,9 @@ func _build_level() -> void:
 	_torch_at(LEVEL_W - 210.0)
 	_torch_at(HOUSE_X + 124.0)
 	_fence(FENCE_X0, FENCE_X1)
+	if arena_id == 2:
+		_candles()
+		_tombstones()
 
 
 func _register_top(x0: float, x1: float, y: float) -> void:
@@ -358,6 +361,48 @@ func _load_arena(id: int) -> void:
 			cel_pos = Vector2(3560.0, 120.0)
 			cel_col = Color(0.55, 0.32, 0.16)
 			cel_detail = Color(0.48, 0.27, 0.13)
+		2:
+			# Cripta del ocaso: atardecer púrpura, torre a la izquierda,
+			# casa a la derecha y foso pequeño junto a la meta de P1
+			PIT_X0 = 2210.0
+			PIT_X1 = 2380.0
+			PIT2_X0 = 3620.0
+			PIT2_X1 = 3800.0
+			PLAT_X0 = 2130.0
+			PLAT_X1 = 2460.0
+			PLAT_Y = 448.0
+			BRIDGE_X0 = 1900.0
+			BRIDGE_X1 = 2690.0
+			BRIDGE_Y = 288.0
+			HOUSE_X = 3850.0
+			STEP_R_X0 = 1550.0
+			STEP_R_X1 = 1642.0
+			STEP_R_Y = 516.0
+			BOULDER_X0 = 3050.0
+			BOULDER_X1 = 3278.0
+			BOULDER_Y = 440.0
+			TOWER_X0 = 380.0
+			TOWER_X1 = 548.0
+			TOWER_Y = 330.0
+			STEP_L_X0 = 4180.0
+			STEP_L_X1 = 4272.0
+			STEP_L_Y = 516.0
+			FENCE_X0 = 940.0
+			FENCE_X1 = 1030.0
+			col_sky = Color(0.10, 0.06, 0.13)
+			col_hill_far = Color(0.14, 0.08, 0.16)
+			col_hill_near = Color(0.11, 0.07, 0.13)
+			col_pillar = Color(0.13, 0.10, 0.15)
+			col_pillar_cap = Color(0.17, 0.13, 0.19)
+			col_pit = Color(0.16, 0.05, 0.14)
+			col_floor = Color(0.16, 0.13, 0.18)
+			col_floor_top = Color(0.34, 0.28, 0.38)
+			col_plat = Color(0.22, 0.18, 0.26)
+			col_plat_top = Color(0.38, 0.32, 0.44)
+			col_wall = Color(0.15, 0.11, 0.17)
+			cel_pos = Vector2(1200.0, 130.0)
+			cel_col = Color(0.75, 0.45, 0.30)
+			cel_detail = Color(0.66, 0.38, 0.26)
 		_:
 			# Ruinas de medianoche: noche azulada con luna (valores por defecto)
 			PIT_X0 = 2210.0
@@ -513,6 +558,24 @@ func _torch_at(x: float) -> void:
 	t.position = Vector2(x, GROUND_Y)
 	t.z_index = 1
 	_add_level(t)
+
+
+class Candle extends Node2D:
+	## Vela fantasmal de la cripta: llama verde parpadeante.
+	var t := 0.0
+
+	func _ready() -> void:
+		t = randf() * 10.0
+
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		draw_line(Vector2(0, 0), Vector2(0, -26.0), Color(0.75, 0.72, 0.6), 8.0)
+		var f := 1.0 + 0.2 * sin(t * 9.0)
+		draw_circle(Vector2(0, -32.0), 18.0 * f, Color(0.4, 0.9, 0.55, 0.10))
+		draw_colored_polygon(PackedVector2Array([Vector2(-4, -28), Vector2(0, -28.0 - 14.0 * f), Vector2(4, -28)]), Color(0.55, 0.95, 0.65, 0.95))
 
 
 class GlowSpot extends Node2D:
@@ -777,6 +840,19 @@ func _fence(x0: float, x1: float) -> void:
 		fx += 30.0
 	_poly(PackedVector2Array([Vector2(x0 - 6, GROUND_Y - 34.0), Vector2(x1 + 6, GROUND_Y - 34.0), Vector2(x1 + 6, GROUND_Y - 29.0), Vector2(x0 - 6, GROUND_Y - 29.0)]), Color(0.26, 0.19, 0.14), -3)
 	_poly(PackedVector2Array([Vector2(x0 - 6, GROUND_Y - 18.0), Vector2(x1 + 6, GROUND_Y - 18.0), Vector2(x1 + 6, GROUND_Y - 13.0), Vector2(x0 - 6, GROUND_Y - 13.0)]), Color(0.26, 0.19, 0.14), -3)
+
+
+func _candles() -> void:
+	for cx in [HOUSE_X + 260.0, 1420.0, 2500.0, 4050.0]:
+		var c := Candle.new()
+		c.position = Vector2(cx, GROUND_Y)
+		c.z_index = 1
+		_add_level(c)
+
+
+func _tombstones() -> void:
+	for tx in [300.0, 1180.0, 2450.0, 4320.0]:
+		_poly(PackedVector2Array([Vector2(tx - 16, GROUND_Y), Vector2(tx + 16, GROUND_Y), Vector2(tx + 14, GROUND_Y - 44.0), Vector2(tx, GROUND_Y - 54.0), Vector2(tx - 14, GROUND_Y - 44.0)]), Color(0.24, 0.22, 0.28), -3)
 
 
 func _flowers() -> void:

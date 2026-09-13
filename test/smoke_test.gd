@@ -574,6 +574,17 @@ func _ready() -> void:
 		pk.queue_free()
 	game.pickups.clear()
 
+	# 32. Tercera arena: Cripta del Ocaso
+	game.set_arena(2)
+	_check(game.arena_id == 2 and game.ARENA_NAMES[2] == "CRIPTA DEL OCASO", "Arena 3: nombre y selector")
+	_check(game.PIT2_X0 == 3620.0, "Arena 3: foso pequeño a la derecha")
+	p1.position = Vector2(460.0, 296.0)
+	p1.velocity = Vector2.ZERO
+	await get_tree().create_timer(0.4).timeout
+	_check(p1.is_on_floor() and absf(p1.position.y - 301.0) < 6.0, "Arena 3: la torre izquierda es subible")
+	game.set_arena(0)
+	_check(game.arena_id == 0 and game.PIT2_X0 == 700.0, "Vuelta a Ruinas de Medianoche")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
