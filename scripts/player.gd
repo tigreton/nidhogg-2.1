@@ -429,8 +429,11 @@ func _draw() -> void:
 	draw_line(Vector2(0, -16), Vector2(0, 12), c, 19.0)
 	draw_line(Vector2(-9, 4), Vector2(9, 4), dark, 4.0)
 
+	var skin_cols := [Color(0.93, 0.78, 0.62), Color(0.72, 0.52, 0.36), Color(0.45, 0.30, 0.20)]
+	var skin: Color = skin_cols[MatchRules.skin[clampi(player_id - 1, 0, 1)] % skin_cols.size()] if flash_time <= 0.0 else Color.WHITE
 	draw_circle(Vector2(1, -28), 10.0, dark)
-	draw_circle(Vector2(1, -28), 8.0, c)
+	draw_circle(Vector2(1, -28), 8.0, skin)
+	_match_hair(skin, c, dark)
 	var wag := sin(anim_time * 12.0) * 3.0
 	draw_line(Vector2(-4, -31), Vector2(-18, -29 + wag), c.darkened(0.25), 3.5)
 
@@ -484,3 +487,17 @@ func _draw_bow() -> void:
 	if pull > 0.0:
 		draw_line(Vector2(px, py), Vector2(px + 26.0, py), dark, 2.5)
 		draw_line(Vector2(px + 26.0, py), Vector2(px + 26.0 + 6.0, py), c, 2.0)
+
+
+func _match_hair(skin: Color, c: Color, dark: Color) -> void:
+	match MatchRules.hair[clampi(player_id - 1, 0, 1)] % 3:
+		1:
+			# melena puntiaguda
+			draw_colored_polygon(PackedVector2Array([Vector2(-8, -30), Vector2(10, -30), Vector2(1, -44)]), Color(0.12, 0.09, 0.07))
+			draw_line(Vector2(-9, -28), Vector2(-13, -22), Color(0.12, 0.09, 0.07), 3.0)
+		2:
+			# casco con penacho del color del jugador
+			draw_arc(Vector2(1, -28), 10.5, PI, TAU, 12, dark, 5.0)
+			draw_line(Vector2(1, -40), Vector2(1, -50), c, 4.0)
+		_:
+			pass
