@@ -7,7 +7,7 @@ signal died(player: Player)
 signal threw_sword(player: Player)
 signal fired_arrow(player: Player, height: int, charge: float)
 
-enum State { IDLE, RUN, JUMP, DIVEKICK, ATTACK, STUNNED, KNOCKDOWN, DEAD, ROLL }
+enum State { IDLE, RUN, JUMP, DIVEKICK, ATTACK, STUNNED, KNOCKDOWN, DEAD, ROLL, DIVE }
 enum H { LOW, MID, HIGH }
 
 const SPEED := 330.0
@@ -24,6 +24,8 @@ const PUNCH_RANGE := 50.0
 const ROLL_DURATION := 0.34
 const ROLL_SPEED := 520.0
 const ROLL_COOLDOWN := 0.55
+const DIVE_SPEED := 546.0
+const DIVE_TIME := 0.55
 const LUNGE_SPEED := 620.0
 
 var player_id := 1
@@ -54,6 +56,8 @@ var was_on_floor := true
 var dust_cd := 0.0
 var roll_time := 0.0
 var roll_cd := 0.0
+var dive_time := 0.0
+var dive_resolved := false
 var attack_dash_time := 0.0   # > 0 mientras la estocada empuja hacia delante
 var bow_time := 0.0
 
@@ -129,12 +133,26 @@ func _physics_process(delta: float) -> void:
 			roll_time += delta
 			if roll_time >= ROLL_DURATION:
 				state = State.IDLE
+		State.DIVE:
+			dive_time += delta
+			if dive_time >= DIVE_TIME:
+				state = State.KNOCKDOWN
+				knockdown_time = 0.6
 
 	if not is_on_floor():
 		velocity.y += GRAVITY * delta
 
 	if can_act:
-		if hit("jump") and held("down") and is_on_floor() and roll_cd <= 0.0:
+		if hit("jump") and held("down") and state == State.RUN and absf(velocity.x) > 120.0 and roll_cd <= 0.0:
+			# dive horizontal: vuelo rasante con la espada
+			state = State.DIVE
+			dive_time = 0.0
+			dive_resolved = false
+			roll_cd = DIVE_TIME
+			stance = H.MID
+			velocity = Vector2(facing * DIVE_SPEED, 0.0)
+			_sfx("swing", -18.0)
+		elif hit("jump") and held("down") and is_on_floor() and roll_cd <= 0.0:
 			# rodar: esquiva rápida agachado (cuenta como estancia baja)
 			state = State.ROLL
 			roll_time = 0.0
@@ -203,6 +221,10 @@ func _physics_process(delta: float) -> void:
 		State.ROLL:
 			velocity.x = facing * ROLL_SPEED
 			stance = H.LOW
+		State.DIVE:
+			velocity.x = facing * DIVE_SPEED
+			velocity.y = 0.0
+			stance = H.MID
 
 	move_and_slide()
 
@@ -357,6 +379,9 @@ func _draw() -> void:
 		t_rot = -TAU * (roll_time / ROLL_DURATION)
 		t_pos = Vector2(0, 14)
 		t_scl = Vector2(0.9, 0.9)
+	elif state == State.DIVE:
+		t_rot = 1.35
+		t_pos = Vector2(0, 6)
 	elif state == State.DIVEKICK:
 		t_rot = 0.7
 	elif state == State.STUNNED:

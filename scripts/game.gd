@@ -1274,6 +1274,7 @@ func _physics_process(delta: float) -> void:
 		last_x[i] = players[i].position.x
 	_resolve_attacks()
 	_resolve_divekicks()
+	_resolve_dives()
 	_resolve_stomps()
 	_update_projectiles(delta)
 	_update_arrows(delta)
@@ -1426,6 +1427,30 @@ func _nearest_divekick_target(p: Player) -> Player:
 			bd = d
 			best = def
 	return best
+
+
+func _resolve_dives() -> void:
+	for p in players:
+		if p.state != Player.State.DIVE or p.dive_resolved:
+			continue
+		for def in _foes_of(p):
+			if def.state == Player.State.DEAD or def.invuln_time > 0.0:
+				continue
+			if absf(def.position.x - p.position.x) > 40.0 or absf(def.position.y - p.position.y) > 50.0:
+				continue
+			p.dive_resolved = true
+			if def.state == Player.State.ATTACK and def.attack_is_active() and def.attack_height == Player.H.MID:
+				_clash(def, p)
+			elif p.has_sword:
+				_kill(def, p)
+			else:
+				var push := 1 if def.position.x >= p.position.x else -1
+				def.knockdown(push)
+			p.state = Player.State.KNOCKDOWN
+			p.knockdown_time = 0.6
+			p.velocity = Vector2(-float(p.facing) * 160.0, -160.0)
+			shake_time = maxf(shake_time, 0.14)
+			break
 
 
 func _resolve_stomps() -> void:

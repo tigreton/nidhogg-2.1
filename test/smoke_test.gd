@@ -430,6 +430,28 @@ func _ready() -> void:
 	game.pickups.clear()
 	p1.has_sword = true
 
+	# 28. Dive horizontal: abajo + salto corriendo
+	game.round_lock = 0.0
+	p1.has_sword = true
+	p1.position = Vector2(1500.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p1.state = 1
+	p2.position = Vector2(2600.0, 531.0)
+	p2.velocity = Vector2.ZERO
+	p2.state = 0
+	await get_tree().physics_frame
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.2).timeout
+	Input.action_press("p1_down")
+	Input.action_press("p1_jump")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_release("p1_jump")
+	Input.action_release("p1_down")
+	_check(p1.state == 9 and absf(p1.velocity.x) > 400.0, "Dive horizontal: vuelo rasante")
+	await get_tree().create_timer(0.8).timeout
+	Input.action_release("p1_right")
+	_check(p1.state in [0, 1, 6], "Dive horizontal: al acabar cae derribado o se levanta")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
