@@ -285,6 +285,39 @@ func _ready() -> void:
 	_check(p2.weapon_id == "espada", "Armas: al reaparecer toca el espadón")
 	p2.weapon_id = "florete"
 
+	# 18. Arco: la flecha mata a distinta altura y rebota en guardia igual
+	p1.weapon_id = "arco"
+	p1.has_sword = true
+	p1.bow_time = 0.0
+	p1.position = Vector2(1600.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p1.state = 0
+	p1.facing = 1
+	p2.position = Vector2(1850.0, 531.0)
+	p2.velocity = Vector2.ZERO
+	p2.state = 0
+	p2.has_sword = true
+	p2.invuln_time = 0.0
+	await get_tree().physics_frame
+	Input.action_press("p2_up")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.4).timeout
+	Input.action_release("p1_attack")
+	await get_tree().create_timer(0.8).timeout
+	_check(p2.state == 7, "Arco: la flecha mata a quien no cubre su altura")
+	Input.action_release("p2_up")
+	p2.revive(Vector2(1850.0, 531.0), -1)
+	p2.invuln_time = 0.0
+	p2.state = 0
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.4).timeout
+	Input.action_release("p1_attack")
+	await get_tree().create_timer(0.8).timeout
+	_check(p2.state != 7, "Arco: la guardia a la misma altura rebota la flecha")
+	_check(game.arrows.size() == 1 and game.arrows[0].bounces >= 1, "Arco: la flecha quedó rebotada en vuelo")
+	p1.weapon_id = "florete"
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

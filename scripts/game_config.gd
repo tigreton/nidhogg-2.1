@@ -1,7 +1,7 @@
 class_name GameConfig
 ## Stats de las armas y orden del ciclo de muerte. Compartido por game y player.
 
-const WEAPON_ORDER := ["florete", "espada", "daga"]
+const WEAPON_ORDER := ["florete", "espada", "daga", "arco"]
 
 const WEAPONS := {
 	"florete": {
@@ -21,5 +21,12 @@ const WEAPONS := {
 		"run_mult": 1.15, "thrown_speed": 980.0,
 		"thrown_kills": ["HIGH"],
 		"blade_len": 0.6, "blade_w": 3.0, "disarms": false,
+	},
+	"arco": {
+		"nombre": "ARCO", "dur": 0.0, "from": 0.0, "to": 0.0, "reach": 0.0,
+		"run_mult": 0.92, "thrown_speed": 0.0,
+		"thrown_kills": [],
+		"blade_len": 1.0, "blade_w": 4.0, "disarms": false,
+		"bow": true, "arrow_speed": 600.0,
 	},
 }

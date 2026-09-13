@@ -5,6 +5,7 @@ extends CharacterBody2D
 
 signal died(player: Player)
 signal threw_sword(player: Player)
+signal fired_arrow(player: Player, height: int, charge: float)
 
 enum State { IDLE, RUN, JUMP, DIVEKICK, ATTACK, STUNNED, KNOCKDOWN, DEAD, ROLL }
 enum H { LOW, MID, HIGH }
@@ -53,6 +54,7 @@ var dust_cd := 0.0
 var roll_time := 0.0
 var roll_cd := 0.0
 var attack_dash_time := 0.0   # > 0 mientras la estocada empuja hacia delante
+var bow_time := 0.0
 
 
 func _ready() -> void:
@@ -143,7 +145,11 @@ func _physics_process(delta: float) -> void:
 			state = State.JUMP
 			_sfx("jump", -16.0)
 		elif hit("attack"):
-			if is_on_floor():
+			if weapon_id == "arco":
+				# tensar el arco: el disparo sale al soltar
+				bow_time = 0.0001
+				_sfx("swing", -26.0)
+			elif is_on_floor():
 				# ataque de espada o puñetazo (sin espada): reutiliza ATTACK
 				state = State.ATTACK
 				attack_time = 0.0
@@ -219,6 +225,13 @@ func _physics_process(delta: float) -> void:
 	var blink: bool = invuln_time > 0.0 and fmod(anim_time, 0.16) < 0.08
 	self_modulate.a = 0.35 if blink else 1.0
 	queue_redraw()
+
+	if bow_time > 0.0:
+		if held("attack") and state in [State.IDLE, State.RUN, State.JUMP]:
+			bow_time = minf(bow_time + delta, 1.0)
+		else:
+			fired_arrow.emit(self, stance, bow_time)
+			bow_time = 0.0
 
 	if is_bot:
 		bot_held_prev = bot_held.duplicate()
@@ -379,6 +392,10 @@ func _draw() -> void:
 	# en la hierba alta la espada no se dibuja: el rival no ve la estancia
 	var hide_sword: bool = g != null and g.has_method("in_grass") and g.in_grass(global_position.x)
 	if has_sword and not hide_sword:
+		if weapon_id == "arco":
+			_draw_bow()
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return
 		var h: int = attack_height if state == State.ATTACK else stance
 		var ext := attack_ext()
 		var hand := Vector2(6, -8)
@@ -408,3 +425,17 @@ func _draw() -> void:
 			draw_circle(Vector2(10.0 + pext * 16.0, -6.0), 5.0, c)
 
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_bow() -> void:
+	var c := color if flash_time <= 0.0 else Color.WHITE
+	var dark := Color(0.05, 0.04, 0.08)
+	var pull := 0.0 if bow_time <= 0.0 else clampf(bow_time, 0.0, 1.0)
+	draw_arc(Vector2(8, -8), 16.0, -PI * 0.42, PI * 0.42, 12, Color(0.35, 0.22, 0.1), 4.0)
+	var py := -8.0
+	var px := 8.0 - pull * 12.0
+	draw_line(Vector2(8.0 - 14.0, -8.0 - 14.0), Vector2(px, py), Color(0.85, 0.85, 0.8), 1.5)
+	draw_line(Vector2(8.0 - 14.0, -8.0 + 14.0), Vector2(px, py), Color(0.85, 0.85, 0.8), 1.5)
+	if pull > 0.0:
+		draw_line(Vector2(px, py), Vector2(px + 26.0, py), dark, 2.5)
+		draw_line(Vector2(px + 26.0, py), Vector2(px + 26.0 + 6.0, py), c, 2.0)

@@ -95,6 +95,7 @@ var bot_level := 1        # dificultad bots equipo derecho (0 = OFF solo afecta 
 var ally_bot_level := 2   # dificultad del aliado P3 (0 = OFF)
 var hitstop_active := false
 var projectiles: Array[SwordProjectile] = []
+var arrows: Array[Arrow] = []
 var pickups: Array[SwordPickup] = []
 var rocks: Array[FallingRock] = []
 var goal_polys: Array[Polygon2D] = []
@@ -720,6 +721,7 @@ func _build_players() -> void:
 	players.append(p2)
 	for p in players:
 		p.threw_sword.connect(_on_threw_sword)
+		p.fired_arrow.connect(_on_fired_arrow)
 
 
 func set_mode_2v2(on: bool) -> void:
@@ -744,6 +746,7 @@ func set_mode_2v2(on: bool) -> void:
 		players.append(p4)
 		for p in [p3, p4]:
 			p.threw_sword.connect(_on_threw_sword)
+			p.fired_arrow.connect(_on_fired_arrow)
 		ally_bot_level = 2
 	else:
 		for i in [3, 2]:
@@ -885,6 +888,9 @@ func _start_round() -> void:
 	for s in projectiles:
 		s.queue_free()
 	projectiles.clear()
+	for a in arrows:
+		a.queue_free()
+	arrows.clear()
 	for pk in pickups:
 		pk.queue_free()
 	pickups.clear()
@@ -1046,6 +1052,7 @@ func _physics_process(delta: float) -> void:
 	_resolve_attacks()
 	_resolve_divekicks()
 	_update_projectiles(delta)
+	_update_arrows(delta)
 	_update_rocks(delta)
 	_update_pickups()
 	_check_goals()
@@ -1069,7 +1076,7 @@ func _resolve_attacks() -> void:
 			outcome = "kill"
 		else:
 			var d: int = def.stance
-			if d == h:
+			if d == h and def.weapon_id != "arco":
 				outcome = "clash"
 			elif h == Player.H.HIGH and d == Player.H.LOW:
 				outcome = "miss"
@@ -1272,6 +1279,49 @@ func _on_threw_sword(p: Player) -> void:
 	projectiles.append(s)
 	sfx(p.position, "throw", -14.0)
 	stats[p.player_id - 1]["throws"] += 1
+
+
+func _on_fired_arrow(p: Player, height: int, charge: float) -> void:
+	var a := Arrow.new()
+	a.thrower = p
+	a.height = height
+	a.position = p.position + Vector2(p.facing * 22.0, [-40.0, -8.0, 16.0][height])
+	a.vel = Vector2(p.facing * 600.0 * clampf(charge + 0.2, 0.5, 1.2), 0.0)
+	add_child(a)
+	arrows.append(a)
+	sfx(p.position, "throw", -16.0)
+
+
+func _update_arrows(delta: float) -> void:
+	var w := LEVEL_W
+	for a in arrows.duplicate():
+		if a.stuck:
+			arrows.erase(a)
+			continue
+		a.position += a.vel * delta
+		if a.position.x < 26.0 or a.position.x > w - 26.0:
+			a.stuck = true
+			a.vel = Vector2.ZERO
+			continue
+		for p in players:
+			if p.state == Player.State.DEAD or p.invuln_time > 0.0:
+				continue
+			# antes de rebotar solo amenaza al equipo rival
+			if a.bounces == 0 and a.thrower != null and _team(p) == _team(a.thrower):
+				continue
+			if absf(p.position.x - a.position.x) > 24.0 or absf(p.position.y - a.position.y) > 34.0:
+				continue
+			var guards: bool = (p.stance == a.height and p.state in [Player.State.IDLE, Player.State.RUN]) or p.attack_is_active()
+			if guards:
+				a.vel = Vector2(a.vel.x * -0.85, 0.0)
+				a.bounces += 1
+				_burst(a.position, Color(0.9, 0.9, 1.0), 8, 220.0)
+				sfx(a.position, "clash", -14.0)
+			else:
+				_kill(p, a.thrower if a.bounces == 0 else null)
+				arrows.erase(a)
+				a.queue_free()
+			break
 
 
 func _update_projectiles(delta: float) -> void:
