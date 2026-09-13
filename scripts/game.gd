@@ -1469,6 +1469,7 @@ func _physics_process(delta: float) -> void:
 			stats[i]["dist"] += step
 		last_x[i] = players[i].position.x
 	_resolve_attacks()
+	_resolve_guard_impale()
 	_resolve_divekicks()
 	_resolve_dives()
 	_resolve_sidekicks()
@@ -1672,6 +1673,41 @@ func _resolve_sidekicks() -> void:
 			sfx(def.position, "hit", -10.0)
 			shake_time = maxf(shake_time, 0.12)
 			break
+
+
+func _resolve_guard_impale() -> void:
+	# guardia pasiva: solo de pie y parado (correr no guarda)
+	for g in players:
+		if g.state != Player.State.IDLE or not g.has_sword or g.invuln_time > 0.0:
+			continue
+		if g.weapon_id == "arco":
+			# el arco no empala: no tiene hoja (tarea 24)
+			continue
+		for f in _foes_of(g):
+			if f.state == Player.State.DEAD or f.invuln_time > 0.0:
+				continue
+			if f.attack_is_active():
+				continue
+			# el dive y el sidekick tienen su propia resolución (tareas 34/35)
+			if f.state in [Player.State.DIVE, Player.State.SIDEKICK]:
+				continue
+			var dx := (f.position.x - g.position.x) * g.facing
+			if dx < 8.0 or dx > Player.ATTACK_RANGE * 0.85:
+				continue
+			if absf(f.position.y - g.position.y) > 56.0:
+				continue
+			# solo empala a quien se mueve HACIA la guardia (o cae sobre ella)
+			var hacia := f.velocity.x * -float(g.facing) > 140.0
+			if not hacia:
+				continue
+			if f.stance == g.stance:
+				if f.position.x <= g.position.x:
+					_clash(f, g)
+				else:
+					_clash(g, f)
+			else:
+				_kill(f, g)
+			return
 
 
 func _resolve_stomps() -> void:
@@ -2145,6 +2181,14 @@ func _bot_think(p: Player, delta: float) -> void:
 				tap = "jump"
 		elif adx < 55.0:
 			if sd > 0.0:
+				want["left"] = true
+			else:
+				want["right"] = true
+		elif foe.has_sword and foe.state == Player.State.IDLE and adx < 150.0:
+			# no caminar contra la guardia: atacar o retroceder
+			if randf() < float(cfg["atk"]) * 2.0:
+				tap = "attack"
+			elif sd > 0.0:
 				want["left"] = true
 			else:
 				want["right"] = true

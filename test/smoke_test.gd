@@ -326,6 +326,8 @@ func _ready() -> void:
 	# suelo firme dentro de la ventana de apertura de la reja 4 (no sobre el foso)
 	p1.position = Vector2(2500.0, 531.0)
 	p2.position = Vector2(2600.0, 531.0)
+	# P2 desarmado: P1 corre hacia su posición y la guardia pasiva no debe matarlo aquí
+	p2.has_sword = false
 	p1.velocity = Vector2.ZERO
 	p2.velocity = Vector2.ZERO
 	p1.state = 0
@@ -584,6 +586,29 @@ func _ready() -> void:
 	_check(p1.is_on_floor() and absf(p1.position.y - 301.0) < 6.0, "Arena 3: la torre izquierda es subible")
 	game.set_arena(0)
 	_check(game.arena_id == 0 and game.PIT2_X0 == 700.0, "Vuelta a Ruinas de Medianoche")
+
+	# 25. Guardia pasiva: correr contra el arma en guardia es morir
+	game.round_lock = 0.0
+	p1.has_sword = true
+	p2.has_sword = true
+	p1.position = Vector2(1500.0, 531.0)
+	p2.position = Vector2(1650.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.invuln_time = 0.0
+	p2.invuln_time = 0.0
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p2_down")
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.6).timeout
+	Input.action_release("p1_right")
+	Input.action_release("p2_down")
+	_check(p1.state == 7 and p2.state != 7, "Guardia pasiva: correr contra el arma empala")
+	p1.revive(Vector2(2600.0, 200.0), 1)
+	p1.invuln_time = 0.0
 
 	print("")
 	if fails.is_empty():
