@@ -2909,7 +2909,16 @@ texto literal de las tareas (si el código difiere del enunciado, es por esto):
 
 ---
 
-# APÉNDICE — Diferencia con el proyecto anterior "Nidhogg 2" (NO ejecutar aún)
+# APÉNDICE — Diferencia con el proyecto anterior "Nidhogg 2" (CONVERTIDO EN TAREAS)
+
+> **2026-09-12: todo este apéndice ya está convertido en tareas formales en
+> `tasks/`: D1→`23`, D2→`24`, D3→`25`, D4→`26`, D5→`27`, D6→`28`, D7→`29`,
+> D8→`30`, D9→`31`, D10→`32`, D11→`33`. Además hay tareas nuevas que no estaban
+> aquí: dive horizontal (`34`), sidekick (`35`), arcade (`36`), título y reglas
+> (`37`), customización (`38`), copa (`39`) y tercera arena (`40`). Verificación
+> hecha contra el código real del proyecto "Nidhogg 2": son 7 secciones (no 5),
+> el cruce es con pan de cámara sin reset de posiciones, y hay dive horizontal y
+> sidekick calibrados que el apéndice original no recogía. No convertir de nuevo.
 
 > Existe un proyecto hermano: `C:\Users\tigreton\Documents\zcode\Nidhogg 2`
 > (Godot 4.3, plan E0–E12 + arte B0–B6, todo implementado). Es el mismo duelo

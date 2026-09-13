@@ -1,5 +1,10 @@
 # Tareas secundarias (backlog)
 
+> **2026-09-12:** varias ideas de este backlog ya son tareas formales:
+> "cadáver con físicas falsas" y el empalamiento → `30-cadaver-empalamiento.md`;
+> "partido configurable + pantalla de título" → `37-titulo-reglas.md`. Las demás
+> siguen siendo ideas sin código literal.
+
 Ideas que NO son tareas formales todavía: cada una tiene su descripción, enfoque
 sugerido y dificultad, pero sin código literal. Cuando quieras convertir una en
 tarea de verdad, sigue la guía del final ("Cómo promocionar una idea a tarea")

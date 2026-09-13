@@ -54,6 +54,24 @@ Reglas de oro para ti (el humano que supervisa):
 | `20-mov-tajo-aereo.md` | Tajo de espada en el aire (elegir altura) | baja | `player.gd` |
 | `21-ia-bot-vs-bot.md` | Modo bot vs bot con la tecla N | baja | `game.gd` |
 | `22-stats-partido.md` | Estadísticas en la pantalla de victoria | baja | `game.gd` |
+| `23-armas-ciclo.md` | Armas con ciclo de muerte (florete, espadón, daga) | alta | nuevo `game_config.gd`, `player.gd`, `game.gd`, `pickup.gd`, `sword_projectile.gd`, `test` |
+| `24-arco-flechas.md` | Arco: tensar y soltar flechas que rebotan | alta | nuevo `arrow.gd`, `game_config.gd`, `player.gd`, `game.gd`, `test` |
+| `25-secciones-rejas.md` | Modo pantallas: 7 secciones con rejas (tecla P) | alta | `game.gd`, `test` |
+| `26-hud-pips.md` | HUD Nidhogg 2: pips, barra de respawn, ¡FIGHT! | media | `game.gd`, `test` |
+| `27-stomp-letal.md` | Stomp letal sobre el rival derribado | baja | `game.gd`, `test` |
+| `28-desarmado-completo.md` | Puñetazo que desarma, patada baja, carrera rápida | media | `player.gd`, `game.gd`, `test` |
+| `29-sangre-persistente.md` | Charcos de sangre persistentes que gotean | media | `game.gd`, `test` |
+| `30-cadaver-empalamiento.md` | Cadáver persistente que sale despedido y empala | media | `game.gd`, `test` |
+| `31-guardia-pasiva.md` | Guardia pasiva: correr contra el arma es morir | media | `game.gd`, `test` |
+| `32-estela-arma-lanzada.md` | Estela del arma lanzada | baja | `sword_projectile.gd`, `test` |
+| `33-gusano-victoria.md` | Gusano gigante de victoria | media | `game.gd`, `test` |
+| `34-dive-horizontal.md` | Dive horizontal (abajo + salto corriendo) | media | `player.gd`, `game.gd`, `test` |
+| `35-sidekick.md` | Sidekick: patada lateral que derriba y desarma | media | `player.gd`, `game.gd`, `test` |
+| `36-arcade-1p.md` | Modo arcade: escalera de bots con tecla Y | media | `game.gd`, `test` |
+| `37-titulo-reglas.md` | Pantalla de título + reglas configurables | media | nuevos `match_rules.gd`, `title.gd`, `title.tscn`; `project.godot`, `game.gd`, `player.gd` |
+| `38-customizacion.md` | Customización de personajes (pelo y piel) | media | `match_rules.gd`, `player.gd`, `title.gd` |
+| `39-copa.md` | Modo Copa: semis contra bots y final (tecla O) | media | `game.gd`, `test` |
+| `40-tercera-arena.md` | Tercera arena "Cripta del Ocaso" | media | `game.gd`, `test` |
 
 Las ideas que aún no son tareas formales viven en `secundarias.md`, junto con
 la guía para convertirlas en tareas con este mismo formato.
@@ -68,6 +86,16 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
 4. Al final `01` → `02` (bot) y `11` (música), que son las más grandes.
 5. `18`–`20` (movilidad) van bien justo después de `12`/`13`; `21` después de
    `01`; `22` en cualquier momento.
+6. Para acercarse al Nidhogg 2 original: `23` → `24` (armas) y `25` → `26`
+   (secciones con rejas y su HUD).
+7. Combate nuevo, de una en una porque tocan el mismo bloque de input:
+   `27`, `28`, `34` → `35`.
+8. Gore y presentación: `29`, `30`, `33` en cualquier orden; `32` y `40` cuando
+   quieras.
+9. `31` (guardia pasiva) al final del combate, probando el equilibrio con el
+   bot (incluye su ajuste).
+10. Estructura: `37` → `38` (título y customización) y `36` → `39` (arcade y
+    copa).
 
 ## Conflictos conocidos (por tocar el mismo código)
 
@@ -82,6 +110,16 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
 | `12`, `13`, `18` y `20` | Las cuatro tocan el bloque de input de ataque en `player.gd`. Cada una está escrita para el código base: aplícalas de una en una y revisa el diff entre medias. |
 | `01` y `21` | `21` necesita el bot de `01` (activar ambos con N). |
 | `19` y `13` | Sinergia (no conflicto): el desarme de `19` crea los duelos a puñetazo que arma `13`. Aplicables en cualquier orden. |
+| `23` y `24` | `24` extiende lo que añade `23` (`WEAPON_ORDER`, `WEAPONS`). Aplica `23` antes que `24`. |
+| `23` y `28` | Las dos reescriben `_melee_hit`. Aplica `23` primero; la `28` ya está escrita para conservar la rama del espadón (ver su nota en el paso 3). |
+| `24`, `28` y `31` | Las tres tocan la resolución de guardias/choques. La `28` cambia `if d == h:`, la `24` añade el arco a esa misma línea (con nota de composición) y la `31` excluye el arco de la guardia pasiva. Aplícalas de una en una revisando el diff. |
+| `25` y `26` | `26` necesita `sections_mode`/`sect_conquered` de `25`. Aplica `25` antes. |
+| `27`, `30` y `29` | Las tres enganchan cosas en `_kill`. Sus anclas son distintas (`_burst` de color, `sfx("kill")`) y componen sin pisarse; revisa el diff igualmente. |
+| `33`, `36` y `39` | Las tres insertan dentro de la rama de fin de partido de `_point`. Están escritas como inserciones y componen en cualquier orden, pero revisa el `if/return` final. |
+| `34`, `35`, `28` y `12/13/18/20` | Todas tocan el bloque de input de ataque en `player.gd`. Aplícalas de una en una y revisa el diff entre medias. |
+| `37` y `12`/`34` | `37` añade `MatchRules.allow_roll` a la condición de la rodada; si `34` ya cambió esa línea (dive), el paso 5.3 de `37` lo indica. |
+| `36` y `39` | `39` necesita `set_arcade` y la tecla Y de `36`. Aplica `36` antes. |
+| `37` y `38` | `38` necesita `MatchRules` y `title.gd` de `37`. Aplica `37` antes. |
 
 ## Comando de verificación (común a todas las tareas)
 
