@@ -318,6 +318,35 @@ func _ready() -> void:
 	_check(game.arrows.size() == 1 and game.arrows[0].bounces >= 1, "Arco: la flecha quedó rebotada en vuelo")
 	p1.weapon_id = "florete"
 
+	# 19. Modo pantallas (P): rejas que solo cruza quien tiene el paso
+	game.set_sections(true)
+	_check(game.sections_mode and game.gates.size() == 6, "Pantallas: 6 rejas activas")
+	_check(game.section_index == 3, "Pantallas: empieza en la sección central")
+	# suelo firme dentro de la ventana de apertura de la reja 4 (no sobre el foso)
+	p1.position = Vector2(2500.0, 531.0)
+	p2.position = Vector2(2600.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	game.right_of_way = p1
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(game.gates[3].open, "Pantallas: la reja del corredor se abre")
+	p2.position = Vector2(3000.0, 531.0)
+	p2.velocity = Vector2.ZERO
+	Input.action_press("p2_right")
+	await get_tree().create_timer(1.6).timeout
+	Input.action_release("p2_right")
+	_check(p2.position.x < 3420.0, "Pantallas: la reja cerrada bloquea al defensor")
+	Input.action_press("p1_right")
+	await get_tree().create_timer(2.0).timeout
+	Input.action_release("p1_right")
+	_check(game.section_index == 4, "Pantallas: P1 conquistó la sección 5")
+	_check(game.sect_conquered[0] == 1, "Pantallas: conquista contada por equipo")
+	game.set_sections(false)
+	_check(not game.sections_mode and game.gates.is_empty(), "Pantallas: desactivar quita las rejas")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

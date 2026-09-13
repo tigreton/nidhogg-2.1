@@ -6,6 +6,7 @@ extends Node2D
 ## lluvia de rocas (T) y modo 2v2 por equipos (V).
 
 const LEVEL_W := 4800.0
+const SECTION_COUNT := 7
 const GROUND_Y := 560.0
 # --- geometría por arena (la fija _load_arena; estos son los valores de la arena 0) ---
 var PIT_X0 := 2210.0
@@ -106,6 +107,10 @@ var chaos := false
 var chaos_timer := 0.0
 var chaos_count := 0
 var mode_2v2 := false
+var sections_mode := false
+var section_index := 3
+var sect_conquered := [0, 0]
+var gates: Array[SectionGate] = []
 
 var camera: Camera2D
 var msg_label: Label
@@ -205,6 +210,7 @@ func _setup_input() -> void:
 		"pause": [KEY_ESCAPE], "bot_vs_bot": [KEY_N],
 		"toggle_ally": [KEY_H], "toggle_2v2": [KEY_V], "toggle_chaos": [KEY_T],
 		"toggle_arena": [KEY_C],
+		"toggle_sections": [KEY_P],
 		# P3/P4 solo se controlan por bot: acciones registradas vacías
 		"p3_left": [], "p3_right": [], "p3_up": [], "p3_down": [],
 		"p3_jump": [], "p3_attack": [], "p3_throw": [],
@@ -514,6 +520,44 @@ class GlowSpot extends Node2D:
 		draw_circle(Vector2.ZERO, radius * f, Color(1.0, 0.75, 0.3, 0.10))
 
 
+class SectionGate extends Node2D:
+	## Reja entre secciones: cuerpo estático + barrotes visibles. Al abrirse,
+	## los barrotes se recogen hacia arriba y la colisión se desactiva.
+	var body: StaticBody2D
+	var open := false
+
+	func _init(cx: float) -> void:
+		position = Vector2(cx, 0.0)
+		body = StaticBody2D.new()
+		body.collision_layer = 2
+		body.collision_mask = 0
+		var cs := CollisionShape2D.new()
+		var rect := RectangleShape2D.new()
+		rect.size = Vector2(14.0, 700.0)
+		cs.shape = rect
+		cs.position = Vector2(0, 350.0)
+		body.add_child(cs)
+		add_child(body)
+
+	func set_open(v: bool) -> void:
+		open = v
+		body.get_child(0).set_deferred("disabled", v)
+		queue_redraw()
+
+	func _draw() -> void:
+		var iron := Color(0.16, 0.15, 0.19)
+		var lite := Color(0.27, 0.26, 0.32)
+		draw_rect(Rect2(-14, 60.0, 8.0, 508.0), iron)
+		draw_rect(Rect2(6.0, 60.0, 8.0, 508.0), iron)
+		var top := 66.0 if open else 130.0
+		var bot := 126.0 if open else 560.0
+		var bx := -6.0
+		while bx <= 6.0:
+			draw_rect(Rect2(bx - 2.5, top, 5.0, bot - top), lite)
+			bx += 6.0
+		draw_rect(Rect2(-10.0, top - 6.0, 20.0, 6.0), iron)
+
+
 func _bridge() -> void:
 	# puente de madera en alto: ruta alternativa sobre el foso central
 	_static_box(BRIDGE_X0, BRIDGE_Y, BRIDGE_X1, BRIDGE_Y + 16.0)
@@ -788,6 +832,77 @@ func set_chaos(on: bool) -> void:
 		show_msg("LLUVIA DE ROCAS: DESACTIVADA", 0.8)
 
 
+func set_sections(on: bool) -> void:
+	if on == sections_mode:
+		return
+	sections_mode = on
+	for g in gates:
+		g.queue_free()
+	gates.clear()
+	if on:
+		var w := LEVEL_W / float(SECTION_COUNT)
+		for k in range(1, SECTION_COUNT):
+			var g := SectionGate.new(w * float(k))
+			g.z_index = 5
+			add_child(g)
+			gates.append(g)
+	section_index = 3
+	sect_conquered = [0, 0]
+	scores = [0, 0]
+	stats = _fresh_stats()
+	match_over = false
+	stats_label.visible = false
+	set_chaos(false)
+	_update_hud()
+	_start_round()
+	show_msg("MODO PANTALLAS: %s" % ("ACTIVADO" if on else "DESACTIVADO"), 1.0)
+
+
+func _update_gates() -> void:
+	var w := LEVEL_W / float(SECTION_COUNT)
+	var rw := right_of_way
+	for i in gates.size():
+		var border := float(i + 1) * w
+		var open := false
+		if rw != null and rw.state != Player.State.DEAD:
+			if rw.goal_dir > 0:
+				open = rw.position.x > border - w and rw.position.x < border + 40.0
+			else:
+				open = rw.position.x < border + w and rw.position.x > border - 40.0
+		if gates[i].open != open:
+			gates[i].set_open(open)
+
+
+func _cross_section(sec: int) -> void:
+	var w := LEVEL_W / float(SECTION_COUNT)
+	var dir := 1 if sec > section_index else -1
+	section_index = sec
+	sect_conquered[_team(right_of_way)] += 1
+	show_msg("¡SECCIÓN CONQUISTADA!", 0.9)
+	sfx(right_of_way.position, "point", -14.0)
+	var x_entry := w * float(sec) + 70.0 if dir > 0 else w * float(sec + 1) - 70.0
+	var x_far := w * float(sec + 1) - 90.0 if dir > 0 else w * float(sec) + 90.0
+	right_of_way.position.x = x_entry
+	for p in players:
+		if p == right_of_way or p.state == Player.State.DEAD:
+			continue
+		p.position.x = x_far
+		p.invuln_time = maxf(p.invuln_time, 0.8)
+
+
+func _update_sections() -> void:
+	if not sections_mode:
+		return
+	_update_gates()
+	var rw := right_of_way
+	if rw == null or rw.state == Player.State.DEAD or round_lock > 0.0:
+		return
+	var w := LEVEL_W / float(SECTION_COUNT)
+	var sec := clampi(int(rw.position.x / w), 0, SECTION_COUNT - 1)
+	if sec != section_index:
+		_cross_section(sec)
+
+
 func _build_camera() -> void:
 	camera = Camera2D.new()
 	camera.position = Vector2(VIEW_W * 0.5, VIEW_H * 0.5 + 6.0)
@@ -898,6 +1013,8 @@ func _start_round() -> void:
 		r.queue_free()
 	rocks.clear()
 	right_of_way = null
+	section_index = 3
+	sect_conquered = [0, 0]
 	weapon_idx = [0, 0]
 	for p in players:
 		p.weapon_id = "florete"
@@ -1018,6 +1135,8 @@ func _physics_process(delta: float) -> void:
 		set_mode_2v2(not mode_2v2)
 	if Input.is_action_just_pressed("toggle_arena"):
 		set_arena(arena_id + 1)
+	if Input.is_action_just_pressed("toggle_sections"):
+		set_sections(not sections_mode)
 	if Input.is_action_just_pressed("toggle_chaos"):
 		set_chaos(not chaos)
 	if Input.is_action_just_pressed("toggle_music"):
@@ -1055,6 +1174,7 @@ func _physics_process(delta: float) -> void:
 	_update_arrows(delta)
 	_update_rocks(delta)
 	_update_pickups()
+	_update_sections()
 	_check_goals()
 	_update_camera()
 
@@ -1257,6 +1377,15 @@ func _respawn_pos(p: Player) -> Vector2:
 	if right_of_way == null:
 		var offs := [220.0, -220.0, 620.0, -620.0]
 		return Vector2(LEVEL_W * 0.5 + offs[p.player_id - 1], 200.0)
+	if sections_mode:
+		var w := LEVEL_W / float(SECTION_COUNT)
+		var sdir := 1 if right_of_way.goal_dir > 0 else -1
+		var sec := clampi(section_index + sdir, 0, SECTION_COUNT - 1)
+		var cx := w * (float(sec) + 0.5)
+		if sec == section_index:
+			# ya no hay sección delante: reaparece al fondo de la actual
+			cx = w * float(sec + 1) - 100.0 if sdir > 0 else w * float(sec) + 100.0
+		return Vector2(cx, 200.0)
 	var dir := float(right_of_way.goal_dir)
 	var x := right_of_way.position.x + dir * 540.0
 	if x > PIT_X0 - 50.0 and x < PIT_X1 + 50.0:
