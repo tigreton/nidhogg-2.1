@@ -110,6 +110,9 @@ var chaos_timer := 0.0
 var chaos_count := 0
 var mode_2v2 := false
 var worm: Node = null
+var arcade := false
+var arcade_level := 1
+var arcade_over := false
 var sections_mode := false
 var section_index := 3
 var sect_conquered := [0, 0]
@@ -219,6 +222,7 @@ func _setup_input() -> void:
 		"toggle_ally": [KEY_H], "toggle_2v2": [KEY_V], "toggle_chaos": [KEY_T],
 		"toggle_arena": [KEY_C],
 		"toggle_sections": [KEY_P],
+		"toggle_arcade": [KEY_Y],
 		# P3/P4 solo se controlan por bot: acciones registradas vacías
 		"p3_left": [], "p3_right": [], "p3_up": [], "p3_down": [],
 		"p3_jump": [], "p3_attack": [], "p3_throw": [],
@@ -1119,6 +1123,46 @@ func _update_sections() -> void:
 		_cross_section(sec)
 
 
+func set_arcade(on: bool) -> void:
+	if on == arcade:
+		return
+	if on and mode_2v2:
+		set_mode_2v2(false)
+	if on and chaos:
+		set_chaos(false)
+	arcade = on
+	arcade_over = false
+	if on:
+		arcade_level = 1
+		bot_level = _arcade_difficulty()
+		players[1].is_bot = true
+		set_arena(0)
+		show_msg("ARCADE — NIVEL 1", 1.2)
+	else:
+		show_msg("ARCADE: DESACTIVADO", 0.8)
+
+
+func _arcade_difficulty() -> int:
+	return clampi(1 + (arcade_level - 1) / 2, 1, 3)
+
+
+func _arcade_next() -> void:
+	arcade_level += 1
+	bot_level = _arcade_difficulty()
+	right_of_way = null
+	scores = [0, 0]
+	stats = _fresh_stats()
+	_update_hud()
+	var want := (arcade_level - 1) % ARENA_NAMES.size()
+	if want != arena_id:
+		set_arena(want)
+	else:
+		match_over = false
+		stats_label.visible = false
+		_start_round()
+	show_msg("ARCADE — NIVEL %d  ·  BOT %s" % [arcade_level, ["FÁCIL", "NORMAL", "DIFÍCIL"][_arcade_difficulty() - 1]], 1.4)
+
+
 func _build_camera() -> void:
 	camera = Camera2D.new()
 	camera.position = Vector2(VIEW_W * 0.5, VIEW_H * 0.5 + 6.0)
@@ -1430,12 +1474,14 @@ func _physics_process(delta: float) -> void:
 			if players.size() > 3:
 				players[3].is_bot = true
 		show_msg("BOT vs BOT %s" % ("ACTIVADO" if on else "DESACTIVADO"), 0.7)
-	if Input.is_action_just_pressed("toggle_2v2"):
+	if Input.is_action_just_pressed("toggle_2v2") and not arcade:
 		set_mode_2v2(not mode_2v2)
 	if Input.is_action_just_pressed("toggle_arena"):
 		set_arena(arena_id + 1)
 	if Input.is_action_just_pressed("toggle_sections"):
 		set_sections(not sections_mode)
+	if Input.is_action_just_pressed("toggle_arcade"):
+		set_arcade(not arcade)
 	if Input.is_action_just_pressed("toggle_chaos"):
 		set_chaos(not chaos)
 	if Input.is_action_just_pressed("toggle_music"):
@@ -2072,6 +2118,14 @@ func _point(p: Player) -> void:
 	_slowmo(0.25, 0.9)
 	right_of_way = null
 	if scores[_team(p)] >= MatchRules.win_score:
+		if arcade:
+			if _team(p) == 0:
+				_arcade_next()
+				return
+			match_over = true
+			arcade_over = true
+			show_msg("ARCADE TERMINADO EN EL NIVEL %d  ·  Y: reintentar" % arcade_level, 12.0)
+			return
 		match_over = true
 		_spawn_worm(p)
 		if mode_2v2:

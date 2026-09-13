@@ -610,6 +610,27 @@ func _ready() -> void:
 	p1.revive(Vector2(2600.0, 200.0), 1)
 	p1.invuln_time = 0.0
 
+	# 30. Arcade: ganar sube de nivel, perder termina la escalera
+	game.set_arcade(true)
+	_check(game.arcade and game.players[1].is_bot, "Arcade: activado con bot")
+	game.scores = [2, 0]
+	game.right_of_way = game.players[0]
+	p1.position = Vector2(4770.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p1.state = 0
+	await get_tree().create_timer(0.2).timeout
+	_check(game.arcade_level == 2 and game.scores == [0, 0], "Arcade: ganar sube de nivel y resetea")
+	game.scores = [0, 2]
+	game.right_of_way = game.players[1]
+	p2.is_bot = false
+	p2.position = Vector2(30.0, 531.0)
+	p2.velocity = Vector2.ZERO
+	p2.state = 0
+	await get_tree().create_timer(0.2).timeout
+	_check(game.arcade_over and game.match_over, "Arcade: perder termina la escalera")
+	game.set_arcade(false)
+	_check(not game.arcade, "Arcade: desactivado")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
