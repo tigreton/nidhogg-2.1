@@ -2071,7 +2071,7 @@ func _point(p: Player) -> void:
 	_burst(p.position + Vector2(0, -30), p.color, 42, 480.0)
 	_slowmo(0.25, 0.9)
 	right_of_way = null
-	if scores[_team(p)] >= WIN_SCORE:
+	if scores[_team(p)] >= MatchRules.win_score:
 		match_over = true
 		_spawn_worm(p)
 		if mode_2v2:

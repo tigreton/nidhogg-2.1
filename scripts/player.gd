@@ -159,7 +159,7 @@ func _physics_process(delta: float) -> void:
 			stance = H.MID
 			velocity = Vector2(facing * DIVE_SPEED, 0.0)
 			_sfx("swing", -18.0)
-		elif hit("jump") and held("down") and is_on_floor() and roll_cd <= 0.0:
+		elif hit("jump") and held("down") and is_on_floor() and roll_cd <= 0.0 and MatchRules.allow_roll:
 			# rodar: esquiva rápida agachado (cuenta como estancia baja)
 			state = State.ROLL
 			roll_time = 0.0
@@ -207,7 +207,7 @@ func _physics_process(delta: float) -> void:
 				stance = H.MID
 				velocity = Vector2(facing * 430.0, 440.0)
 				_sfx("swing", -20.0)
-		elif hit("throw") and has_sword:
+		elif hit("throw") and has_sword and MatchRules.allow_throw:
 			has_sword = false
 			threw_sword.emit(self)
 
