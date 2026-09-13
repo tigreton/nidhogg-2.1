@@ -550,6 +550,30 @@ func _ready() -> void:
 	await get_tree().create_timer(0.3).timeout
 	_check(game.worm == null, "Gusano: la revancha lo limpia")
 
+	# 26. Estela del arma lanzada
+	game.round_lock = 0.0
+	p1.has_sword = true
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(2600.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_throw")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_release("p1_throw")
+	await get_tree().create_timer(0.2).timeout
+	var proj: Node = game.projectiles[0]
+	_check(game.projectiles.size() == 1 and proj.trail != null and proj.trail.get_point_count() >= 2, "Estela: el arma lanzada deja rastro")
+	for s in game.projectiles:
+		s.queue_free()
+	game.projectiles.clear()
+	for pk in game.pickups:
+		pk.queue_free()
+	game.pickups.clear()
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
