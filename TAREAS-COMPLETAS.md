@@ -1,5 +1,12 @@
 # Nidhogg-like — Las 22 tareas en un solo documento
 
+> **2026-09-13: ESTE DOCUMENTO YA ESTÁ EJECUTADO.** Las 22 tareas de aquí
+> abajo están aplicadas, y también las tareas `23`–`40` (armas con ciclo,
+> arco, modo pantallas, HUD, stomp, desarmado, dive, sidekick, sangre,
+> cadáveres, gusano de victoria, estela, guardia pasiva, título con reglas,
+> customización, arcade, copa y tercera arena). Este texto se conserva como
+> referencia del formato y del contexto que usa cada tarea.
+
 **Para el LLM que ejecuta:** este documento reúne las 22 tareas atómicas del
 proyecto, concatenadas e íntegras. Cada tarea es autocontenida (duplica el
 contexto que necesita) y está escrita para ejecutarse **sin preguntar nada**.

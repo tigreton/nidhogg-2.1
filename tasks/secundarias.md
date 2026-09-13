@@ -4,6 +4,10 @@
 > "cadáver con físicas falsas" y el empalamiento → `30-cadaver-empalamiento.md`;
 > "partido configurable + pantalla de título" → `37-titulo-reglas.md`. Las demás
 > siguen siendo ideas sin código literal.
+>
+> **2026-09-13:** esas dos tareas ya están aplicadas (con sus compañías:
+> 23–40 completas). Las ideas de aquí abajo siguen pendientes de convertir
+> en tareas.
 
 Ideas que NO son tareas formales todavía: cada una tiene su descripción, enfoque
 sugerido y dificultad, pero sin código literal. Cuando quieras convertir una en
