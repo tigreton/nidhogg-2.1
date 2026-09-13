@@ -480,6 +480,28 @@ func _ready() -> void:
 		pk.queue_free()
 	game.pickups.clear()
 
+	# 23. Sangre: cada muerte deja un charco persistente
+	game.round_lock = 0.0
+	p1.has_sword = true
+	p2.has_sword = true
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1670.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.facing = 1
+	p2.invuln_time = 0.0
+	await get_tree().physics_frame
+	Input.action_press("p2_up")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.16).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p2_up")
+	await get_tree().create_timer(0.3).timeout
+	_check(p2.state == 7 and game.blood.size() >= 1, "Sangre: la muerte deja charco")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

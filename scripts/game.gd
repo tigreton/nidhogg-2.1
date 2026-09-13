@@ -99,6 +99,7 @@ var projectiles: Array[SwordProjectile] = []
 var arrows: Array[Arrow] = []
 var pickups: Array[SwordPickup] = []
 var rocks: Array[FallingRock] = []
+var blood: Array[Node] = []
 var goal_polys: Array[Polygon2D] = []
 var stats: Array[Dictionary] = []
 var last_x := [0.0, 0.0]
@@ -415,6 +416,7 @@ func set_arena(id: int) -> void:
 	add_child(level_root)
 	goal_polys.clear()
 	_tops.clear()
+	blood.clear()
 	_build_level()
 	scores = [0, 0]
 	stats = _fresh_stats()
@@ -523,6 +525,34 @@ class GlowSpot extends Node2D:
 	func _draw() -> void:
 		var f := 0.8 + 0.2 * sin(t * 2.2)
 		draw_circle(Vector2.ZERO, radius * f, Color(1.0, 0.75, 0.3, 0.10))
+
+
+class BloodPool extends Node2D:
+	## Charco de sangre persistente que gotea hacia abajo.
+	var col := Color(0.5, 0.1, 0.1)
+	var t := 0.0
+	var drips: Array[float] = []
+
+	func _init(c: Color) -> void:
+		col = c
+		for i in 2 + randi() % 2:
+			drips.append(randf_range(6.0, 15.0))
+
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var a := 0.85
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(-22, -3), Vector2(-8, -6), Vector2(10, -5), Vector2(23, -2),
+			Vector2(14, 4), Vector2(-6, 5), Vector2(-18, 3),
+		]), Color(col.r, col.g, col.b, a))
+		if t > 0.4:
+			var g := clampf((t - 0.4) * 1.6, 0.0, 1.0)
+			for i in drips.size():
+				var dx := -14.0 + 12.0 * float(i)
+				draw_rect(Rect2(dx, 0.0, 3.0, drips[i] * g), Color(col.r, col.g, col.b, a * 0.8))
 
 
 class Pip extends Node2D:
@@ -1070,6 +1100,9 @@ func _start_round() -> void:
 	for r in rocks:
 		r.queue_free()
 	rocks.clear()
+	for b in blood:
+		b.queue_free()
+	blood.clear()
 	right_of_way = null
 	section_index = 3
 	sect_conquered = [0, 0]
@@ -1506,6 +1539,7 @@ func _kill(def: Player, atk: Player) -> void:
 	_hitstop(0.08)
 	respawn_timers[def.player_id - 1] = RESPAWN_DELAY
 	_burst(def.position, def.color, 34, 440.0)
+	_add_blood(def.position, def.color)
 	if def.has_sword:
 		def.has_sword = false
 		_drop_sword(def.position + Vector2(0.0, -20.0), Color(0.87, 0.9, 0.95), def.weapon_id)
@@ -1685,6 +1719,21 @@ func _out_of_pit(x: float) -> float:
 	if x > PIT2_X0 - 34.0 and x < PIT2_X1 + 34.0:
 		return PIT2_X0 - 40.0 if x < (PIT2_X0 + PIT2_X1) * 0.5 else PIT2_X1 + 40.0
 	return x
+
+
+func _add_blood(pos: Vector2, col: Color) -> void:
+	# solo hay sangre si la víctima cayó cerca de un suelo pisable
+	if absf(pos.y - (GROUND_Y - 29.0)) > 80.0:
+		return
+	var c := Color(0.5, 0.1, 0.1).lerp(col.darkened(0.3), 0.45)
+	var bp := BloodPool.new(c)
+	bp.position = Vector2(_out_of_pit(pos.x) + randf_range(-14.0, 14.0), GROUND_Y + randf_range(-2.0, 2.0))
+	bp.z_index = 3
+	_add_level(bp)
+	blood.append(bp)
+	if blood.size() > 200:
+		var old: Node = blood.pop_front()
+		old.queue_free()
 
 
 func _drop_sword(pos: Vector2, col: Color, wid := "florete") -> void:
