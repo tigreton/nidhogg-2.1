@@ -7,7 +7,7 @@ signal died(player: Player)
 signal threw_sword(player: Player)
 signal fired_arrow(player: Player, height: int, charge: float)
 
-enum State { IDLE, RUN, JUMP, DIVEKICK, ATTACK, STUNNED, KNOCKDOWN, DEAD, ROLL, DIVE }
+enum State { IDLE, RUN, JUMP, DIVEKICK, ATTACK, STUNNED, KNOCKDOWN, DEAD, ROLL, DIVE, SIDEKICK }
 enum H { LOW, MID, HIGH }
 
 const SPEED := 330.0
@@ -27,6 +27,7 @@ const ROLL_COOLDOWN := 0.55
 const DIVE_SPEED := 546.0
 const DIVE_TIME := 0.55
 const LUNGE_SPEED := 620.0
+const SIDEKICK_TIME := 0.42
 
 var player_id := 1
 var color := Color("ffb324")
@@ -58,6 +59,8 @@ var roll_time := 0.0
 var roll_cd := 0.0
 var dive_time := 0.0
 var dive_resolved := false
+var sidekick_time := 0.0
+var sidekick_resolved := false
 var attack_dash_time := 0.0   # > 0 mientras la estocada empuja hacia delante
 var bow_time := 0.0
 
@@ -138,6 +141,10 @@ func _physics_process(delta: float) -> void:
 			if dive_time >= DIVE_TIME:
 				state = State.KNOCKDOWN
 				knockdown_time = 0.6
+		State.SIDEKICK:
+			sidekick_time += delta
+			if sidekick_time >= SIDEKICK_TIME and is_on_floor():
+				state = State.IDLE
 
 	if not is_on_floor():
 		velocity.y += GRAVITY * delta
@@ -168,6 +175,13 @@ func _physics_process(delta: float) -> void:
 				# tensar el arco: el disparo sale al soltar
 				bow_time = 0.0001
 				_sfx("swing", -26.0)
+			elif is_on_floor() and has_sword and state == State.RUN and held("down"):
+				# patada lateral (sidekick): derriba y desarma
+				state = State.SIDEKICK
+				sidekick_time = 0.0
+				sidekick_resolved = false
+				velocity = Vector2(facing * 440.0, -160.0)
+				_sfx("swing", -18.0)
 			elif is_on_floor():
 				# ataque de espada o puñetazo (sin espada): reutiliza ATTACK
 				state = State.ATTACK
@@ -225,6 +239,8 @@ func _physics_process(delta: float) -> void:
 			velocity.x = facing * DIVE_SPEED
 			velocity.y = 0.0
 			stance = H.MID
+		State.SIDEKICK:
+			velocity.x = facing * 440.0
 
 	move_and_slide()
 
@@ -382,6 +398,9 @@ func _draw() -> void:
 	elif state == State.DIVE:
 		t_rot = 1.35
 		t_pos = Vector2(0, 6)
+	elif state == State.SIDEKICK:
+		t_rot = 0.9
+		t_pos = Vector2(0, 4)
 	elif state == State.DIVEKICK:
 		t_rot = 0.7
 	elif state == State.STUNNED:

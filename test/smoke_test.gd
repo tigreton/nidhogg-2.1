@@ -118,6 +118,7 @@ func _ready() -> void:
 	p2.state = 0
 	p1.facing = 1
 	p1.has_sword = true
+	p2.has_sword = true
 	await get_tree().physics_frame
 	Input.action_press("p1_throw")
 	await get_tree().create_timer(0.05).timeout
@@ -451,6 +452,33 @@ func _ready() -> void:
 	await get_tree().create_timer(0.8).timeout
 	Input.action_release("p1_right")
 	_check(p1.state in [0, 1, 6], "Dive horizontal: al acabar cae derribado o se levanta")
+
+	# 29. Sidekick: derriba y desarma
+	game.round_lock = 0.0
+	p1.has_sword = true
+	p2.has_sword = true
+	p1.position = Vector2(1500.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.position = Vector2(1650.0, 531.0)
+	p2.velocity = Vector2.ZERO
+	p2.state = 0
+	p2.invuln_time = 0.0
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.15).timeout
+	Input.action_press("p1_down")
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.15).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p1_down")
+	Input.action_release("p1_right")
+	await get_tree().create_timer(0.4).timeout
+	_check(p2.state == 6 and p2.has_sword == false, "Sidekick: derriba y desarma")
+	for pk in game.pickups:
+		pk.queue_free()
+	game.pickups.clear()
 
 	print("")
 	if fails.is_empty():

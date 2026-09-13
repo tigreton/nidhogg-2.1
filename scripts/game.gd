@@ -1275,6 +1275,7 @@ func _physics_process(delta: float) -> void:
 	_resolve_attacks()
 	_resolve_divekicks()
 	_resolve_dives()
+	_resolve_sidekicks()
 	_resolve_stomps()
 	_update_projectiles(delta)
 	_update_arrows(delta)
@@ -1403,10 +1404,10 @@ func _resolve_divekicks() -> void:
 		else:
 			var push := 1 if def.position.x >= p.position.x else -1
 			def.knockdown(push)
-			# la patada voladora hace soltar el arma a su víctima
+			# la patada voladora hace soltar el arma a su víctima (lejos de ella)
 			if def.has_sword:
 				def.has_sword = false
-				_drop_sword(def.position + Vector2(0.0, -20.0), Color(0.87, 0.9, 0.95), def.weapon_id)
+				_drop_sword(def.position + Vector2(-float(def.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), def.weapon_id)
 			p.state = Player.State.JUMP
 			p.velocity = Vector2(-p.facing * 210.0, -440.0)
 			_burst(def.position, Color(1, 1, 1), 10, 240.0)
@@ -1450,6 +1451,30 @@ func _resolve_dives() -> void:
 			p.knockdown_time = 0.6
 			p.velocity = Vector2(-float(p.facing) * 160.0, -160.0)
 			shake_time = maxf(shake_time, 0.14)
+			break
+
+
+func _resolve_sidekicks() -> void:
+	for p in players:
+		if p.state != Player.State.SIDEKICK or p.sidekick_resolved:
+			continue
+		for def in _foes_of(p):
+			if def.state == Player.State.DEAD or def.invuln_time > 0.0:
+				continue
+			if absf(def.position.x - p.position.x) > 42.0 or absf(def.position.y - p.position.y) > 56.0:
+				continue
+			p.sidekick_resolved = true
+			var push := 1 if def.position.x >= p.position.x else -1
+			def.knockdown(push)
+			if def.has_sword:
+				def.has_sword = false
+				# el arma sale despedida lejos: si no, el caído la recogería al instante
+				_drop_sword(def.position + Vector2(-float(def.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), def.weapon_id)
+			p.state = Player.State.JUMP
+			p.velocity = Vector2(-float(p.facing) * 210.0, -440.0)
+			_burst(def.position, Color(1, 1, 1), 10, 240.0)
+			sfx(def.position, "hit", -10.0)
+			shake_time = maxf(shake_time, 0.12)
 			break
 
 
