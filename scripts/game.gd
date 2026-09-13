@@ -96,6 +96,7 @@ var bot_level := 1        # dificultad bots equipo derecho (0 = OFF solo afecta 
 var ally_bot_level := 2   # dificultad del aliado P3 (0 = OFF)
 var hitstop_active := false
 var projectiles: Array[SwordProjectile] = []
+var corpses := {}
 var arrows: Array[Arrow] = []
 var pickups: Array[SwordPickup] = []
 var rocks: Array[FallingRock] = []
@@ -525,6 +526,52 @@ class GlowSpot extends Node2D:
 	func _draw() -> void:
 		var f := 0.8 + 0.2 * sin(t * 2.2)
 		draw_circle(Vector2.ZERO, radius * f, Color(1.0, 0.75, 0.3, 0.10))
+
+
+class Corpse extends Node2D:
+	## Cadáver persistente: sale despedido girando, cae y queda tumbado.
+	## Con arma de hoja puede quedar empalado en la espada del asesino.
+	var col := Color.WHITE
+	var vel := Vector2.ZERO
+	var spin := 0.0
+	var rot := 0.0
+	var impaler: Player = null
+	var grounded := false
+
+	func _init(c: Color) -> void:
+		col = c
+
+	func _process(delta: float) -> void:
+		if impaler != null:
+			if impaler.state == Player.State.DEAD or not impaler.has_sword or impaler.attack_is_active():
+				impaler = null
+			else:
+				position = impaler.position + Vector2(impaler.facing * 44.0, -6.0)
+				queue_redraw()
+				return
+		if not grounded:
+			vel.y += 1500.0 * delta
+			position += vel * delta
+			rot += spin * delta
+			var g := get_parent()
+			var floor_y := 560.0
+			if g != null and g.has_method("_top_below"):
+				var top: float = g._top_below(position.x, position.y)
+				if top > 0.0:
+					floor_y = top
+			if position.y >= floor_y - 8.0:
+				position.y = floor_y - 8.0
+				grounded = true
+		queue_redraw()
+
+	func _draw() -> void:
+		draw_set_transform(Vector2.ZERO, 0.0 if grounded else rot, Vector2.ONE)
+		var dark := Color(0.05, 0.04, 0.08)
+		draw_line(Vector2(-16, 0), Vector2(14, 0), dark, 20.0)
+		draw_line(Vector2(-16, 0), Vector2(14, 0), col, 15.0)
+		draw_circle(Vector2(-22, 0), 8.0, dark)
+		draw_circle(Vector2(-22, 0), 6.5, col)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 class BloodPool extends Node2D:
@@ -1103,6 +1150,9 @@ func _start_round() -> void:
 	for b in blood:
 		b.queue_free()
 	blood.clear()
+	for k in corpses:
+		corpses[k].queue_free()
+	corpses.clear()
 	right_of_way = null
 	section_index = 3
 	sect_conquered = [0, 0]
@@ -1545,9 +1595,30 @@ func _kill(def: Player, atk: Player) -> void:
 		_drop_sword(def.position + Vector2(0.0, -20.0), Color(0.87, 0.9, 0.95), def.weapon_id)
 	_slowmo(0.35, 0.5)
 	_burst(def.position, Color(0.95, 0.95, 1.0), 12, 260.0)
+	_spawn_corpse(def, atk)
 	sfx(def.position, "kill", -6.0)
 	shake_time = maxf(shake_time, 0.3)
 	_after_death(def, atk)
+
+
+func _spawn_corpse(def: Player, atk: Player) -> void:
+	var c := Corpse.new(Color(def.color))
+	c.position = def.position
+	if atk != null:
+		var dir := signf(def.position.x - atk.position.x)
+		if dir == 0.0:
+			dir = -float(def.facing)
+		c.vel = Vector2(dir * 300.0, -260.0)
+		c.spin = dir * randf_range(2.0, 5.0)
+		if atk.has_sword and atk.weapon_id in ["florete", "daga"]:
+			# solo las armas de hoja empalan (la tarea 23 añadió los tipos)
+			c.impaler = atk
+	else:
+		c.vel = Vector2(-float(def.facing) * 160.0, -200.0)
+		c.spin = randf_range(-3.0, 3.0)
+	c.z_index = 8
+	add_child(c)
+	corpses[def.player_id] = c
 
 
 func _after_death(def: Player, atk: Player) -> void:
@@ -1575,6 +1646,9 @@ func _after_death(def: Player, atk: Player) -> void:
 func _respawn(p: Player) -> void:
 	if p.state != Player.State.DEAD:
 		return
+	if corpses.has(p.player_id):
+		corpses[p.player_id].queue_free()
+		corpses.erase(p.player_id)
 	var pos := _respawn_pos(p)
 	var face := 1
 	if right_of_way != null:

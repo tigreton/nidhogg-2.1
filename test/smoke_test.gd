@@ -502,6 +502,40 @@ func _ready() -> void:
 	await get_tree().create_timer(0.3).timeout
 	_check(p2.state == 7 and game.blood.size() >= 1, "Sangre: la muerte deja charco")
 
+	# 24. Cadáver: empalado en la espada, suelto con un tajo, limpiado al reaparecer
+	game.round_lock = 0.0
+	p1.has_sword = true
+	p2.has_sword = true
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1670.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.facing = 1
+	p2.invuln_time = 0.0
+	await get_tree().physics_frame
+	Input.action_press("p2_up")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.16).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p2_up")
+	await get_tree().create_timer(0.2).timeout
+	_check(p2.state == 7 and game.corpses.has(2), "Cadáver: el cuerpo queda en escena")
+	var cx0: float = game.corpses[2].position.x
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.25).timeout
+	Input.action_release("p1_right")
+	_check(game.corpses[2].position.x > cx0 + 30.0, "Cadáver: empalado sigue a la espada del asesino")
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.2).timeout
+	Input.action_release("p1_attack")
+	await get_tree().create_timer(0.6).timeout
+	_check(game.corpses[2].grounded, "Cadáver: tras el tajo cae y queda en el suelo")
+	await get_tree().create_timer(2.2).timeout
+	_check(game.corpses.is_empty(), "Cadáver: se limpia al reaparecer el jugador")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
