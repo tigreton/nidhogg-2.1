@@ -256,6 +256,35 @@ func _ready() -> void:
 	game.set_arena(0)
 	_check(game.arena_id == 0 and game.PIT2_X0 == 700.0, "Vuelta a Ruinas de Medianoche")
 
+	# 17. Armas: la caída guarda su tipo y el ciclo avanza al reaparecer
+	game.round_lock = 0.0
+	game.right_of_way = null
+	game.weapon_idx = [0, 0]
+	p1.weapon_id = "florete"
+	p2.weapon_id = "florete"
+	p1.has_sword = true
+	p2.has_sword = true
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1670.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.facing = 1
+	p2.invuln_time = 0.0
+	await get_tree().physics_frame
+	Input.action_press("p2_up")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.16).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p2_up")
+	_check(p2.state == 7, "Armas: P2 muere y suelta su arma")
+	_check(game.pickups.size() == 1 and game.pickups[0].weapon_id == "florete", "Armas: la caída es un florete")
+	await get_tree().create_timer(2.6).timeout
+	_check(p2.weapon_id == "espada", "Armas: al reaparecer toca el espadón")
+	p2.weapon_id = "florete"
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

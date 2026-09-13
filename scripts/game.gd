@@ -86,6 +86,7 @@ const P4_COLOR := Color("4f8dff")
 var players: Array[Player] = []
 var right_of_way: Player = null
 var scores := [0, 0]
+var weapon_idx := [0, 0]
 var match_over := false
 var round_lock := 0.0
 var respawn_timers := [0.0, 0.0]
@@ -891,6 +892,9 @@ func _start_round() -> void:
 		r.queue_free()
 	rocks.clear()
 	right_of_way = null
+	weapon_idx = [0, 0]
+	for p in players:
+		p.weapon_id = "florete"
 	respawn_timers.resize(players.size())
 	respawn_timers.fill(0.0)
 	var offs := [-220.0, 220.0, -620.0, 620.0]
@@ -1085,7 +1089,7 @@ func _resolve_attacks() -> void:
 
 
 func _nearest_foe_in_range(atk: Player) -> Player:
-	var rng := Player.PUNCH_RANGE if not atk.has_sword else Player.ATTACK_RANGE
+	var rng := Player.PUNCH_RANGE if not atk.has_sword else atk.weapon_reach()
 	var best: Player = null
 	var bd := INF
 	for def in _foes_of(atk):
@@ -1103,7 +1107,16 @@ func _nearest_foe_in_range(atk: Player) -> Player:
 
 
 func _melee_hit(atk: Player, def: Player) -> void:
-	if atk.has_sword:
+	if atk.has_sword and atk.weapon_id == "espada" and def.has_sword:
+		# el espadón desarma en vez de clavar
+		var push := 1 if def.position.x >= atk.position.x else -1
+		def.has_sword = false
+		_drop_sword(def.position + Vector2(-float(def.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), def.weapon_id)
+		def.knockdown(push)
+		_burst(def.position + Vector2(0, -20), Color(0.95, 0.95, 1.0), 10, 260.0)
+		sfx(def.position, "throw", -12.0)
+		shake_time = maxf(shake_time, 0.12)
+	elif atk.has_sword:
 		_kill(def, atk)
 	else:
 		# el puñetazo derriba, no mata
@@ -1128,7 +1141,7 @@ func _clash(a: Player, b: Player) -> void:
 	a.take_clash(-push_b)
 	for p in disarmed:
 		p.has_sword = false
-		_drop_sword(p.position + Vector2(-float(p.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95))
+		_drop_sword(p.position + Vector2(-float(p.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), p.weapon_id)
 		_burst(p.position + Vector2(0, -20), Color(0.95, 0.95, 1.0), 8, 240.0)
 		sfx(p.position, "throw", -14.0)
 
@@ -1179,6 +1192,9 @@ func _kill(def: Player, atk: Player) -> void:
 	_hitstop(0.08)
 	respawn_timers[def.player_id - 1] = RESPAWN_DELAY
 	_burst(def.position, def.color, 34, 440.0)
+	if def.has_sword:
+		def.has_sword = false
+		_drop_sword(def.position + Vector2(0.0, -20.0), Color(0.87, 0.9, 0.95), def.weapon_id)
 	_slowmo(0.35, 0.5)
 	_burst(def.position, Color(0.95, 0.95, 1.0), 12, 260.0)
 	sfx(def.position, "kill", -6.0)
@@ -1217,8 +1233,17 @@ func _respawn(p: Player) -> void:
 		face = 1 if right_of_way.position.x > pos.x else -1
 	else:
 		face = 1 if pos.x < LEVEL_W * 0.5 else -1
+	p.weapon_id = _next_weapon(p)
 	p.revive(pos, face)
 	sfx(pos, "respawn", -12.0)
+
+
+func _next_weapon(p: Player) -> String:
+	var i := p.player_id - 1
+	if i < 0 or i >= weapon_idx.size():
+		return "florete"
+	weapon_idx[i] = (weapon_idx[i] + 1) % GameConfig.WEAPON_ORDER.size()
+	return GameConfig.WEAPON_ORDER[weapon_idx[i]]
 
 
 func _respawn_pos(p: Player) -> Vector2:
@@ -1240,8 +1265,9 @@ func _on_threw_sword(p: Player) -> void:
 	s.thrower = p
 	s.color = Color(0.87, 0.9, 0.95)
 	s.position = p.position + Vector2(p.facing * 26.0, -8.0)
-	s.vel = Vector2(p.facing * 760.0, 0.0)
+	s.vel = Vector2(p.facing * float(p.weapon()["thrown_speed"]), 0.0)
 	s.spin = p.facing * 18.0
+	s.weapon_id = p.weapon_id
 	add_child(s)
 	projectiles.append(s)
 	sfx(p.position, "throw", -14.0)
@@ -1253,7 +1279,7 @@ func _update_projectiles(delta: float) -> void:
 	for s in projectiles:
 		s.position += s.vel * delta
 		if s.position.x < 26.0 or s.position.x > LEVEL_W - 26.0:
-			_drop_sword(s.position, s.color)
+			_drop_sword(s.position, s.color, s.weapon_id)
 			done.append(s)
 			continue
 		for p in players:
@@ -1266,9 +1292,16 @@ func _update_projectiles(delta: float) -> void:
 				if blocks:
 					_burst(s.position, Color(0.9, 0.9, 1.0), 10, 260.0)
 					sfx(s.position, "clash", -12.0)
-					_drop_sword(s.position, s.color)
+					_drop_sword(s.position, s.color, s.weapon_id)
 				else:
-					_kill(p, s.thrower)
+					var kills: Array = GameConfig.WEAPONS[s.weapon_id]["thrown_kills"]
+					var vs: String = ["LOW", "MID", "HIGH"][p.stance]
+					if vs in kills:
+						_kill(p, s.thrower)
+					else:
+						_burst(s.position, Color(0.9, 0.9, 1.0), 10, 260.0)
+						sfx(s.position, "clash", -12.0)
+						_drop_sword(s.position, s.color, s.weapon_id)
 				done.append(s)
 				break
 	for s in done:
@@ -1288,7 +1321,7 @@ func _out_of_pit(x: float) -> float:
 	return x
 
 
-func _drop_sword(pos: Vector2, col: Color) -> void:
+func _drop_sword(pos: Vector2, col: Color, wid := "florete") -> void:
 	var x := clampf(pos.x, 30.0, LEVEL_W - 30.0)
 	var y := GROUND_Y
 	if pos.y < GROUND_Y - 80.0:
@@ -1301,6 +1334,7 @@ func _drop_sword(pos: Vector2, col: Color) -> void:
 	else:
 		x = _out_of_pit(x)
 	var pk := SwordPickup.new()
+	pk.weapon_id = wid
 	pk.color = col
 	pk.position = Vector2(x, y - 12.0)
 	add_child(pk)
@@ -1313,6 +1347,7 @@ func _update_pickups() -> void:
 			if p.state == Player.State.DEAD or p.has_sword:
 				continue
 			if absf(p.position.x - pk.position.x) < 34.0 and absf(p.position.y - pk.position.y) < 60.0:
+				p.weapon_id = pk.weapon_id
 				p.has_sword = true
 				pickups.erase(pk)
 				pk.queue_free()

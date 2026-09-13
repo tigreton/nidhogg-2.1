@@ -4,6 +4,7 @@ extends Node2D
 
 var color := Color(0.87, 0.9, 0.95)
 var t := 0.0
+var weapon_id := "florete"
 
 
 func _ready() -> void:

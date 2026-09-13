@@ -6,6 +6,7 @@ var vel := Vector2(760.0, 0.0)
 var spin := 18.0
 var thrower: Player = null
 var color := Color(0.87, 0.9, 0.95)
+var weapon_id := "florete"
 
 
 func _ready() -> void:

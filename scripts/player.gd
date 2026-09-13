@@ -33,6 +33,7 @@ var state: int = State.IDLE
 var stance: int = H.MID
 var facing := 1
 var has_sword := true
+var weapon_id := "florete"
 var invuln_time := 0.0
 var flash_time := 0.0
 var stun_time := 0.0
@@ -105,11 +106,13 @@ func _physics_process(delta: float) -> void:
 			stance = H.LOW
 		else:
 			stance = H.MID
+		if weapon_id == "espada" and stance == H.MID:
+			stance = H.LOW
 
 	match state:
 		State.ATTACK:
 			attack_time += delta
-			if attack_time >= ATTACK_DURATION:
+			if attack_time >= attack_dur():
 				state = State.IDLE
 		State.STUNNED:
 			stun_time -= delta
@@ -148,7 +151,7 @@ func _physics_process(delta: float) -> void:
 				attack_height = stance
 				if has_sword and (held("right") or held("left")):
 					# estocada: embestida al atacar corriendo
-					attack_dash_time = ATTACK_DURATION
+					attack_dash_time = attack_dur()
 					velocity.x = facing * LUNGE_SPEED
 				_sfx("swing", -20.0)
 			elif has_sword and (held("up") or held("down")):
@@ -177,7 +180,7 @@ func _physics_process(delta: float) -> void:
 
 	match state:
 		State.IDLE, State.RUN:
-			var sp := DUCK_SPEED if stance == H.LOW else SPEED
+			var sp := DUCK_SPEED if stance == H.LOW else SPEED * run_mult()
 			velocity.x = dir * sp
 			state = State.RUN if absf(velocity.x) > 5.0 else State.IDLE
 			run_phase += velocity.x * delta * 0.045
@@ -242,14 +245,38 @@ func _dust(amount: int, speed: float) -> void:
 
 
 func attack_is_active() -> bool:
-	return state == State.ATTACK and attack_time >= ATTACK_FROM and attack_time <= ATTACK_TO and not attack_resolved
+	return state == State.ATTACK and attack_time >= attack_from() and attack_time <= attack_to() and not attack_resolved
 
 
 func attack_ext() -> float:
 	if state != State.ATTACK:
 		return 0.0
-	var t := (attack_time - ATTACK_FROM) / (ATTACK_TO - ATTACK_FROM)
+	var t := (attack_time - attack_from()) / (attack_to() - attack_from())
 	return sin(clampf(t, 0.0, 1.0) * PI)
+
+
+func weapon() -> Dictionary:
+	return GameConfig.WEAPONS.get(weapon_id, GameConfig.WEAPONS["florete"])
+
+
+func attack_from() -> float:
+	return float(weapon()["from"])
+
+
+func attack_to() -> float:
+	return float(weapon()["to"])
+
+
+func attack_dur() -> float:
+	return float(weapon()["dur"])
+
+
+func weapon_reach() -> float:
+	return float(weapon()["reach"])
+
+
+func run_mult() -> float:
+	return float(weapon()["run_mult"])
 
 
 func take_clash(push: int) -> void:
@@ -364,12 +391,12 @@ func _draw() -> void:
 				hand = Vector2(6, 6)
 				tip = Vector2(42, 18)
 		var dirv := (tip - hand).normalized()
-		var blen := (tip - hand).length() + ext * 22.0
+		var blen := ((tip - hand).length() + ext * 22.0) * float(weapon()["blade_len"])
 		var hpos := hand + dirv * ext * 6.0
 		var tpos := hpos + dirv * blen
 		draw_line(hpos - dirv * 7.0, hpos, Color(0.32, 0.2, 0.1), 6.0)
-		draw_line(hpos, tpos, dark, 7.0)
-		draw_line(hpos, tpos, blade, 4.0)
+		draw_line(hpos, tpos, dark, float(weapon()["blade_w"]) + 3.0)
+		draw_line(hpos, tpos, blade, float(weapon()["blade_w"]))
 		draw_circle(hpos, 4.0, c)
 		if ext > 0.15:
 			var mid := (hpos + tpos) * 0.5
