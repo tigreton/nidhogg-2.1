@@ -1274,6 +1274,7 @@ func _physics_process(delta: float) -> void:
 		last_x[i] = players[i].position.x
 	_resolve_attacks()
 	_resolve_divekicks()
+	_resolve_stomps()
 	_update_projectiles(delta)
 	_update_arrows(delta)
 	_update_rocks(delta)
@@ -1411,6 +1412,24 @@ func _nearest_divekick_target(p: Player) -> Player:
 			bd = d
 			best = def
 	return best
+
+
+func _resolve_stomps() -> void:
+	for p in players:
+		if p.state not in [Player.State.IDLE, Player.State.RUN] or not p.is_on_floor():
+			continue
+		if not p.held("down"):
+			continue
+		for def in _foes_of(p):
+			if def.state != Player.State.KNOCKDOWN or def.invuln_time > 0.0:
+				continue
+			if absf(def.position.x - p.position.x) > 34.0 or absf(def.position.y - p.position.y) > 50.0:
+				continue
+			# pisotón letal: el derribado estalla
+			_burst(def.position, def.color, 60, 560.0)
+			_kill(def, p)
+			shake_time = maxf(shake_time, 0.2)
+			break
 
 
 func _kill(def: Player, atk: Player) -> void:

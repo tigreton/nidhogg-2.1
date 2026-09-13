@@ -374,6 +374,23 @@ func _ready() -> void:
 	game.set_sections(false)
 	_check(not game.pips_row.visible, "HUD: sin modo pantallas no hay pips")
 
+	# 21. Stomp: pisotón letal sobre el rival derribado
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1620.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 6
+	p2.knockdown_time = 0.9
+	p2.invuln_time = 0.0
+	p1.has_sword = true
+	p2.has_sword = true
+	await get_tree().physics_frame
+	Input.action_press("p1_down")
+	await get_tree().create_timer(0.3).timeout
+	Input.action_release("p1_down")
+	_check(p2.state == 7, "Stomp: pisotón sobre el derribado mata")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
