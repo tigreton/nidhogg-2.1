@@ -631,6 +631,30 @@ func _ready() -> void:
 	game.set_arcade(false)
 	_check(not game.arcade, "Arcade: desactivado")
 
+	# 31. Copa: semifinales contra bots y final
+	game.set_cup(true)
+	_check(game.cup and game.players[1].is_bot, "Copa: semifinal 1 con bot")
+	game.scores = [2, 0]
+	game.right_of_way = game.players[0]
+	p1.position = Vector2(4770.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p1.state = 0
+	await get_tree().create_timer(0.2).timeout
+	_check(game.match_over, "Copa: la semifinal 1 termina")
+	await get_tree().create_timer(2.2).timeout
+	_check(game.cup_stage == 1 and game.players[0].is_bot and not game.players[1].is_bot, "Copa: semifinal 2 lista")
+	game.scores = [0, 2]
+	game.right_of_way = game.players[1]
+	p2.position = Vector2(30.0, 531.0)
+	p2.velocity = Vector2.ZERO
+	p2.state = 0
+	await get_tree().create_timer(0.2).timeout
+	_check(game.match_over, "Copa: la semifinal 2 termina")
+	await get_tree().create_timer(2.2).timeout
+	_check(game.cup_stage == 2, "Copa: final preparada")
+	game.set_cup(false)
+	_check(not game.cup and not game.players[0].is_bot and not game.players[1].is_bot, "Copa: desactivar devuelve el duelo")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

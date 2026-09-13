@@ -113,6 +113,10 @@ var worm: Node = null
 var arcade := false
 var arcade_level := 1
 var arcade_over := false
+var cup := false
+var cup_stage := 0
+var cup_alive := [true, true]
+var cup_over := false
 var sections_mode := false
 var section_index := 3
 var sect_conquered := [0, 0]
@@ -223,6 +227,7 @@ func _setup_input() -> void:
 		"toggle_arena": [KEY_C],
 		"toggle_sections": [KEY_P],
 		"toggle_arcade": [KEY_Y],
+		"toggle_cup": [KEY_O],
 		# P3/P4 solo se controlan por bot: acciones registradas vacías
 		"p3_left": [], "p3_right": [], "p3_up": [], "p3_down": [],
 		"p3_jump": [], "p3_attack": [], "p3_throw": [],
@@ -1163,6 +1168,56 @@ func _arcade_next() -> void:
 	show_msg("ARCADE — NIVEL %d  ·  BOT %s" % [arcade_level, ["FÁCIL", "NORMAL", "DIFÍCIL"][_arcade_difficulty() - 1]], 1.4)
 
 
+func set_cup(on: bool) -> void:
+	if on == cup:
+		return
+	if on and arcade:
+		set_arcade(false)
+	if on and mode_2v2:
+		set_mode_2v2(false)
+	if on and chaos:
+		set_chaos(false)
+	cup = on
+	cup_over = false
+	if on:
+		_cup_stage(0)
+	else:
+		players[0].is_bot = false
+		players[1].is_bot = false
+		show_msg("COPA: DESACTIVADA", 0.8)
+
+
+func _cup_stage(stage: int) -> void:
+	cup_stage = stage
+	bot_level = 2
+	if stage == 0:
+		cup_alive = [true, true]
+	scores = [0, 0]
+	stats = _fresh_stats()
+	match_over = false
+	stats_label.visible = false
+	_update_hud()
+	match stage:
+		0:
+			players[0].is_bot = false
+			players[1].is_bot = true
+			show_msg("COPA — SEMIFINAL 1: P1 vs BOT", 1.6)
+		1:
+			players[0].is_bot = true
+			players[1].is_bot = false
+			show_msg("COPA — SEMIFINAL 2: P2 vs BOT", 1.6)
+		2:
+			if not cup_alive[0] and not cup_alive[1]:
+				cup_over = true
+				match_over = true
+				show_msg("EL BOT GANA LA COPA  ·  O: nueva copa", 12.0)
+				return
+			players[0].is_bot = not cup_alive[0]
+			players[1].is_bot = not cup_alive[1]
+			show_msg("COPA — FINAL", 1.6)
+	_start_round()
+
+
 func _build_camera() -> void:
 	camera = Camera2D.new()
 	camera.position = Vector2(VIEW_W * 0.5, VIEW_H * 0.5 + 6.0)
@@ -1474,14 +1529,16 @@ func _physics_process(delta: float) -> void:
 			if players.size() > 3:
 				players[3].is_bot = true
 		show_msg("BOT vs BOT %s" % ("ACTIVADO" if on else "DESACTIVADO"), 0.7)
-	if Input.is_action_just_pressed("toggle_2v2") and not arcade:
+	if Input.is_action_just_pressed("toggle_2v2") and not arcade and not cup:
 		set_mode_2v2(not mode_2v2)
-	if Input.is_action_just_pressed("toggle_arena"):
+	if Input.is_action_just_pressed("toggle_arena") and not arcade and not cup:
 		set_arena(arena_id + 1)
 	if Input.is_action_just_pressed("toggle_sections"):
 		set_sections(not sections_mode)
 	if Input.is_action_just_pressed("toggle_arcade"):
 		set_arcade(not arcade)
+	if Input.is_action_just_pressed("toggle_cup"):
+		set_cup(not cup)
 	if Input.is_action_just_pressed("toggle_chaos"):
 		set_chaos(not chaos)
 	if Input.is_action_just_pressed("toggle_music"):
@@ -2125,6 +2182,20 @@ func _point(p: Player) -> void:
 			match_over = true
 			arcade_over = true
 			show_msg("ARCADE TERMINADO EN EL NIVEL %d  ·  Y: reintentar" % arcade_level, 12.0)
+			return
+		if cup:
+			if cup_stage < 2:
+				var human_team: int = cup_stage
+				cup_alive[human_team] = (_team(p) == human_team)
+				match_over = true
+				show_msg("FIN DE LA %s" % ("SEMIFINAL 1" if cup_stage == 0 else "SEMIFINAL 2"), 1.6)
+				get_tree().create_timer(1.8).timeout.connect(func():
+					if cup and not cup_over:
+						_cup_stage(cup_stage + 1))
+				return
+			cup_over = true
+			match_over = true
+			show_msg("¡P%d GANA LA COPA!  ·  O: nueva copa" % p.player_id, 12.0)
 			return
 		match_over = true
 		_spawn_worm(p)
