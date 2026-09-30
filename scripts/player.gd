@@ -278,6 +278,7 @@ func _physics_process(delta: float) -> void:
 
 func _dust(amount: int, speed: float) -> void:
 	var cp := CPUParticles2D.new()
+	cp.process_mode = Node.PROCESS_MODE_PAUSABLE
 	cp.position = Vector2(0, 30)
 	cp.one_shot = true
 	cp.emitting = true

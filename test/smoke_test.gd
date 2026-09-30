@@ -655,6 +655,24 @@ func _ready() -> void:
 	game.set_cup(false)
 	_check(not game.cup and not game.players[0].is_bot and not game.players[1].is_bot, "Copa: desactivar devuelve el duelo")
 
+	# 27. Pausa: con el árbol pausado los jugadores se congelan de verdad
+	# (la raíz game es ALWAYS para leer ESC; los players son PAUSABLE)
+	p1.position = Vector2(1600.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p1.state = 0
+	await get_tree().create_timer(0.1).timeout
+	get_tree().paused = true
+	var xp: float = p1.position.x
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.25, true).timeout
+	Input.action_release("p1_right")
+	_check(p1.position.x < xp + 1.0, "Pausa: P1 no se mueve con el árbol pausado")
+	get_tree().paused = false
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.25).timeout
+	Input.action_release("p1_right")
+	_check(p1.position.x > xp + 60.0, "Pausa: al reanudar P1 vuelve a moverse")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

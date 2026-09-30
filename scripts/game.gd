@@ -149,6 +149,10 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_setup_input()
 	level_root = Node2D.new()
+	# la raíz del juego es ALWAYS (para leer ESC con el árbol en pausa), así que
+	# los hijos heredarían ALWAYS: el escenario y su decoración animada (humo,
+	# antorchas, nubes, velas, charcos) deben marcarse PAUSABLE explícito
+	level_root.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(level_root)
 	_load_arena(0)
 	_build_level()
@@ -469,6 +473,7 @@ func set_arena(id: int) -> void:
 	if level_root != null:
 		level_root.queue_free()
 	level_root = Node2D.new()
+	level_root.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(level_root)
 	goal_polys.clear()
 	_tops.clear()
@@ -991,6 +996,9 @@ func _build_players() -> void:
 	for p in players:
 		p.threw_sword.connect(_on_threw_sword)
 		p.fired_arrow.connect(_on_fired_arrow)
+		# con el nodo game en PROCESS_MODE_ALWAYS, los hijos heredarían ALWAYS:
+		# los jugadores deben pausarse de verdad con el hit-stop y la pausa (ESC)
+		p.process_mode = Node.PROCESS_MODE_PAUSABLE
 
 
 func set_mode_2v2(on: bool) -> void:
@@ -1016,6 +1024,7 @@ func set_mode_2v2(on: bool) -> void:
 		for p in [p3, p4]:
 			p.threw_sword.connect(_on_threw_sword)
 			p.fired_arrow.connect(_on_fired_arrow)
+			p.process_mode = Node.PROCESS_MODE_PAUSABLE
 		ally_bot_level = 2
 	else:
 		for i in [3, 2]:
@@ -1462,6 +1471,7 @@ func _update_respawn_bar() -> void:
 
 func _burst(pos: Vector2, col: Color, amount := 24, speed := 380.0) -> void:
 	var cp := CPUParticles2D.new()
+	cp.process_mode = Node.PROCESS_MODE_PAUSABLE
 	cp.position = pos
 	cp.z_index = 20
 	cp.one_shot = true
@@ -1869,6 +1879,7 @@ func _spawn_corpse(def: Player, atk: Player) -> void:
 		c.vel = Vector2(-float(def.facing) * 160.0, -200.0)
 		c.spin = randf_range(-3.0, 3.0)
 	c.z_index = 8
+	c.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(c)
 	corpses[def.player_id] = c
 
@@ -1945,6 +1956,7 @@ func _respawn_pos(p: Player) -> Vector2:
 
 func _on_threw_sword(p: Player) -> void:
 	var s := SwordProjectile.new()
+	s.process_mode = Node.PROCESS_MODE_PAUSABLE
 	s.thrower = p
 	s.color = Color(0.87, 0.9, 0.95)
 	s.position = p.position + Vector2(p.facing * 26.0, -8.0)
@@ -1959,6 +1971,7 @@ func _on_threw_sword(p: Player) -> void:
 
 func _on_fired_arrow(p: Player, height: int, charge: float) -> void:
 	var a := Arrow.new()
+	a.process_mode = Node.PROCESS_MODE_PAUSABLE
 	a.thrower = p
 	a.height = height
 	a.position = p.position + Vector2(p.facing * 22.0, [-40.0, -8.0, 16.0][height])
@@ -2075,6 +2088,7 @@ func _drop_sword(pos: Vector2, col: Color, wid := "florete") -> void:
 	else:
 		x = _out_of_pit(x)
 	var pk := SwordPickup.new()
+	pk.process_mode = Node.PROCESS_MODE_PAUSABLE
 	pk.weapon_id = wid
 	pk.color = col
 	pk.position = Vector2(x, y - 12.0)
@@ -2109,6 +2123,7 @@ func _spawn_rock() -> void:
 	if target < 0.0:
 		return
 	var r := FallingRock.new()
+	r.process_mode = Node.PROCESS_MODE_PAUSABLE
 	r.target_y = target
 	r.t = ROCK_WARN_TIME
 	r.spin = randf_range(-3.0, 3.0)
@@ -2218,6 +2233,7 @@ func _spawn_worm(p: Player) -> void:
 		worm.queue_free()
 	worm = VictoryWorm.new(p.position + Vector2(0, -30.0))
 	worm.z_index = 30
+	worm.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(worm)
 
 
