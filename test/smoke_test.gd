@@ -40,15 +40,19 @@ func _ready() -> void:
 	_check(not p1.is_on_floor(), "P1 salta")
 	await get_tree().create_timer(0.9).timeout
 
-	# 3. Choque de espadas: misma estancia (MID vs MID) -> ambos aturdidos
+	# 3. Parada blanda: atacar contra guardia a la misma altura no aturde a nadie
 	p2.position = p1.position + Vector2(70.0, 0.0)
 	p1.facing = 1
 	await get_tree().physics_frame
 	Input.action_press("p1_attack")
 	await get_tree().create_timer(0.14).timeout
 	Input.action_release("p1_attack")
-	_check(p2.state == 5 and p1.state == 5, "Choque con estancias iguales (ambos STUNNED)")
-	await get_tree().create_timer(1.1).timeout
+	_check(p1.state != 5 and p2.state != 5 and p2.state != 7, "Parada blanda con estancias iguales (nadie aturdido ni muerto)")
+	# la separación se mide tras asentarse: el atacante aún desliza durante el
+	# resto de su animación (el empuje solo pisa IDLE/RUN)
+	await get_tree().create_timer(0.8).timeout
+	var sep3: float = absf(p2.position.x - p1.position.x)
+	_check(sep3 >= 70.0, "La parada separa (o al menos no acerca) a los duelistas")
 
 	# 4. Muerte: P2 defiende en HIGH, P1 ataca MID
 	p2.position = p1.position + Vector2(70.0, 0.0)
@@ -738,6 +742,27 @@ func _ready() -> void:
 	_check(p2.state == 6 and not p2.has_sword, "El sidekick desde agachado derriba y desarma")
 	Input.action_release("p1_attack")
 	await get_tree().create_timer(1.2).timeout
+
+	# 35. Rebote contra guardia a la misma estancia: nadie muere
+	game.round_lock = 0.0
+	p1.has_sword = true
+	p2.has_sword = true
+	p1.position = Vector2(1500.0, 531.0)
+	p2.position = Vector2(1650.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.invuln_time = 0.0
+	p2.invuln_time = 0.0
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.5).timeout
+	Input.action_release("p1_right")
+	_check(p1.state != 7 and p2.state != 7, "Correr contra guardia a la misma estancia: rebote, no muerte")
+	_check(p1.state != 5, "El rebote contra guardia no aturde")
+	await get_tree().create_timer(0.6).timeout
 
 	print("")
 	if fails.is_empty():

@@ -308,3 +308,15 @@ func _t_parada() -> bool:
 
 Últimas líneas esperadas: `RESULT: ALL PASSED (11)` y
 `SMOKE OK - todas las mecánicas funcionan`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada con un ajuste de mecánica no previsto: con el empuje pisando solo
+IDLE/RUN, el **atacante seguía deslizándose a 110 px/s durante el resto de su
+animación de ATTACK** y la parada acababa acercando a los duelistas (~9 px
+netos), contrario al criterio "la parada separa". El caso `State.ATTACK` del
+segundo `match` respeta ahora `push_time` antes que la deriva (la estocada
+con `attack_dash_time` queda por debajo del empuje). Con eso: `SMOKE OK`
+(casos 3 y 35) y `ALL PASSED (11)`. El caso 3 del smoke mide la separación
+tras 0,8 s (cuando el ataque ya acabó) porque antes de ese punto la deriva
+propia de la animación todavía contamina la medida.

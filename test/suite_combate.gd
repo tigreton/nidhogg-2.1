@@ -8,6 +8,7 @@ var runner
 func get_tests() -> Array:
 	return [
 		["choque_doble_ataque_misma_altura", _t_choque],
+		["parada_blanda_ataque_vs_guardia", _t_parada],
 		["guardia_pasiva_distinta_altura_mata", _t_guardia],
 		["espada_lanzada_desviada_por_guardia", _t_lanzada],
 		["punetazo_desarma", _t_punetazo],
@@ -45,6 +46,22 @@ func _t_choque() -> bool:
 	runner.release_all()
 	await runner.wait(0.6)
 	return runner.check(stunned, "doble ataque MID simultáneo: ambos STUNNED")  # L47: sigue igual (doble ataque)
+
+
+func _t_parada() -> bool:
+	_reset(1600.0, 1670.0)
+	await runner.step_physics(1)
+	Input.action_press("p1_attack")
+	await runner.step_physics(9)
+	Input.action_release("p1_attack")
+	var p1: Player = runner.game.players[0]
+	var p2: Player = runner.game.players[1]
+	var ok: bool = p1.state != Player.State.STUNNED and p2.state != Player.State.STUNNED \
+			and p1.state != Player.State.DEAD and p2.state != Player.State.DEAD
+	runner.release_all()
+	await runner.wait(0.5)
+	_reset(1600.0, 4400.0)
+	return runner.check(ok, "atacar contra guardia a la misma altura: parada sin stun ni muerte")  # L47
 
 
 func _t_guardia() -> bool:

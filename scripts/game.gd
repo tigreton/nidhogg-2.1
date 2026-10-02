@@ -44,6 +44,11 @@ const WIN_SCORE := 3
 const VIEW_W := 1152.0
 const VIEW_H := 648.0
 const RESPAWN_DELAY := 2.4
+const PARRY_IMPULSE := 160.0    # parada blanda: px/s de separación
+const PARRY_PUSH_TIME := 0.15   # duración del empuje de parada
+const CLASH_IMPULSE := 130.0    # rebote mínimo contra guardia
+const CLASH_PUSH_TIME := 0.12
+const PARRY_COOLDOWN := 0.3     # anti re-trigger del rebote sostenido
 const ARENA_NAMES := ["RUINAS DE MEDIANOCHE", "TEMPLO DEL ALBA", "CRIPTA DEL OCASO"]
 const BOT_CFG := [
 	{"react": 0.26, "atk": 0.12, "err": 0.35},  # FÁCIL
@@ -106,6 +111,7 @@ var match_over := false
 var round_lock := 0.0
 var respawn_timers := [0.0, 0.0]
 var shake_time := 0.0
+var parry_cd := 0.0
 var bot_level := 1        # dificultad bots equipo derecho (0 = OFF solo afecta a P2)
 var ally_bot_level := 2   # dificultad del aliado P3 (0 = OFF)
 var hitstop_active := false
@@ -1592,6 +1598,7 @@ func _physics_process(delta: float) -> void:
 	if get_tree().paused:
 		return
 	shake_time = maxf(0.0, shake_time - delta)
+	parry_cd = maxf(0.0, parry_cd - delta)
 	if round_lock > 0.0:
 		round_lock -= delta
 		if round_lock <= 0.0:
@@ -1708,7 +1715,7 @@ func _resolve_attacks() -> void:
 		else:
 			var d: int = def.stance
 			if d == h and atk.has_sword and def.weapon_id != "arco":
-				outcome = "clash"
+				outcome = "parry"   # guardia quieta a la misma altura: parada blanda
 			elif h == Player.H.HIGH and d == Player.H.LOW:
 				outcome = "miss"
 			elif h == Player.H.LOW and not def.is_on_floor():
@@ -1722,6 +1729,8 @@ func _resolve_attacks() -> void:
 				_kill(atk, null)
 			"clash":
 				_clash(atk, def)
+			"parry":
+				_parry(atk, def)
 			_:
 				pass
 
@@ -1792,6 +1801,17 @@ func _clash(a: Player, b: Player) -> void:
 		_drop_sword(p.position + Vector2(-float(p.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), p.weapon_id)
 		_burst(p.position + Vector2(0, -20), Color(0.95, 0.95, 1.0), 8, 240.0)
 		sfx(p.position, "throw", -14.0)
+
+
+func _parry(a: Player, b: Player) -> void:
+	# parada blanda: nadie muere, nadie se aturde; rebote de separación y chispa
+	var mid := Vector2((a.position.x + b.position.x) * 0.5, minf(a.position.y, b.position.y) - 14.0)
+	_burst(mid, Color(1.0, 0.93, 0.55), 8, 240.0)
+	sfx(mid, "clash", -12.0)
+	var push_b := 1 if b.position.x >= a.position.x else -1
+	a.apply_push(Vector2(-float(push_b) * PARRY_IMPULSE, 0.0), PARRY_PUSH_TIME)
+	b.apply_push(Vector2(float(push_b) * PARRY_IMPULSE, 0.0), PARRY_PUSH_TIME)
+	parry_cd = PARRY_COOLDOWN
 
 
 func _resolve_divekicks() -> void:
@@ -1929,10 +1949,15 @@ func _resolve_guard_impale() -> void:
 			if not hacia:
 				continue
 			if f.stance == g.stance:
-				if f.position.x <= g.position.x:
-					_clash(f, g)
-				else:
-					_clash(g, f)
+				if parry_cd > 0.0:
+					continue
+				# rebote mínimo: ambos se separan sin stun ni desarme
+				f.apply_push(Vector2(-float(f.facing) * CLASH_IMPULSE, 0.0), CLASH_PUSH_TIME)
+				g.apply_push(Vector2(-float(g.facing) * CLASH_IMPULSE, 0.0), CLASH_PUSH_TIME)
+				var mid := Vector2((f.position.x + g.position.x) * 0.5, minf(f.position.y, g.position.y) - 14.0)
+				_burst(mid, Color(1.0, 0.93, 0.55), 6, 200.0)
+				sfx(mid, "clash", -14.0)
+				parry_cd = PARRY_COOLDOWN
 			else:
 				_kill(f, g)
 			return

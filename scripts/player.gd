@@ -62,6 +62,8 @@ var weapon_id := "florete"
 var invuln_time := 0.0
 var flash_time := 0.0
 var stun_time := 0.0
+var push_time := 0.0        # empuje activo de parada/rebote (segundos)
+var push_vel := Vector2.ZERO
 var knockdown_time := 0.0
 var attack_time := 0.0
 var attack_height: int = H.MID
@@ -123,6 +125,7 @@ func _physics_process(delta: float) -> void:
 	invuln_time = maxf(0.0, invuln_time - delta)
 	flash_time = maxf(0.0, flash_time - delta)
 	roll_cd = maxf(0.0, roll_cd - delta)
+	push_time = maxf(0.0, push_time - delta)
 	attack_dash_time = maxf(0.0, attack_dash_time - delta)
 
 	if state == State.DEAD:
@@ -257,16 +260,23 @@ func _physics_process(delta: float) -> void:
 
 	match state:
 		State.IDLE, State.RUN:
-			var sp := DUCK_SPEED if stance == H.LOW else SPEED * (UNARMED_SPEED_MULT if not has_sword else run_mult())
-			# arranque en rampa: acelerar cuesta ~6 frames, frenar ~4
-			var rate := GROUND_ACCEL if dir != 0.0 else GROUND_FRICTION
-			velocity.x = move_toward(velocity.x, dir * sp, rate * delta)
+			if push_time > 0.0:
+				velocity.x = push_vel.x
+			else:
+				var sp := DUCK_SPEED if stance == H.LOW else SPEED * (UNARMED_SPEED_MULT if not has_sword else run_mult())
+				# arranque en rampa: acelerar cuesta ~6 frames, frenar ~4
+				var rate := GROUND_ACCEL if dir != 0.0 else GROUND_FRICTION
+				velocity.x = move_toward(velocity.x, dir * sp, rate * delta)
 			state = State.RUN if absf(velocity.x) > 5.0 else State.IDLE
 			run_phase += velocity.x * delta * 0.045
 		State.JUMP:
 			velocity.x = move_toward(velocity.x, dir * SPEED, AIR_ACCEL * delta)
 		State.ATTACK:
-			if attack_dash_time > 0.0:
+			if push_time > 0.0:
+				# el empuje de la parada también pisa la deriva del ataque:
+				# sin esto el atacante sigue acercándose durante su animación
+				velocity.x = push_vel.x
+			elif attack_dash_time > 0.0:
 				velocity.x = facing * LUNGE_SPEED
 			else:
 				velocity.x = move_toward(velocity.x, facing * 110.0, 900.0 * delta)
@@ -370,6 +380,12 @@ func weapon_reach() -> float:
 
 func run_mult() -> float:
 	return float(weapon()["run_mult"])
+
+
+## Empuje temporal de separación (parada/rebote): pisa la velocidad horizontal.
+func apply_push(v: Vector2, t: float) -> void:
+	push_vel = v
+	push_time = t
 
 
 func take_clash(push: int) -> void:
