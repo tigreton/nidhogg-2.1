@@ -73,5 +73,40 @@ func _ready() -> void:
 		await _snap(z[1] + ".png")
 	game.set_arena(0)
 
+	# banner ¡FIGHT!
+	_place(1600.0)
+	game._show_fight()
+	await get_tree().create_timer(0.25).timeout
+	await _snap("13_fight_banner.png")
+
+	# muerte con estallido (cámara lenta: restaurar el tiempo tras capturar)
+	_place(1600.0)
+	game.players[0].facing = 1
+	game.players[1].position = game.players[0].position + Vector2(70.0, 0.0)
+	await get_tree().create_timer(0.1).timeout
+	game._kill(game.players[1], game.players[0])
+	# 0.25 s escalados: tras el hitstop (0.08) pero dentro de la cámara lenta
+	# (0.5), con el estallido a medias — a 0.05 las partículas aún no simulan
+	await get_tree().create_timer(0.25, true).timeout
+	await _snap("14_muerte_estallido.png")
+	Engine.time_scale = 1.0
+	game.respawn_timers[1] = 0.0
+	game.players[1].revive(Vector2(2000.0, 531.0), -1)
+	await get_tree().create_timer(0.2).timeout
+
+	# modo pantallas: pan de cámara al cruzar la reja (tarea 50)
+	game.set_sections(true)
+	await get_tree().create_timer(0.3).timeout
+	# el round_lock que deja el _kill anterior bloquearía _update_sections
+	game.round_lock = 0.0
+	game.right_of_way = game.players[0]
+	game.players[0].position = Vector2(2800.0, 531.0)
+	await get_tree().create_timer(0.15).timeout
+	await _snap("15_pan_seccion.png")
+	await get_tree().create_timer(0.4).timeout
+	await _snap("16_seccion_conquistada.png")
+	game.set_sections(false)
+	await get_tree().create_timer(0.2).timeout
+
 	print("CAPTURAS OK")
 	get_tree().quit(0)
