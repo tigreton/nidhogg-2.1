@@ -656,6 +656,13 @@ class GlowSpot extends Node2D:
 
 class VictoryWorm extends Node2D:
 	## El gusano del Nidhogg: baja del techo y envuelve al ganador.
+	const WORM_TEX := preload("res://art/sprites/worm_body.png")
+	# la tira de 300x103 se corta en 3 segmentos de 100 px
+	const WORM_SEGS := [
+		Rect2(0.0, 0.0, 100.0, 103.0),
+		Rect2(100.0, 0.0, 100.0, 103.0),
+		Rect2(200.0, 0.0, 100.0, 103.0),
+	]
 	var t := 0.0
 	var target := Vector2.ZERO
 	var col := Color(0.22, 0.5, 0.2)
@@ -673,9 +680,11 @@ class VictoryWorm extends Node2D:
 		var chomp := 0.35 + 0.65 * t
 		# cuerpo: 6 segmentos con la textura (las 3 regiones, repetidas)
 		for i in 6:
-			var r := 34.0 - 3.0 * float(i)
-			draw_circle(Vector2(0, -float(i) * 44.0 - 30.0), r, col.darkened(0.05 * i))
-		draw_circle(Vector2(0, -30.0), 36.0, col)
+			var cy := -float(i) * 44.0 - 30.0
+			draw_texture_rect_region(WORM_TEX, Rect2(-32.0, cy - 33.0, 64.0, 66.0), WORM_SEGS[i % 3])
+		# cabeza: el segmento 0 un punto más grande
+		draw_texture_rect_region(WORM_TEX, Rect2(-37.0, -66.0, 74.0, 76.0), WORM_SEGS[0])
+		# mandíbulas y ojos (procedurales, como antes)
 		var open_ang := 1.2 * (1.0 - chomp)
 		for s in [-1.0, 1.0]:
 			var pts := PackedVector2Array([
