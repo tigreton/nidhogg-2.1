@@ -1,7 +1,7 @@
 class_name Player
 extends CharacterBody2D
 ## Duelista estilo Nidhogg: estancias alta/media/baja, ataque, patada voladora,
-## lanzamiento de espada y muerte de un golpe. Todo el dibujo es procedural.
+## lanzamiento de espada y muerte de un golpe. Dibujo con sprites de art/sprites.
 
 signal died(player: Player)
 signal threw_sword(player: Player)
@@ -385,10 +385,6 @@ func reset_to(pos: Vector2, face: int) -> void:
 func _draw() -> void:
 	if state == State.DEAD:
 		return
-	var c := color if flash_time <= 0.0 else Color.WHITE
-	var dark := Color(0.05, 0.04, 0.08)
-	var blade := Color(0.87, 0.9, 0.95)
-
 	# halo pulsante bajo los pies de quien tiene el paso
 	var g := get_parent()
 	if g != null and g.get("right_of_way") == self:
@@ -396,6 +392,7 @@ func _draw() -> void:
 		draw_circle(Vector2(0, 34), 20.0 + 4.0 * pulse, Color(color.r, color.g, color.b, 0.10 + 0.10 * pulse))
 		draw_arc(Vector2(0, 34), 24.0, 0.0, TAU, 24, Color(color.r, color.g, color.b, 0.55), 2.0)
 
+	# transform por estado (la pose ya aporta gran parte del gesto)
 	var t_pos := Vector2.ZERO
 	var t_rot := 0.0
 	var t_scl := Vector2.ONE
@@ -425,73 +422,28 @@ func _draw() -> void:
 		t_scl = Vector2(1.0, 0.72)
 	draw_set_transform(t_pos, t_rot, t_scl)
 
-	var hip := Vector2(0, 12)
-	var f1 := Vector2(-5, 30)
-	var f2 := Vector2(5, 30)
-	if state == State.RUN:
-		f1 = Vector2(11.0 * sin(run_phase), 30.0 - 5.0 * maxf(0.0, cos(run_phase)))
-		f2 = Vector2(-11.0 * sin(run_phase), 30.0 - 5.0 * maxf(0.0, -cos(run_phase)))
-	elif state == State.JUMP or state == State.DIVEKICK:
-		f1 = Vector2(-3, 20)
-		f2 = Vector2(9, 24)
-	draw_line(hip, f1, dark, 6.0)
-	draw_line(hip, f2, dark, 6.0)
+	if has_sword and weapon_id == "arco":
+		_draw_bow()
+		return
 
-	draw_line(Vector2(0, -16), Vector2(0, 12), dark, 24.0)
-	draw_line(Vector2(0, -16), Vector2(0, 12), c, 19.0)
-	draw_line(Vector2(-9, 4), Vector2(9, 4), dark, 4.0)
-
-	var skin_cols := [Color(0.93, 0.78, 0.62), Color(0.72, 0.52, 0.36), Color(0.45, 0.30, 0.20)]
-	var skin: Color = skin_cols[MatchRules.skin[clampi(player_id - 1, 0, 1)] % skin_cols.size()] if flash_time <= 0.0 else Color.WHITE
-	draw_circle(Vector2(1, -28), 10.0, dark)
-	draw_circle(Vector2(1, -28), 8.0, skin)
-	_match_hair(skin, c, dark)
-	var wag := sin(anim_time * 12.0) * 3.0
-	draw_line(Vector2(-4, -31), Vector2(-18, -29 + wag), c.darkened(0.25), 3.5)
-
-	# en la hierba alta la espada no se dibuja: el rival no ve la estancia
-	var hide_sword: bool = g != null and g.has_method("in_grass") and g.in_grass(global_position.x)
-	if has_sword and not hide_sword:
-		if weapon_id == "arco":
-			_draw_bow()
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-			return
-		var h: int = attack_height if state == State.ATTACK else stance
-		var ext := attack_ext()
-		var hand := Vector2(6, -8)
-		var tip := Vector2(42, -8)
-		match h:
-			H.HIGH:
-				hand = Vector2(5, -36)
-				tip = Vector2(10, -66)
-			H.LOW:
-				hand = Vector2(6, 6)
-				tip = Vector2(42, 18)
-		var dirv := (tip - hand).normalized()
-		var blen := ((tip - hand).length() + ext * 22.0) * float(weapon()["blade_len"])
-		var hpos := hand + dirv * ext * 6.0
-		var tpos := hpos + dirv * blen
-		draw_line(hpos - dirv * 7.0, hpos, Color(0.32, 0.2, 0.1), 6.0)
-		draw_line(hpos, tpos, dark, float(weapon()["blade_w"]) + 3.0)
-		draw_line(hpos, tpos, blade, float(weapon()["blade_w"]))
-		draw_circle(hpos, 4.0, c)
-		if ext > 0.15:
-			var mid := (hpos + tpos) * 0.5
-			draw_circle(mid, 13.0 * ext, Color(1, 1, 1, 0.25 * ext))
-	elif state == State.ATTACK:
-		# puñetazo a puño limpio
+	# puñetazo a puño limpio (sin pose propia: overlay corto)
+	if state == State.ATTACK and not has_sword:
+		var c := color if flash_time <= 0.0 else Color.WHITE
 		var pext := attack_ext()
 		if pext > 0.05:
 			draw_circle(Vector2(10.0 + pext * 16.0, -6.0), 5.0, c)
 
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+const TEX_BOW := preload("res://art/sprites/weapon_bow.png")
 
 
 func _draw_bow() -> void:
 	var c := color if flash_time <= 0.0 else Color.WHITE
 	var dark := Color(0.05, 0.04, 0.08)
 	var pull := 0.0 if bow_time <= 0.0 else clampf(bow_time, 0.0, 1.0)
-	draw_arc(Vector2(8, -8), 16.0, -PI * 0.42, PI * 0.42, 12, Color(0.35, 0.22, 0.1), 4.0)
+	draw_set_transform(Vector2(8, -8), 0.0, Vector2(0.55, 0.55))
+	draw_texture(TEX_BOW, -TEX_BOW.get_size() * 0.5)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var py := -8.0
 	var px := 8.0 - pull * 12.0
 	draw_line(Vector2(8.0 - 14.0, -8.0 - 14.0), Vector2(px, py), Color(0.85, 0.85, 0.8), 1.5)
@@ -499,17 +451,3 @@ func _draw_bow() -> void:
 	if pull > 0.0:
 		draw_line(Vector2(px, py), Vector2(px + 26.0, py), dark, 2.5)
 		draw_line(Vector2(px + 26.0, py), Vector2(px + 26.0 + 6.0, py), c, 2.0)
-
-
-func _match_hair(skin: Color, c: Color, dark: Color) -> void:
-	match MatchRules.hair[clampi(player_id - 1, 0, 1)] % 3:
-		1:
-			# melena puntiaguda
-			draw_colored_polygon(PackedVector2Array([Vector2(-8, -30), Vector2(10, -30), Vector2(1, -44)]), Color(0.12, 0.09, 0.07))
-			draw_line(Vector2(-9, -28), Vector2(-13, -22), Color(0.12, 0.09, 0.07), 3.0)
-		2:
-			# casco con penacho del color del jugador
-			draw_arc(Vector2(1, -28), 10.5, PI, TAU, 12, dark, 5.0)
-			draw_line(Vector2(1, -40), Vector2(1, -50), c, 4.0)
-		_:
-			pass

@@ -9,6 +9,8 @@ var bounces := 0
 var thrower: Player = null
 var stuck := false
 
+const ARROW_TEX := preload("res://art/sprites/weapon_arrow.png")
+
 
 func _ready() -> void:
 	z_index = 16
@@ -20,10 +22,7 @@ func tint() -> Color:
 
 
 func _draw() -> void:
-	var dark := Color(0.05, 0.04, 0.08)
 	var dir := 1.0 if vel.x >= 0.0 else -1.0
-	draw_line(Vector2(-18 * dir, 0), Vector2(12 * dir, 0), dark, 4.0)
-	draw_line(Vector2(-18 * dir, 0), Vector2(12 * dir, 0), tint(), 2.5)
-	draw_colored_polygon(PackedVector2Array([Vector2(12 * dir, 0), Vector2(4 * dir, -4), Vector2(4 * dir, 4)]), Color(0.9, 0.9, 0.95))
-	draw_line(Vector2(-18 * dir, -4), Vector2(-14 * dir, 4), Color(0.6, 0.45, 0.25), 2.0)
-	draw_line(Vector2(-16 * dir, -4), Vector2(-12 * dir, 4), Color(0.6, 0.45, 0.25), 2.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(dir, 1.0))
+	draw_texture_rect(ARROW_TEX, Rect2(-14.0, -3.0, 28.0, 6.0), false, tint())
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

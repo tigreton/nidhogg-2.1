@@ -10,6 +10,13 @@ var weapon_id := "florete"
 var trail: Line2D
 const TRAIL_POINTS := 10
 
+const WEAPON_TEX := {
+	"florete": preload("res://art/sprites/weapon_rapier.png"),
+	"espada": preload("res://art/sprites/weapon_longsword.png"),
+	"daga": preload("res://art/sprites/weapon_dagger.png"),
+	"arco": preload("res://art/sprites/weapon_bow.png"),
+}
+
 
 func _ready() -> void:
 	z_index = 15
@@ -35,9 +42,7 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	var dark := Color(0.05, 0.04, 0.08)
-	draw_line(Vector2(-21, 0), Vector2(-13, 0), Color(0.35, 0.22, 0.1), 5.0)
-	draw_line(Vector2(-14, -4), Vector2(-14, 4), dark, 3.0)
-	draw_line(Vector2(-14, 0), Vector2(16, 0), dark, 7.0)
-	draw_line(Vector2(-14, 0), Vector2(16, 0), color, 4.0)
-	draw_circle(Vector2(16, 0), 2.5, Color.WHITE)
+	var tex: Texture2D = WEAPON_TEX.get(weapon_id, WEAPON_TEX["florete"])
+	var w := tex.get_width() * 0.8
+	var h := tex.get_height() * 0.8
+	draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false)
