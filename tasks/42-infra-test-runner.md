@@ -390,3 +390,23 @@ espera — nunca conviertas los pasos de física en timers.
 ```
 
 Últimas líneas esperadas: `RESULT: ALL PASSED (10)` y `SMOKE OK - todas las mecánicas funcionan`.
+
+## Nota de aplicación (2026-10-03)
+
+Primera pasada: `FAILED (3/10)` por tres bugs de *setup* de las suites (no del
+juego; el smoke cubre las mismas mecánicas y pasa). Correcciones aplicadas,
+todas en los archivos nuevos de esta tarea:
+
+1. `salto_parado_apice`: medía a x=1600, bajo el techo de la plataforma de la
+   tarea 04 (1480–1660, y=448) → ápice capado a ~38 px. Pasa a **x=1300**
+   (franja libre), donde el ápice real (~144) entra en el rango 120–170.
+2. `guardia_pasiva_distinta_altura_mata`: `_reset` fuerza `facing=1` en ambos
+   y `_resolve_guard_impale` solo empala a quien entra por delante del facing
+   del guardián. Se añade `players[1].facing = -1` (el guardián mira al
+   corredor), como arranca el caso 25 del smoke.
+3. `flecha_rebota_en_guardia_igual`: la flecha sale a la estancia del tirador
+   (MEDIA sin up/down); el test ponía la guardia en ALTA → la flecha mataba.
+   Se quita el `p2_up`: guardia MEDIA = misma altura que la flecha (es el
+   segundo disparo del caso 18 del smoke).
+
+Tras las correcciones: `RESULT: ALL PASSED (10)` y `SMOKE OK`.
