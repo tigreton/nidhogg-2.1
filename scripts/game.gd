@@ -49,6 +49,8 @@ const PARRY_PUSH_TIME := 0.15   # duración del empuje de parada
 const CLASH_IMPULSE := 130.0    # rebote mínimo contra guardia
 const CLASH_PUSH_TIME := 0.12
 const PARRY_COOLDOWN := 0.3     # anti re-trigger del rebote sostenido
+const ARROW_MAX_BOUNCES := 6   # tras 6 rebotes la flecha se clava
+const ARROW_MIN_SPEED := 100.0 # demasiado lenta: se clava
 const ARENA_NAMES := ["RUINAS DE MEDIANOCHE", "TEMPLO DEL ALBA", "CRIPTA DEL OCASO"]
 const BOT_CFG := [
 	{"react": 0.26, "atk": 0.12, "err": 0.35},  # FÁCIL
@@ -2115,7 +2117,7 @@ func _on_fired_arrow(p: Player, height: int, charge: float) -> void:
 	a.thrower = p
 	a.height = height
 	a.position = p.position + Vector2(p.facing * 22.0, [-40.0, -8.0, 16.0][height])
-	a.vel = Vector2(p.facing * 600.0 * clampf(charge + 0.2, 0.5, 1.2), 0.0)
+	a.vel = Vector2(p.facing * float(GameConfig.WEAPONS["arco"]["arrow_speed"]), 0.0)
 	add_child(a)
 	arrows.append(a)
 	sfx(p.position, "throw", -16.0)
@@ -2145,6 +2147,10 @@ func _update_arrows(delta: float) -> void:
 			if guards:
 				a.vel = Vector2(a.vel.x * -0.85, 0.0)
 				a.bounces += 1
+				if a.bounces >= ARROW_MAX_BOUNCES or absf(a.vel.x) < ARROW_MIN_SPEED:
+					a.stuck = true
+					a.vel = Vector2.ZERO
+					break
 				_burst(a.position, Color(0.9, 0.9, 1.0), 8, 220.0)
 				sfx(a.position, "arrow_bounce", -14.0)
 			else:
@@ -2513,6 +2519,12 @@ func _bot_think(p: Player, delta: float) -> void:
 	# patada voladora si el rival está abajo y cerca
 	if not on_floor and foe != null and adx < 100.0 and foe.position.y > p.position.y + 40.0:
 		tap = "attack"
+	# con el arco: tensar mientras el rival está a distancia de flecha
+	# (soltará al acercarse o alejarse → dispara con el tensado completo)
+	if p.weapon_id == "arco" and p.has_sword and foe != null and on_floor \
+			and adx > 100.0 and adx < 620.0:
+		want["attack"] = true
+		tap = ""
 	p.bot_held = want
 	if tap != "" and p.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]:
 		p.bot_held[tap] = true

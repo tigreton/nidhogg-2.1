@@ -34,6 +34,7 @@ const DIVE_SPEED := 546.0
 const DIVE_TIME := 0.55
 const LUNGE_SPEED := 620.0
 const SIDEKICK_TIME := 0.42
+const BOW_DRAW_TIME := 1.0     # tensado mínimo: antes de esto no dispara
 
 const POSES := ["idle", "run_0", "run_1", "run_2", "run_3", "jump", "fall", "crouch", "slide", "attack_high", "attack_mid", "attack_low", "throw", "divekick", "dead", "downed"]
 const POSE_SCALE := 58.0 / 56.0   # el sprite mide 56 px de alto; la colisión 58
@@ -318,8 +319,12 @@ func _physics_process(delta: float) -> void:
 	if bow_time > 0.0:
 		if held("attack") and state in [State.IDLE, State.RUN, State.JUMP]:
 			bow_time = minf(bow_time + delta, 1.0)
-		else:
+		elif bow_time >= BOW_DRAW_TIME:
+			# soltar con el tensado completo: dispara a la estancia actual
 			fired_arrow.emit(self, stance, bow_time)
+			bow_time = 0.0
+		else:
+			# soltar antes de tiempo: se cancela, no dispara
 			bow_time = 0.0
 
 	if is_bot:

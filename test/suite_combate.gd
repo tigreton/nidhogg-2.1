@@ -13,6 +13,7 @@ func get_tests() -> Array:
 		["espada_lanzada_desviada_por_guardia", _t_lanzada],
 		["punetazo_desarma", _t_punetazo],
 		["flecha_rebota_en_guardia_igual", _t_flecha],
+		["arco_soltar_antes_de_tiempo_no_dispara", _t_arco_cancel],
 	]
 
 
@@ -110,13 +111,28 @@ func _t_punetazo() -> bool:
 	return runner.check(ok, "el puñetazo de pie desarma y aturde")
 
 
+func _t_arco_cancel() -> bool:
+	_reset(1600.0, 1750.0)
+	runner.game.players[0].weapon_id = "arco"
+	await runner.step_physics(1)
+	Input.action_press("p1_attack")
+	await runner.step_physics(45)   # 0,75 s: se queda corto
+	Input.action_release("p1_attack")
+	await runner.step_physics(10)
+	var no_arrow: bool = runner.game.arrows.is_empty()
+	runner.release_all()
+	await runner.wait(0.3)
+	_reset(1600.0, 4400.0)
+	return runner.check(no_arrow, "soltar el arco antes de 1,0 s no dispara")  # L48
+
+
 func _t_flecha() -> bool:
 	_reset(1600.0, 1750.0)
 	runner.game.players[0].weapon_id = "arco"
 	# sin up/down la flecha sale en MEDIA: guardia MEDIA = misma altura
 	await runner.step_physics(1)
 	Input.action_press("p1_attack")
-	await runner.step_physics(32)   # tensar 0,53 s  # L48: 66 frames (1,1 s obligatorios)
+	await runner.step_physics(66)   # tensado completo obligatorio (1,1 s)  # L48
 	Input.action_release("p1_attack")
 	await runner.step_physics(30)
 	var g: Node = runner.game

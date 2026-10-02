@@ -307,7 +307,7 @@ func _ready() -> void:
 	Input.action_press("p2_up")
 	await get_tree().create_timer(0.1).timeout
 	Input.action_press("p1_attack")
-	await get_tree().create_timer(0.4).timeout
+	await get_tree().create_timer(1.1).timeout
 	Input.action_release("p1_attack")
 	await get_tree().create_timer(0.8).timeout
 	_check(p2.state == 7, "Arco: la flecha mata a quien no cubre su altura")
@@ -316,7 +316,7 @@ func _ready() -> void:
 	p2.invuln_time = 0.0
 	p2.state = 0
 	Input.action_press("p1_attack")
-	await get_tree().create_timer(0.4).timeout
+	await get_tree().create_timer(1.1).timeout
 	Input.action_release("p1_attack")
 	await get_tree().create_timer(0.8).timeout
 	_check(p2.state != 7, "Arco: la guardia a la misma altura rebota la flecha")
