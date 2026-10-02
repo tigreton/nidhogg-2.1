@@ -51,6 +51,8 @@ const CLASH_PUSH_TIME := 0.12
 const PARRY_COOLDOWN := 0.3     # anti re-trigger del rebote sostenido
 const ARROW_MAX_BOUNCES := 6   # tras 6 rebotes la flecha se clava
 const ARROW_MIN_SPEED := 100.0 # demasiado lenta: se clava
+const SECTION_PAN_TIME := 0.28       # pan al cruzar reja (sin teleport)
+const SECTION_BOTTOM_MARGIN := 88.0  # margen visible bajo la línea de suelo
 const ARENA_NAMES := ["RUINAS DE MEDIANOCHE", "TEMPLO DEL ALBA", "CRIPTA DEL OCASO"]
 const BOT_CFG := [
 	{"react": 0.26, "atk": 0.12, "err": 0.35},  # FÁCIL
@@ -145,6 +147,7 @@ var sect_conquered := [0, 0]
 var gates: Array[SectionGate] = []
 
 var camera: Camera2D
+var section_cam_tween: Tween
 var msg_label: Label
 var run_label: Label
 var dim: ColorRect
@@ -1146,7 +1149,8 @@ func set_mode_2v2(on: bool) -> void:
 	scores = [0, 0]
 	match_over = false
 	stats_label.visible = false
-	camera.zoom = Vector2(0.9, 0.9) if mode_2v2 else Vector2.ONE
+	if not sections_mode:
+		camera.zoom = Vector2(0.9, 0.9) if mode_2v2 else Vector2.ONE
 	_update_hud()
 	_start_round()
 	show_msg("MODO 2v2: %s" % ("P1·P3 vs P2·P4" if mode_2v2 else "DESACTIVADO"), 1.0)
@@ -1181,6 +1185,16 @@ func set_sections(on: bool) -> void:
 			add_child(g)
 			gates.append(g)
 	section_index = 3
+	if section_cam_tween != null and section_cam_tween.is_valid():
+		section_cam_tween.kill()
+	if on:
+		var z := VIEW_W / (LEVEL_W / float(SECTION_COUNT))
+		camera.zoom = Vector2(z, z)
+		camera.position_smoothing_enabled = false
+		camera.position = _section_cam_target()
+	else:
+		camera.zoom = Vector2(0.9, 0.9) if mode_2v2 else Vector2.ONE
+		camera.position_smoothing_enabled = true
 	sect_conquered = [0, 0]
 	scores = [0, 0]
 	stats = _fresh_stats()
@@ -1222,6 +1236,11 @@ func _cross_section(sec: int) -> void:
 			continue
 		p.position.x = x_far
 		p.invuln_time = maxf(p.invuln_time, 0.8)
+	# pan suave hasta la nueva sección (nunca teleport)
+	if section_cam_tween != null and section_cam_tween.is_valid():
+		section_cam_tween.kill()
+	section_cam_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	section_cam_tween.tween_property(camera, "position", _section_cam_target(), SECTION_PAN_TIME)
 
 
 func _update_sections() -> void:
@@ -2405,6 +2424,9 @@ func _stats_text() -> String:
 
 
 func _update_camera() -> void:
+	if sections_mode:
+		_update_section_camera()
+		return
 	var tx := camera.position.x
 	if right_of_way != null and right_of_way.state != Player.State.DEAD:
 		tx = right_of_way.position.x
@@ -2420,6 +2442,24 @@ func _update_camera() -> void:
 	var half := VIEW_W * 0.5 / camera.zoom.x
 	tx = clampf(tx, half, LEVEL_W - half)
 	camera.position = Vector2(tx, VIEW_H * 0.5 + 6.0)
+	if shake_time > 0.0:
+		camera.offset = Vector2(randf_range(-9.0, 9.0), randf_range(-7.0, 7.0)) * (shake_time * 4.0)
+	else:
+		camera.offset = Vector2.ZERO
+
+
+## Centro que encuadra la sección actual completa (1 sección = 1 pantalla).
+func _section_cam_target() -> Vector2:
+	var w := LEVEL_W / float(SECTION_COUNT)
+	var z := VIEW_W / w
+	var cx := w * (float(section_index) + 0.5)
+	return Vector2(cx, GROUND_Y + SECTION_BOTTOM_MARGIN - (VIEW_H / z) * 0.5)
+
+
+## Modo pantallas: cámara enclavada en la sección; solo el pan del cruce la mueve.
+func _update_section_camera() -> void:
+	if section_cam_tween == null or not section_cam_tween.is_valid():
+		camera.position = _section_cam_target()
 	if shake_time > 0.0:
 		camera.offset = Vector2(randf_range(-9.0, 9.0), randf_range(-7.0, 7.0)) * (shake_time * 4.0)
 	else:

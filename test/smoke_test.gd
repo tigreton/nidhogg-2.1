@@ -807,6 +807,16 @@ func _ready() -> void:
 	_check(p2.state == 6 and p2.state != 7, "Arco lanzado: derriba y no mata")
 	await get_tree().create_timer(1.2).timeout
 
+	# 38. Cámara por secciones: encuadra la sección actual y zoom de pantalla completa
+	game.set_sections(true)
+	await get_tree().create_timer(0.4).timeout
+	var w38: float = game.LEVEL_W / 7.0
+	var cx38: float = w38 * (float(game.section_index) + 0.5)
+	_check(absf(game.camera.position.x - cx38) < 2.0, "Pantallas: la cámara centra la sección actual")
+	_check(game.camera.zoom.x > 1.5, "Pantallas: zoom de pantalla completa (1 sección = 1 pantalla)")
+	game.set_sections(false)
+	_check(game.camera.zoom == Vector2.ONE, "Al salir del modo pantallas se restaura la cámara normal")
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
