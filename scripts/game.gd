@@ -33,6 +33,9 @@ var cel_col := Color(0.14, 0.13, 0.20)
 var cel_detail := Color(0.10, 0.09, 0.15)
 var arena_id := 0
 var level_root: Node2D
+var parallax_bg: ParallaxBackground
+var bg_tint_far := Color(0.7, 0.72, 0.9)
+var bg_tint_near := Color(0.85, 0.85, 0.95)
 
 const GRASS_X0 := 1150.0
 const GRASS_X1 := 1450.0
@@ -285,8 +288,31 @@ func _setup_input() -> void:
 		InputMap.action_add_event(action, eb)
 
 
+func _parallax_layer(pb: ParallaxBackground, path: String, motion: float, tint: Color) -> ParallaxLayer:
+	# capa de fondo repetida: textura 960x540 escalada a viewport y espejada
+	var l := ParallaxLayer.new()
+	l.motion_scale = Vector2(motion, motion)
+	var s := Sprite2D.new()
+	s.texture = load(path)
+	s.centered = false
+	s.scale = Vector2(1152.0 / 960.0, 648.0 / 540.0)
+	s.modulate = tint
+	l.motion_mirroring = Vector2(1152.0, 0.0)
+	l.add_child(s)
+	pb.add_child(l)
+	return l
+
+
+func _build_parallax() -> void:
+	parallax_bg = ParallaxBackground.new()
+	parallax_bg.layer = -20
+	add_child(parallax_bg)
+	_parallax_layer(parallax_bg, "res://art/sprites/bg_layer0.png", 0.15, bg_tint_far)
+	_parallax_layer(parallax_bg, "res://art/sprites/bg_layer1.png", 0.4, bg_tint_near)
+
+
 func _build_level() -> void:
-	_poly(PackedVector2Array([Vector2(0, 0), Vector2(LEVEL_W, 0), Vector2(LEVEL_W, 720), Vector2(0, 720)]), col_sky, -10)
+	_build_parallax()
 	_poly(_circle_points(cel_pos.x, cel_pos.y, 74.0), cel_col, -9)
 	_poly(_circle_points(cel_pos.x - 30.0, cel_pos.y - 26.0, 13.0), cel_detail, -9)
 	_poly(_circle_points(cel_pos.x + 26.0, cel_pos.y + 32.0, 9.0), cel_detail, -9)
@@ -387,6 +413,8 @@ func _load_arena(id: int) -> void:
 			cel_pos = Vector2(3560.0, 120.0)
 			cel_col = Color(0.55, 0.32, 0.16)
 			cel_detail = Color(0.48, 0.27, 0.13)
+			bg_tint_far = Color(1.0, 0.72, 0.5)
+			bg_tint_near = Color(1.0, 0.85, 0.68)
 		2:
 			# Cripta del ocaso: atardecer púrpura, torre a la izquierda,
 			# casa a la derecha y foso pequeño junto a la meta de P1
@@ -429,6 +457,8 @@ func _load_arena(id: int) -> void:
 			cel_pos = Vector2(1200.0, 130.0)
 			cel_col = Color(0.75, 0.45, 0.30)
 			cel_detail = Color(0.66, 0.38, 0.26)
+			bg_tint_far = Color(0.68, 0.5, 0.9)
+			bg_tint_near = Color(0.85, 0.68, 0.95)
 		_:
 			# Ruinas de medianoche: noche azulada con luna (valores por defecto)
 			PIT_X0 = 2210.0
@@ -470,6 +500,8 @@ func _load_arena(id: int) -> void:
 			cel_pos = Vector2(2400.0, 118.0)
 			cel_col = Color(0.14, 0.13, 0.20)
 			cel_detail = Color(0.10, 0.09, 0.15)
+			bg_tint_far = Color(0.55, 0.62, 0.85)
+			bg_tint_near = Color(0.72, 0.74, 0.92)
 	# tejados derivados del anclaje de la casa
 	ROOF_L_X0 = HOUSE_X
 	ROOF_L_X1 = HOUSE_X + 102.0
@@ -483,6 +515,9 @@ func set_arena(id: int) -> void:
 	if id % ARENA_NAMES.size() == arena_id:
 		return
 	_load_arena(id)
+	if parallax_bg != null:
+		parallax_bg.queue_free()
+		parallax_bg = null
 	if level_root != null:
 		level_root.queue_free()
 	level_root = Node2D.new()
