@@ -42,7 +42,7 @@ func _t_correr() -> bool:
 	await runner.step_physics(5)
 	var dx: float = runner.game.players[0].position.x - x0
 	runner.release_all()
-	return runner.check(dx >= 150.0, "correr recorre >=150 px en 35 frames (hoy ~175)")  # L44: >=130
+	return runner.check(dx >= 130.0, "correr recorre >=130 px en 35 frames con aceleración (hoy ~145)")  # L44
 
 
 func _t_salto_parado() -> bool:

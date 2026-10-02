@@ -18,6 +18,9 @@ const JUMP_VY_RUN := -680.0     # ápice ≈ 144 px (el actual: no rompe la aren
 const GRAVITY_UP := 1600.0      # subida suave (el salto "flota" arriba)
 const GRAVITY_FALL := 1900.0    # bajada pesada (pegada arcade)
 const MAX_FALL := 980.0         # tope de velocidad de caída
+const GROUND_ACCEL := 2800.0    # 0 → 330 px/s en ~6 frames
+const GROUND_FRICTION := 5200.0 # frenado en ~4 frames
+const AIR_ACCEL := 1500.0       # control aéreo parcial hacia la carrera
 const ATTACK_DURATION := 0.30
 const ATTACK_FROM := 0.07
 const ATTACK_TO := 0.20
@@ -226,11 +229,13 @@ func _physics_process(delta: float) -> void:
 	match state:
 		State.IDLE, State.RUN:
 			var sp := DUCK_SPEED if stance == H.LOW else SPEED * (UNARMED_SPEED_MULT if not has_sword else run_mult())
-			velocity.x = dir * sp
+			# arranque en rampa: acelerar cuesta ~6 frames, frenar ~4
+			var rate := GROUND_ACCEL if dir != 0.0 else GROUND_FRICTION
+			velocity.x = move_toward(velocity.x, dir * sp, rate * delta)
 			state = State.RUN if absf(velocity.x) > 5.0 else State.IDLE
 			run_phase += velocity.x * delta * 0.045
 		State.JUMP:
-			velocity.x = move_toward(velocity.x, dir * SPEED, 1100.0 * delta)
+			velocity.x = move_toward(velocity.x, dir * SPEED, AIR_ACCEL * delta)
 		State.ATTACK:
 			if attack_dash_time > 0.0:
 				velocity.x = facing * LUNGE_SPEED
