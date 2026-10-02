@@ -139,3 +139,19 @@ a los ~0,42 s del primero: la rodada (0,34 s) ya acabó pero su cooldown
 ```
 
 Última línea esperada: `SMOKE OK - todas las mecánicas funcionan`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada con dos ajustes al caso 34 (la mecánica y su rama, tal cual):
+
+1. **Timing con la tarea 44:** la fricción tarda ~0,1 s en frenar los 520 px/s
+   de la rodada, así que a los 0,42 s aún había |vx|>120 y la rama no entraba.
+   La espera pasa de 0,34 a **0,40 s** (segundo abajo+salto a los ~0,48 s,
+   aún dentro del cooldown de 0,55 s).
+2. **Geometría:** la rodada cruza a P2 de largo (sin colisión entre
+   jugadores), dejando a P1 a ~150 px; el caso repositiona a P1 en 1600 antes
+   del segundo abajo+salto. Y al resolver el sidekick el pateador rebota a
+   JUMP en ~0,03 s: el primer check acepta `state == 10 or sidekick_resolved`
+   (eran contradictorios con el segundo check).
+
+Tras los ajustes: `SMOKE OK` (casos 33-34) y `ALL PASSED (10)`.

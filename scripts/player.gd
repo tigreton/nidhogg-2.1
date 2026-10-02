@@ -183,6 +183,18 @@ func _physics_process(delta: float) -> void:
 			stance = H.MID
 			velocity = Vector2(facing * DIVE_SPEED, 0.0)
 			_sfx("swing", -18.0)
+		elif hit("jump") and held("down") and is_on_floor() and roll_cd > 0.0 and has_sword and absf(velocity.x) < 120.0:
+			# sidekick desde agachado (adaptación del hermano: el slot
+			# agachado+salto libre solo existe mientras la rodada enfría)
+			if held("right"):
+				facing = 1
+			elif held("left"):
+				facing = -1
+			state = State.SIDEKICK
+			sidekick_time = 0.0
+			sidekick_resolved = false
+			velocity = Vector2(facing * 440.0, -160.0)
+			_sfx("swing", -18.0)
 		elif hit("jump") and held("down") and is_on_floor() and roll_cd <= 0.0 and MatchRules.allow_roll:
 			# rodar: esquiva rápida agachada (cuenta como estancia baja)
 			state = State.ROLL
