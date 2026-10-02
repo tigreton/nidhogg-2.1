@@ -57,7 +57,7 @@ func _t_salto_parado() -> bool:
 		min_y = minf(min_y, runner.game.players[0].position.y)
 	var rise: float = 531.0 - min_y
 	runner.release_all()
-	return runner.check(rise >= 120.0 and rise <= 170.0, "salto parado sube 120-170 px (hoy ~144)")  # L43: 55-80
+	return runner.check(rise >= 55.0 and rise <= 80.0, "salto parado sube 55-80 px (ahora ~66)")  # L43
 
 
 func _t_salto_carrera() -> bool:
@@ -71,8 +71,8 @@ func _t_salto_carrera() -> bool:
 	await runner.step_physics(70)
 	var p: Player = runner.game.players[0]
 	runner.release_all()
-	return runner.check(p.is_on_floor() and p.position.x - x0 >= 220.0,
-			"salto con carrerilla recorre >=220 px en el aire (hoy ~270)")  # L43/L44: >=180
+	return runner.check(p.is_on_floor() and p.position.x - x0 >= 180.0,
+			"salto con carrerilla recorre >=180 px en el aire (ahora ~230)")  # L43
 
 
 func _t_rodada() -> bool:

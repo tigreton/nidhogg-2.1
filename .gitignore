@@ -30,3 +30,5 @@ media/videos/*_blobs.csv
 
 # y su .import espurio generado por Godot al abrir el proyecto
 trace_motion.csv.import
+# traducciones espurias que Godot genera del CSV de trazas
+trace_motion.*.translation

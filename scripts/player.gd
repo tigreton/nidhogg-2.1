@@ -13,8 +13,11 @@ enum H { LOW, MID, HIGH }
 const SPEED := 330.0
 const DUCK_SPEED := 150.0
 const UNARMED_SPEED_MULT := 1.15
-const JUMP_VELOCITY := -700.0
-const GRAVITY := 1700.0
+const JUMP_VY_STAND := -460.0   # ápice ≈ 66 px ≈ 1,1 · altura del jugador (58)
+const JUMP_VY_RUN := -680.0     # ápice ≈ 144 px (el actual: no rompe la arena)
+const GRAVITY_UP := 1600.0      # subida suave (el salto "flota" arriba)
+const GRAVITY_FALL := 1900.0    # bajada pesada (pegada arcade)
+const MAX_FALL := 980.0         # tope de velocidad de caída
 const ATTACK_DURATION := 0.30
 const ATTACK_FROM := 0.07
 const ATTACK_TO := 0.20
@@ -147,7 +150,9 @@ func _physics_process(delta: float) -> void:
 				state = State.IDLE
 
 	if not is_on_floor():
-		velocity.y += GRAVITY * delta
+		# gravedad asimétrica: sube frenando suave, cae pesado y con tope
+		velocity.y += (GRAVITY_UP if velocity.y < 0.0 else GRAVITY_FALL) * delta
+		velocity.y = minf(velocity.y, MAX_FALL)
 
 	if can_act:
 		if hit("jump") and held("down") and state == State.RUN and absf(velocity.x) > 120.0 and roll_cd <= 0.0:
@@ -167,7 +172,8 @@ func _physics_process(delta: float) -> void:
 			stance = H.LOW
 			_sfx("swing", -22.0)
 		elif hit("jump") and is_on_floor():
-			velocity.y = JUMP_VELOCITY
+			# salto doble: parado ~1 personaje, con carrerilla el ápice completo
+			velocity.y = JUMP_VY_RUN if state == State.RUN else JUMP_VY_STAND
 			state = State.JUMP
 			_sfx("jump", -16.0)
 		elif hit("attack"):
