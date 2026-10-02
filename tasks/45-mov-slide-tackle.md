@@ -166,3 +166,14 @@ En `test/smoke_test.gd`, justo antes del `print("")` final, añade:
 ```
 
 Última línea esperada: `SMOKE OK - todas las mecánicas funcionan`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada con un ajuste no previsto en el texto: el caso 33 fallaba porque la
+**guardia pasiva empalaba al rodador** antes de que el tackle existiera (P2
+heredaba `facing=-1` de casos previos; rodar fuerza estancia LOW y la guardia
+MID a distinta altura mata). Como el dive y el sidekick ya estaban exentos del
+empalamiento por tener resolución propia, se añadió `Player.State.ROLL` a esa
+lista de exenciones en `_resolve_guard_impale` (comentario actualizado a
+34/35/45). Sin eso, la mecánica no funcionaría en partida real, no solo en el
+test. Tras el ajuste: `SMOKE OK` (caso 33 incluido) y `ALL PASSED (10)`.

@@ -77,6 +77,7 @@ var was_on_floor := true
 var dust_cd := 0.0
 var roll_time := 0.0
 var roll_cd := 0.0
+var roll_hit := false   # el tackle de la rodada solo golpea a uno
 var dive_time := 0.0
 var dive_resolved := false
 var sidekick_time := 0.0
@@ -177,14 +178,16 @@ func _physics_process(delta: float) -> void:
 			state = State.DIVE
 			dive_time = 0.0
 			dive_resolved = false
+			roll_hit = false
 			roll_cd = DIVE_TIME
 			stance = H.MID
 			velocity = Vector2(facing * DIVE_SPEED, 0.0)
 			_sfx("swing", -18.0)
 		elif hit("jump") and held("down") and is_on_floor() and roll_cd <= 0.0 and MatchRules.allow_roll:
-			# rodar: esquiva rápida agachado (cuenta como estancia baja)
+			# rodar: esquiva rápida agachada (cuenta como estancia baja)
 			state = State.ROLL
 			roll_time = 0.0
+			roll_hit = false
 			roll_cd = ROLL_COOLDOWN
 			stance = H.LOW
 			_sfx("swing", -22.0)

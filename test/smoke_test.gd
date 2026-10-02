@@ -673,6 +673,33 @@ func _ready() -> void:
 	Input.action_release("p1_right")
 	_check(p1.position.x > xp + 60.0, "Pausa: al reanudar P1 vuelve a moverse")
 
+	# 33. Slide tackle: atacar durante la rodada derriba (no mata)
+	p1.has_sword = true
+	p1.weapon_id = "florete"
+	p2.has_sword = true
+	p2.weapon_id = "florete"
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1650.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.invuln_time = 0.0
+	p2.invuln_time = 0.0
+	p1.facing = 1
+	p1.roll_cd = 0.0
+	await get_tree().physics_frame
+	Input.action_press("p1_down")
+	Input.action_press("p1_jump")
+	await get_tree().create_timer(0.08).timeout
+	Input.action_release("p1_jump")
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.12).timeout
+	Input.action_release("p1_attack")
+	Input.action_release("p1_down")
+	_check(p2.state == 6 and p2.state != 7, "Slide tackle: atacar rodando derriba al rival")
+	await get_tree().create_timer(1.2).timeout
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

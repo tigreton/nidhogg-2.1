@@ -1679,6 +1679,7 @@ func _physics_process(delta: float) -> void:
 	_resolve_divekicks()
 	_resolve_dives()
 	_resolve_sidekicks()
+	_resolve_roll_tackles()
 	_resolve_stomps()
 	_update_projectiles(delta)
 	_update_arrows(delta)
@@ -1881,6 +1882,27 @@ func _resolve_sidekicks() -> void:
 			break
 
 
+func _resolve_roll_tackles() -> void:
+	# slide tackle: atacar durante la rodada derriba (no mata) al rival cercano
+	for p in players:
+		if p.state != Player.State.ROLL or p.roll_hit:
+			continue
+		if not p.held("attack"):
+			continue
+		for def in _foes_of(p):
+			if def.state == Player.State.DEAD or def.invuln_time > 0.0:
+				continue
+			if absf(def.position.x - p.position.x) > Player.PUNCH_RANGE + 24.0 or absf(def.position.y - p.position.y) > 50.0:
+				continue
+			p.roll_hit = true
+			var push := 1 if def.position.x >= p.position.x else -1
+			def.knockdown(push)
+			_burst(def.position, Color(1, 1, 1), 8, 200.0)
+			sfx(def.position, "hit", -10.0)
+			shake_time = maxf(shake_time, 0.1)
+			break
+
+
 func _resolve_guard_impale() -> void:
 	# guardia pasiva: solo de pie y parado (correr no guarda)
 	for g in players:
@@ -1894,8 +1916,8 @@ func _resolve_guard_impale() -> void:
 				continue
 			if f.attack_is_active():
 				continue
-			# el dive y el sidekick tienen su propia resolución (tareas 34/35)
-			if f.state in [Player.State.DIVE, Player.State.SIDEKICK]:
+			# el dive, el sidekick y la rodada tienen su propia resolución (tareas 34/35/45)
+			if f.state in [Player.State.DIVE, Player.State.SIDEKICK, Player.State.ROLL]:
 				continue
 			var dx := (f.position.x - g.position.x) * g.facing
 			if dx < 8.0 or dx > Player.ATTACK_RANGE * 0.85:
