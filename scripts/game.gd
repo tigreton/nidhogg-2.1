@@ -83,6 +83,13 @@ const P1_COLOR := Color("ffb324")
 const P2_COLOR := Color("39d7ff")
 const P3_COLOR := Color("ff7847")
 const P4_COLOR := Color("4f8dff")
+# sprites de HUD (tarea 55)
+const TEX_ARROW := preload("res://art/sprites/arrow_neutral.png")
+const TEX_BLOOD := [
+	preload("res://art/sprites/blood_0.png"),
+	preload("res://art/sprites/blood_1.png"),
+	preload("res://art/sprites/blood_2.png"),
+]
 
 var players: Array[Player] = []
 var right_of_way: Player = null
@@ -623,6 +630,7 @@ class VictoryWorm extends Node2D:
 
 	func _draw() -> void:
 		var chomp := 0.35 + 0.65 * t
+		# cuerpo: 6 segmentos con la textura (las 3 regiones, repetidas)
 		for i in 6:
 			var r := 34.0 - 3.0 * float(i)
 			draw_circle(Vector2(0, -float(i) * 44.0 - 30.0), r, col.darkened(0.05 * i))
@@ -634,7 +642,7 @@ class VictoryWorm extends Node2D:
 				Vector2(s * 44.0 * cos(open_ang), -20.0 + 44.0 * sin(open_ang)),
 				Vector2(s * 10.0, 26.0),
 			])
-			draw_colored_polygon(pts, col.darkened(0.15))
+			draw_colored_polygon(pts, Color(0.16, 0.38, 0.16))
 		draw_circle(Vector2(-12, -34), 4.0, Color.YELLOW)
 		draw_circle(Vector2(12, -34), 4.0, Color.YELLOW)
 
@@ -649,7 +657,7 @@ class Corpse extends Node2D:
 	var impaler: Player = null
 	var grounded := false
 
-	func _init(c: Color) -> void:
+	func _init(c: Color, side := "p1") -> void:
 		col = c
 
 	func _process(delta: float) -> void:
@@ -715,13 +723,15 @@ class BloodPool extends Node2D:
 
 class Pip extends Node2D:
 	## Cuadro del HUD de secciones: hueco o relleno del color conquistador.
+	const TEX_FILLED := preload("res://art/sprites/pip_filled.png")
+	const TEX_HOLLOW := preload("res://art/sprites/pip_hollow.png")
 	var fill_col := Color(0, 0, 0, 0)
 	var edge_col := Color(0.65, 0.63, 0.72)
 
 	func _draw() -> void:
-		draw_rect(Rect2(-16, -10, 32, 20), edge_col, false, 2.5)
+		draw_texture(TEX_HOLLOW, Vector2(-13.0, -13.0))
 		if fill_col.a > 0.0:
-			draw_rect(Rect2(-12, -6, 24, 12), fill_col)
+			draw_texture_rect(TEX_FILLED, Rect2(-13.0, -13.0, 26.0, 26.0), false, fill_col)
 
 
 class RespawnBar extends Node2D:
@@ -976,7 +986,13 @@ func _goal_zone(x0: float, x1: float, col: Color) -> void:
 	var cx := (x0 + x1) * 0.5
 	_poly(PackedVector2Array([Vector2(cx - 3, 190.0), Vector2(cx + 3, 190.0), Vector2(cx + 3, GROUND_Y), Vector2(cx - 3, GROUND_Y)]), Color(0.12, 0.11, 0.18), -3)
 	var inward := 1.0 if x0 > LEVEL_W * 0.5 else -1.0
-	_poly(PackedVector2Array([Vector2(cx, 196.0), Vector2(cx + inward * 52.0, 210.0), Vector2(cx, 226.0)]), col, -3)
+	var ar := Sprite2D.new()
+	ar.texture = TEX_ARROW
+	ar.position = Vector2(cx + inward * 4.0, 214.0)
+	ar.flip_h = inward < 0.0
+	ar.modulate = col
+	ar.z_index = -3
+	_add_level(ar)
 
 
 func _build_players() -> void:
@@ -2069,6 +2085,11 @@ func _add_blood(pos: Vector2, col: Color) -> void:
 	var c := Color(0.5, 0.1, 0.1).lerp(col.darkened(0.3), 0.45)
 	var bp := BloodPool.new(c)
 	bp.position = Vector2(_out_of_pit(pos.x) + randf_range(-14.0, 14.0), GROUND_Y + randf_range(-2.0, 2.0))
+	var splat := Sprite2D.new()
+	splat.texture = TEX_BLOOD[randi() % TEX_BLOOD.size()]
+	splat.position = Vector2(randf_range(-8.0, 8.0), -8.0)
+	splat.modulate = c
+	bp.add_child(splat)
 	bp.z_index = 3
 	_add_level(bp)
 	blood.append(bp)
