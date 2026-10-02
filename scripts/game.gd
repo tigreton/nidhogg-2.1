@@ -90,6 +90,10 @@ const TEX_BLOOD := [
 	preload("res://art/sprites/blood_1.png"),
 	preload("res://art/sprites/blood_2.png"),
 ]
+# tiles de escenario (tarea 57)
+const TEX_FLOOR := preload("res://art/sprites/tile_floor.png")
+const TEX_WALL := preload("res://art/sprites/tile_wall.png")
+const TEX_PIT_EDGE := preload("res://art/sprites/pit_edge.png")
 
 var players: Array[Player] = []
 var right_of_way: Player = null
@@ -304,6 +308,8 @@ func _build_level() -> void:
 	_floor_segment(seg_a, LEVEL_W)
 	_poly(PackedVector2Array([Vector2(PIT_X0, GROUND_Y + 4), Vector2(PIT_X1, GROUND_Y + 4), Vector2(PIT_X1 - 26, 800.0), Vector2(PIT_X0 + 26, 800.0)]), col_pit, -6)
 	_poly(PackedVector2Array([Vector2(PIT2_X0, GROUND_Y + 4), Vector2(PIT2_X1, GROUND_Y + 4), Vector2(PIT2_X1 - 26, 800.0), Vector2(PIT2_X0 + 26, 800.0)]), col_pit, -6)
+	_pit_edges(PIT_X0, PIT_X1)
+	_pit_edges(PIT2_X0, PIT2_X1)
 	_platform(PLAT_X0, PLAT_X1, PLAT_Y)
 	_bridge()
 	_house()
@@ -963,22 +969,47 @@ func _static_box(x0: float, y0: float, x1: float, y1: float) -> void:
 	_add_level(body)
 
 
+func _tiled_rect(tex: Texture2D, rect: Rect2, col: Color, z: int) -> void:
+	# sprite con repetición de textura: pinta rect rellenándolo con tiles
+	var sp := Sprite2D.new()
+	sp.texture = tex
+	sp.centered = false
+	sp.position = rect.position
+	sp.region_enabled = true
+	sp.region_rect = Rect2(0.0, 0.0, rect.size.x, rect.size.y)
+	sp.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	sp.modulate = col
+	sp.z_index = z
+	_add_level(sp)
+
+
 func _floor_segment(x0: float, x1: float) -> void:
 	_static_box(x0, GROUND_Y, x1, GROUND_Y + 140.0)
-	_poly(PackedVector2Array([Vector2(x0, GROUND_Y), Vector2(x1, GROUND_Y), Vector2(x1, GROUND_Y + 140.0), Vector2(x0, GROUND_Y + 140.0)]), col_floor, -4)
-	_poly(PackedVector2Array([Vector2(x0, GROUND_Y), Vector2(x1, GROUND_Y), Vector2(x1, GROUND_Y + 6), Vector2(x0, GROUND_Y + 6)]), col_floor_top, -4)
+	_tiled_rect(TEX_FLOOR, Rect2(x0, GROUND_Y, x1 - x0, 140.0), col_floor, -4)
+	_tiled_rect(TEX_FLOOR, Rect2(x0, GROUND_Y, x1 - x0, 6.0), col_floor_top, -4)
 
 
 func _platform(x0: float, x1: float, y: float) -> void:
 	_static_box(x0, y, x1, y + 16.0)
 	_register_top(x0, x1, y)
-	_poly(PackedVector2Array([Vector2(x0, y), Vector2(x1, y), Vector2(x1, y + 16.0), Vector2(x0, y + 16.0)]), col_plat, -4)
-	_poly(PackedVector2Array([Vector2(x0, y), Vector2(x1, y), Vector2(x1, y + 5), Vector2(x0, y + 5)]), col_plat_top, -4)
+	_tiled_rect(TEX_FLOOR, Rect2(x0, y, x1 - x0, 16.0), col_plat, -4)
+	_tiled_rect(TEX_FLOOR, Rect2(x0, y, x1 - x0, 5.0), col_plat_top, -4)
 
 
 func _wall(x0: float, x1: float) -> void:
 	_static_box(x0, 0.0, x1, GROUND_Y + 140.0)
-	_poly(PackedVector2Array([Vector2(x0, 0.0), Vector2(x1, 0.0), Vector2(x1, GROUND_Y + 140.0), Vector2(x0, GROUND_Y + 140.0)]), col_wall, -4)
+	_tiled_rect(TEX_WALL, Rect2(x0, 0.0, x1 - x0, GROUND_Y + 140.0), col_wall, -4)
+
+
+func _pit_edges(x0: float, x1: float) -> void:
+	# remate decorativo en los dos bordes de cada foso
+	for side in [x0, x1]:
+		var e := Sprite2D.new()
+		e.texture = TEX_PIT_EDGE
+		e.position = Vector2(side, GROUND_Y - 23.0)
+		e.flip_h = side == x1
+		e.z_index = -5
+		_add_level(e)
 
 
 func _goal_zone(x0: float, x1: float, col: Color) -> void:
