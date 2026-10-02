@@ -92,8 +92,8 @@ func _t_lanzada() -> bool:
 	await runner.wait(0.4)
 	var pickup: bool = runner.game.pickups.size() >= 1
 	_reset(1600.0, 4400.0)
-	return runner.check(alive, "la guardia MEDIA desvía la espada lanzada") \
-			and runner.check(pickup, "la espada desviada cae al suelo")  # L49: la guardia a CUALQUIER altura que mate el arma la desvía
+	return runner.check(alive, "la guardia a una altura que el arma mata la desvía") \
+			and runner.check(pickup, "el arma desviada cae al suelo")  # L49: generalizado a thrown_kills
 
 
 func _t_punetazo() -> bool:

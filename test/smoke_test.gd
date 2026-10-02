@@ -764,6 +764,49 @@ func _ready() -> void:
 	_check(p1.state != 5, "El rebote contra guardia no aturde")
 	await get_tree().create_timer(0.6).timeout
 
+	# 36. Daga lanzada: solo la guardia alta la desvía; la media la recibe derribada
+	p1.has_sword = true
+	p1.weapon_id = "daga"
+	p2.has_sword = true
+	p2.weapon_id = "florete"
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1750.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p2.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.state = 0
+	p1.invuln_time = 0.0
+	p2.invuln_time = 0.0
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_throw")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_release("p1_throw")
+	await get_tree().create_timer(0.4).timeout
+	_check(p2.state == 6, "Daga lanzada contra guardia MEDIA: derriba (no la desvía)")
+	_check(game.pickups.size() >= 1, "La daga cae al suelo tras el impacto")
+	await get_tree().create_timer(1.2).timeout
+
+	# 37. El arco lanzado nunca mata: derriba
+	p1.has_sword = true
+	p1.weapon_id = "arco"
+	p1.position = Vector2(1600.0, 531.0)
+	p2.position = Vector2(1750.0, 531.0)
+	p2.velocity = Vector2.ZERO
+	p2.state = 0
+	p2.invuln_time = 0.0
+	p1.velocity = Vector2.ZERO
+	p1.state = 0
+	p1.invuln_time = 0.0
+	p1.facing = 1
+	await get_tree().physics_frame
+	Input.action_press("p1_throw")
+	await get_tree().create_timer(0.1).timeout
+	Input.action_release("p1_throw")
+	await get_tree().create_timer(0.5).timeout
+	_check(p2.state == 6 and p2.state != 7, "Arco lanzado: derriba y no mata")
+	await get_tree().create_timer(1.2).timeout
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")

@@ -2174,17 +2174,22 @@ func _update_projectiles(delta: float) -> void:
 			if p.state == Player.State.DEAD or p.invuln_time > 0.0:
 				continue
 			if absf(p.position.x - s.position.x) < 30.0 and absf(p.position.y - s.position.y) < 36.0:
-				var blocks: bool = (p.stance == Player.H.MID and p.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]) or (p.state == Player.State.ATTACK and p.attack_is_active())
+				# desvía solo si la estancia del guardián está entre las
+				# alturas a las que el arma lanzada mata (regla del hermano)
+				var kills: Array = GameConfig.WEAPONS[s.weapon_id]["thrown_kills"]
+				var vs: String = ["LOW", "MID", "HIGH"][p.stance]
+				var blocks: bool = (vs in kills and p.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]) or (p.state == Player.State.ATTACK and p.attack_is_active())
 				if blocks:
 					_burst(s.position, Color(0.9, 0.9, 1.0), 10, 260.0)
 					sfx(s.position, "clash", -12.0)
 					_drop_sword(s.position, s.color, s.weapon_id)
 				else:
-					var kills: Array = GameConfig.WEAPONS[s.weapon_id]["thrown_kills"]
-					var vs: String = ["LOW", "MID", "HIGH"][p.stance]
 					if vs in kills:
 						_kill(p, s.thrower)
 					else:
+						# no mata a esa altura (o nunca mata, como el arco): derriba
+						var push := 1 if p.position.x >= s.position.x else -1
+						p.knockdown(push)
 						_burst(s.position, Color(0.9, 0.9, 1.0), 10, 260.0)
 						sfx(s.position, "clash", -12.0)
 						_drop_sword(s.position, s.color, s.weapon_id)

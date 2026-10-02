@@ -24,7 +24,7 @@ const WEAPONS := {
 	},
 	"arco": {
 		"nombre": "ARCO", "dur": 0.0, "from": 0.0, "to": 0.0, "reach": 0.0,
-		"run_mult": 0.92, "thrown_speed": 0.0,
+		"run_mult": 0.92, "thrown_speed": 400.0,
 		"thrown_kills": [],
 		"blade_len": 1.0, "blade_w": 4.0, "disarms": false,
 		"bow": true, "arrow_speed": 600.0,
