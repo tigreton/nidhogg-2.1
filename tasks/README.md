@@ -72,7 +72,34 @@ Reglas de oro para ti (el humano que supervisa):
 | `38-customizacion.md` | Customización de personajes (pelo y piel) | media | `match_rules.gd`, `player.gd`, `title.gd` |
 | `39-copa.md` | Modo Copa: semis contra bots y final (tecla O) | media | `game.gd`, `test` |
 | `40-tercera-arena.md` | Tercera arena "Cripta del Ocaso" | media | `game.gd`, `test` |
+| `41-infra-trazas-movimiento.md` | Trazas de movimiento CSV (calibración de física) | baja | nuevos `test/trace_motion.*` |
+| `42-infra-test-runner.md` | Runner de suites deterministas + 2 suites base | media | nuevos `test/test_runner.*`, `test/suite_*.gd` |
+| `43-mov-salto-doble.md` | Salto parado/carrerilla + gravedad asimétrica (porteo) | media | `player.gd`, `test/suite_movimiento.gd` |
+| `44-mov-aceleracion-friccion.md` | Aceleración y fricción de suelo (porteo) | media | `player.gd`, `test/suite_movimiento.gd`, `test/smoke_test.gd` |
+| `45-mov-slide-tackle.md` | Slide tackle: atacar rodando derriba (porteo) | media | `player.gd`, `game.gd`, `test` |
+| `46-mov-sidekick-agachado.md` | Sidekick desde agachado con la rodada en cooldown (porteo) | baja | `player.gd`, `test` |
+| `47-combate-parada-rebote.md` | Parada blanda por alturas + rebote en guardia (porteo) | media | `player.gd`, `game.gd`, `test` |
+| `48-arco-tensado-completo.md` | Arco: tensado mínimo 1 s, velocidad fija y máx. 6 rebotes (porteo) | media | `player.gd`, `game.gd`, `test` |
+| `49-lanzar-por-alturas.md` | Lanzamiento desviado por las alturas que mata + arco lanzable (porteo) | media | `game.gd`, `game_config.gd`, `test` |
+| `50-camara-secciones.md` | Cámara 1 sección = 1 pantalla + pan 0,28 s en modo P (porteo) | media | `game.gd`, `test` |
+| `51-infra-sim-match.md` | Simulación de partida completa bot vs bot (porteo) | media | nuevos `test/sim_match.*` |
+| `52-capturas-acciones.md` | Capturas coreografiadas: FIGHT, muerte, pan de sección | baja | `test/screenshots.gd` |
+| `53-sfx-reales.md` | SFX reales: WAVs de art/sfx + eventos fight y arrow_bounce | baja | `sfx.gd`, `game.gd` |
+| `54-titulo-arte.md` | Título con bg_title y preview con sprites | baja | `title.gd` |
+| `55-hud-sprites.md` | HUD con sprites: pips, flecha de meta, salpicaduras | baja | `game.gd` |
+| `56-armas-sprites.md` | Armas sueltas con sprites (suelo, lanzada, flecha, arco) | baja | `pickup.gd`, `sword_projectile.gd`, `arrow.gd`, `player.gd` |
+| `57-tiles-suelo.md` | Suelos y muros con tiles + bordes de foso | media | `game.gd` |
+| `58-fondos-parallax.md` | Fondos parallax bg_layer0/1 con tinte por arena | media | `game.gd` |
+| `59-gusano-sprite.md` | Gusano de victoria con worm_body | baja | `game.gd` |
+| `60-personajes-sprites.md` | Personajes con sprites (retira la customización de 38) | alta | `player.gd`, `game.gd`, `match_rules.gd`, `title.gd` |
+| `61-desarmado-hueco.md` | Genera las 14 poses desarmadas que faltan y las enchufa | media | pipeline `tools/` + `player.gd` |
+| `62-ajuste-capturas.md` | Ajuste fino visual con capturas y cierre del track arte | media | `player.gd`, `game.gd`, `test/screenshots.gd`, `INDICE-MULTIMEDIA.md` |
 
+Las tareas 41–52 portan lo único técnico del proyecto hermano
+(`Nidhogg 2`): visión de conjunto, mapa de valores y orden en
+**`PLAN-PORT.md`**. Las tareas 53–62 integran el arte y sonido reales
+importados del hermano a `res://art/` (50 sprites + 8 WAV): mapa completo
+asset→código, decisiones y lista de lo que no encaja en **`PLAN-ARTE.md`**.
 Las ideas que aún no son tareas formales viven en `secundarias.md`, junto con
 la guía para convertirlas en tareas con este mismo formato.
 
@@ -96,6 +123,15 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
    bot (incluye su ajuste).
 10. Estructura: `37` → `38` (título y customización) y `36` → `39` (arcade y
     copa).
+11. Porteo del proyecto hermano (41–52): infra primero (`41` → `42`), luego
+    física (`43` → `44`), combate de una en una (`45`…`49`), presentación
+    (`50` → `52`, con `51` tras el combate). Detalle completo en
+    `PLAN-PORT.md`.
+12. Integración del arte importado (53–62): `53` → `54` → `55` → `56` son
+    independientes y de bajo riesgo; luego `57` → `58` → `59` (escenario);
+    al final `60` → `61` → `62` (personajes, hueco desarmado y ajuste).
+    Idealmente con el porteo 41–52 ya aplicado (la 45 trae el estado slide
+    que usa `player_slide`). Detalle completo en `PLAN-ARTE.md`.
 
 ## Conflictos conocidos (por tocar el mismo código)
 
@@ -120,6 +156,22 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
 | `37` y `12`/`34` | `37` añade `MatchRules.allow_roll` a la condición de la rodada; si `34` ya cambió esa línea (dive), el paso 5.3 de `37` lo indica. |
 | `36` y `39` | `39` necesita `set_arcade` y la tecla Y de `36`. Aplica `36` antes. |
 | `37` y `38` | `38` necesita `MatchRules` y `title.gd` de `37`. Aplica `37` antes. |
+| `43` y `44` | Las dos reescriben la física de `player.gd` (vertical y horizontal). Aplica `43` antes que `44`; la `44` está escrita contando con las constantes de la `43`. |
+| `42` y `43`/`44` | Las suites de `42` assertan la física anterior a propósito (línea base). `43` y `44` incluyen los números nuevos que deben quedar en las suites (marcados `# L43`/`# L44`). |
+| `47` y smoke caso 3 | La parada blanda sustituye al choque con stun cuando solo uno ataca. La `47` reescribe el caso 3 del smoke (código incluido). |
+| `48` y smoke caso 18 | El tensado pasa a mín. 1,0 s; el caso 18 cambia sus dos esperas de 0,4 s a 1,1 s (código incluido en la `48`). |
+| `45`, `46` y `12`/`34`/`35` | Todas añaden ramas al mismo bloque de input de `player.gd`. La `46` inserta su rama ANTES de la rodada; revisa el diff tras cada una. |
+| `47` y `31` | La guardia pasiva sigue matando a distinta estancia; la rama de misma estancia pasa de choque con stun a rebote mínimo. Componen. |
+| `49` y `24` | La `49` generaliza el desvío del arma lanzada (la `24` solo desviaba con guardia media). El caso 10 del smoke sigue pasando sin cambios. |
+| `50` y `25`/`26` | La `50` usa `sections_mode`/`section_index` de la `25` sin tocar rejas ni pips: solo cambia la cámara en ese modo. |
+| `50` y `V` (2v2) | `set_mode_2v2` fija `camera.zoom`; la `50` añade el guard para respetar el zoom de sección con P activo. |
+| `52` y `50` | La captura del pan de sección (`52`) necesita la cámara de la `50`. Aplica `50` antes. |
+| `54` y `60` | Las dos tocan `title.gd` (preview y teclas de aspecto). Aplica `54` antes; la `60` solo limpia `match_rules.gd`. |
+| `56` y `60` | Las dos tocan `player.gd`. La `56` reescribe `_draw_bow`; la `60` reescribe `_draw` conservándolo. Aplica `56` antes. |
+| `57` y `58` | Las dos añaden helpers y tocan `_build_level`/`set_arena`. Componen; revisa el diff si van seguidas. |
+| `60` y `38` | La `60` retira la customización que añadió la `38` (los sprites son diseños fijos; decisión de `PLAN-ARTE.md`). |
+| `60` y `43`/`44` | El ritmo del ciclo `run_0..3` depende de `run_phase`, que `43`/`44` recalibran. Aplica el porteo antes de la `60`, o re-tuna el factor de ciclo (lo revisa la `62`). |
+| `61` y pipeline | La `61` genera sprites con `tools/art_gen.py` y requiere el CLI `bl` (Bailian). Sin él, queda en espera con el fallback documentado. |
 
 ## Comando de verificación (común a todas las tareas)
 
