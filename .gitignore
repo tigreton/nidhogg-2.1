@@ -27,3 +27,6 @@ art_raw/*
 media/videos/*.mp4
 media/videos/frames/
 media/videos/*_blobs.csv
+
+# y su .import espurio generado por Godot al abrir el proyecto
+trace_motion.csv.import

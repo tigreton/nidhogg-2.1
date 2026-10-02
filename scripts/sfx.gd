@@ -1,7 +1,20 @@
 class_name Sfx
-## Efectos de sonido generados proceduralmente (sin assets externos).
+## Efectos de sonido: WAVs reales de res://art/sfx cuando existen;
+## el resto se sintetiza como siempre.
 
 static var _cache: Dictionary = {}
+
+# sonidos reales importados; los ids que no están aquí se sintetizan abajo
+const WAVS := {
+	"clash": preload("res://art/sfx/clash.wav"),
+	"swing": preload("res://art/sfx/attack_swipe.wav"),
+	"throw": preload("res://art/sfx/throw.wav"),
+	"kill": preload("res://art/sfx/kill.wav"),
+	"jump": preload("res://art/sfx/jump.wav"),
+	"hit": preload("res://art/sfx/stomp.wav"),
+	"fight": preload("res://art/sfx/fight.wav"),
+	"arrow_bounce": preload("res://art/sfx/arrow_bounce.wav"),
+}
 
 
 static func play(parent: Node, pos: Vector2, id: String, db := -10.0) -> void:
@@ -18,6 +31,9 @@ static func play(parent: Node, pos: Vector2, id: String, db := -10.0) -> void:
 static func stream(id: String) -> AudioStreamWAV:
 	if _cache.has(id):
 		return _cache[id]
+	if WAVS.has(id):
+		_cache[id] = WAVS[id]
+		return WAVS[id]
 	var data := PackedFloat32Array()
 	match id:
 		"clash":

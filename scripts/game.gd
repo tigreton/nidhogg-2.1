@@ -1400,6 +1400,7 @@ func show_msg(text: String, dur: float) -> void:
 
 
 func _show_fight() -> void:
+	sfx(Vector2(LEVEL_W * 0.5, 300.0), "fight", -4.0)
 	fight_label.visible = true
 	fight_label.modulate.a = 1.0
 	fight_label.scale = Vector2(1.7, 1.7)
@@ -1989,6 +1990,7 @@ func _update_arrows(delta: float) -> void:
 			continue
 		a.position += a.vel * delta
 		if a.position.x < 26.0 or a.position.x > w - 26.0:
+			sfx(a.position, "arrow_bounce", -20.0)
 			a.stuck = true
 			a.vel = Vector2.ZERO
 			continue
@@ -2005,7 +2007,7 @@ func _update_arrows(delta: float) -> void:
 				a.vel = Vector2(a.vel.x * -0.85, 0.0)
 				a.bounces += 1
 				_burst(a.position, Color(0.9, 0.9, 1.0), 8, 220.0)
-				sfx(a.position, "clash", -14.0)
+				sfx(a.position, "arrow_bounce", -14.0)
 			else:
 				_kill(p, a.thrower if a.bounces == 0 else null)
 				arrows.erase(a)
