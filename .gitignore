@@ -15,3 +15,15 @@ Thumbs.db
 
 # Capturas de desarrollo
 screens/
+
+# Calibración generada (tarea 41: res://test/trace_motion.tscn)
+trace_motion.csv
+
+# Multimedia importado del proyecto Nidhogg 2 (pesado; ver INDICE-MULTIMEDIA.md)
+# art/ (sprites y sfx finales, ~2 MB) si se versiona; el material bruto no.
+art_raw/*
+!art_raw/contact_sheet.png
+!art_raw/report.json
+media/videos/*.mp4
+media/videos/frames/
+media/videos/*_blobs.csv
