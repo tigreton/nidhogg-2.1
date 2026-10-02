@@ -82,8 +82,8 @@ var FENCE_X1 := 690.0
 const ROCK_WARN_TIME := 0.85
 const ROCK_FALL_SPEED := 1900.0
 
-const P1_COLOR := Color("ffb324")
-const P2_COLOR := Color("39d7ff")
+const P1_COLOR := Color("4a7bd0")   # azul de la túnica de Nacho (P1)
+const P2_COLOR := Color("d84f35")   # rojo de Rodrigo (P2)
 const P3_COLOR := Color("ff7847")
 const P4_COLOR := Color("4f8dff")
 # sprites de HUD (tarea 55)
@@ -701,6 +701,7 @@ class Corpse extends Node2D:
 	## Cadáver persistente: sale despedido girando, cae y queda tumbado.
 	## Con arma de hoja puede quedar empalado en la espada del asesino.
 	var col := Color.WHITE
+	var body_side := "p1"
 	var vel := Vector2.ZERO
 	var spin := 0.0
 	var rot := 0.0
@@ -709,6 +710,7 @@ class Corpse extends Node2D:
 
 	func _init(c: Color, side := "p1") -> void:
 		col = c
+		body_side = side
 
 	func _process(delta: float) -> void:
 		if impaler != null:
@@ -735,11 +737,10 @@ class Corpse extends Node2D:
 
 	func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0 if grounded else rot, Vector2.ONE)
-		var dark := Color(0.05, 0.04, 0.08)
-		draw_line(Vector2(-16, 0), Vector2(14, 0), dark, 20.0)
-		draw_line(Vector2(-16, 0), Vector2(14, 0), col, 15.0)
-		draw_circle(Vector2(-22, 0), 8.0, dark)
-		draw_circle(Vector2(-22, 0), 6.5, col)
+		var tex: Texture2D = Player.pose_texture("dead", body_side)
+		var w := tex.get_width() * Player.POSE_SCALE
+		var h := tex.get_height() * Player.POSE_SCALE
+		draw_texture_rect(tex, Rect2(-w * 0.5, 8.0 - h, w, h), false)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -1956,7 +1957,7 @@ func _kill(def: Player, atk: Player) -> void:
 
 
 func _spawn_corpse(def: Player, atk: Player) -> void:
-	var c := Corpse.new(Color(def.color))
+	var c := Corpse.new(Color(def.color), "p1" if (def.player_id == 1 or def.player_id == 3) else "p2")
 	c.position = def.position
 	if atk != null:
 		var dir := signf(def.position.x - atk.position.x)
@@ -2313,7 +2314,7 @@ func _point(p: Player) -> void:
 		match_over = true
 		_spawn_worm(p)
 		if mode_2v2:
-			var team_name := "NARANJA" if _team(p) == 0 else "CYAN"
+			var team_name := "AZUL" if _team(p) == 0 else "ROJO"
 			show_msg("¡GANA EL EQUIPO %s!  ·  R: revancha" % team_name, 12.0)
 		else:
 			show_msg("¡GANA P%d!  ·  R: revancha" % p.player_id, 12.0)

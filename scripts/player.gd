@@ -35,6 +35,20 @@ const DIVE_TIME := 0.55
 const LUNGE_SPEED := 620.0
 const SIDEKICK_TIME := 0.42
 
+const POSES := ["idle", "run_0", "run_1", "run_2", "run_3", "jump", "fall", "crouch", "slide", "attack_high", "attack_mid", "attack_low", "throw", "divekick", "dead", "downed"]
+const POSE_SCALE := 58.0 / 56.0   # el sprite mide 56 px de alto; la colisión 58
+const POSE_FEET_Y := 32.0        # dónde quedan los pies respecto al origen
+
+static var _pose_tex := {}
+
+static func pose_texture(pose: String, side: String) -> Texture2D:
+	# carga perezosa de las 32 poses (p1 azul, p2 rojo)
+	if _pose_tex.is_empty():
+		for p in POSES:
+			for s in ["p1", "p2"]:
+				_pose_tex["%s_%s" % [p, s]] = load("res://art/sprites/player_%s_%s.png" % [p, s])
+	return _pose_tex.get("%s_%s" % [pose, side], _pose_tex["idle_p1"])
+
 var player_id := 1
 var color := Color("ffb324")
 var goal_dir := 1
@@ -382,6 +396,36 @@ func reset_to(pos: Vector2, face: int) -> void:
 	state = State.IDLE
 
 
+func _pose_name() -> String:
+	match state:
+		State.RUN:
+			if stance == H.LOW:
+				return "crouch"
+			return "run_%d" % int(fposmod(run_phase * 2.0 / PI, 4.0))
+		State.JUMP:
+			return "jump" if velocity.y < 0.0 else "fall"
+		State.DIVEKICK, State.DIVE:
+			return "divekick"
+		State.ATTACK:
+			match attack_height:
+				H.HIGH:
+					return "attack_high"
+				H.LOW:
+					return "attack_low"
+				_:
+					return "attack_mid"
+		State.KNOCKDOWN:
+			return "downed"
+		State.ROLL:
+			return "jump"
+		State.SIDEKICK:
+			return "crouch"
+		_:
+			if stance == H.LOW:
+				return "crouch"
+			return "idle"
+
+
 func _draw() -> void:
 	if state == State.DEAD:
 		return
@@ -396,31 +440,33 @@ func _draw() -> void:
 	var t_pos := Vector2.ZERO
 	var t_rot := 0.0
 	var t_scl := Vector2.ONE
-	if state == State.KNOCKDOWN:
-		t_rot = -PI * 0.46
-		t_pos = Vector2(-6, 20)
-		t_scl = Vector2(1.0, 0.9)
-	elif state == State.ROLL:
-		t_rot = -TAU * (roll_time / ROLL_DURATION)
-		t_pos = Vector2(0, 14)
-		t_scl = Vector2(0.9, 0.9)
-	elif state == State.DIVE:
-		t_rot = 1.35
-		t_pos = Vector2(0, 6)
-	elif state == State.SIDEKICK:
-		t_rot = 0.9
-		t_pos = Vector2(0, 4)
-	elif state == State.DIVEKICK:
-		t_rot = 0.7
-	elif state == State.STUNNED:
-		t_rot = -0.28
-	elif state == State.ATTACK and attack_dash_time > 0.0:
-		# estocada: ligera inclinación hacia delante
-		t_rot = 0.3
-	elif stance == H.LOW and state in [State.IDLE, State.RUN]:
-		t_pos = Vector2(0, 10)
-		t_scl = Vector2(1.0, 0.72)
+	match state:
+		State.ROLL:
+			t_rot = -TAU * (roll_time / ROLL_DURATION)
+			t_pos = Vector2(0, 10)
+		State.DIVE:
+			t_rot = 0.35
+		State.SIDEKICK:
+			t_rot = 0.45
+		State.DIVEKICK:
+			t_rot = 0.15
+		State.STUNNED:
+			t_rot = -0.28
+		State.ATTACK:
+			if attack_dash_time > 0.0:
+				t_rot = 0.15
+
+	# sprite de la pose, anclado por los pies; P3/P4 reutilizan el de su par teñido
+	var side := "p1" if (player_id == 1 or player_id == 3) else "p2"
+	var tint := Color.WHITE if player_id <= 2 else color
+	if flash_time > 0.0:
+		tint = Color(2.5, 2.5, 2.5)
+	var tex := pose_texture(_pose_name(), side)
+	var w := tex.get_width() * POSE_SCALE
+	var h := tex.get_height() * POSE_SCALE
 	draw_set_transform(t_pos, t_rot, t_scl)
+	draw_texture_rect(tex, Rect2(-w * 0.5, POSE_FEET_Y - h, w, h), false, tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if has_sword and weapon_id == "arco":
 		_draw_bow()
