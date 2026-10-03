@@ -172,6 +172,9 @@ var respawn_bar: RespawnBar
 var score_labels: Array[Label] = []
 var msg_tween: Tween
 var music: Music
+var crowd: AudioStreamPlayer
+var crowd_excite := 0.0    # 0..1 (tarea 68)
+var crowd_kill_flash := 0.0
 
 
 func _fresh_stats() -> Array[Dictionary]:
@@ -198,6 +201,12 @@ func _ready() -> void:
 	_build_hud()
 	music = Music.new()
 	add_child(music)
+	crowd = AudioStreamPlayer.new()
+	crowd.stream = Sfx.crowd_loop()
+	crowd.volume_db = -44.0
+	crowd.name = "Crowd"
+	add_child(crowd)
+	crowd.play()
 	_start_round()
 
 
@@ -1698,6 +1707,15 @@ func _physics_process(delta: float) -> void:
 			show_msg("¡MUERTE SÚBITA!", 1.4)
 			sfx(camera.position, "alert", -4.0)
 			shake_time = maxf(shake_time, 0.2)
+	# murmullo de público (tarea 68): sube con bajas y con el corredor cerca de meta
+	crowd_kill_flash = maxf(0.0, crowd_kill_flash - delta * 0.5)
+	var near_goal := 0.0
+	if right_of_way != null and right_of_way.state != Player.State.DEAD:
+		var gx := LEVEL_W - GOAL_W if right_of_way.goal_dir > 0 else GOAL_W
+		near_goal = clampf(1.0 - absf(right_of_way.position.x - gx) / 600.0, 0.0, 1.0)
+	crowd_excite = move_toward(crowd_excite, clampf(near_goal + crowd_kill_flash, 0.0, 1.0), delta * 0.6)
+	if crowd != null:
+		crowd.volume_db = lerpf(-44.0, -26.0, crowd_excite)
 	if round_lock > 0.0:
 		round_lock -= delta
 		if round_lock <= 0.0:
@@ -2105,6 +2123,7 @@ func _kill(def: Player, atk: Player) -> void:
 	_burst(def.position, Color(0.95, 0.95, 1.0), 12, 260.0)
 	_spawn_corpse(def, atk)
 	sfx(def.position, "kill", -6.0)
+	crowd_kill_flash = 1.0   # el público responde a la baja (tarea 68)
 	shake_time = maxf(shake_time, 0.3)
 	_after_death(def, atk)
 

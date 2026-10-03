@@ -84,6 +84,36 @@ static func _noise(dur: float, decay: float, vol: float) -> PackedFloat32Array:
 	return out
 
 
+## Bucle de ruido rosa (público, tarea 68): el 5% inicial funde contra el
+## final para que el LOOP_FORWARD no haga clic.
+static func crowd_loop() -> AudioStreamWAV:
+	var n := 22050 * 2
+	var pink := PackedFloat32Array()
+	pink.resize(n)
+	var b0 := 0.0
+	var b1 := 0.0
+	var b2 := 0.0
+	for i in n:
+		var white := randf() * 2.0 - 1.0
+		b0 = 0.997 * b0 + white * 0.029
+		b1 = 0.985 * b1 + white * 0.032
+		b2 = 0.95 * b2 + white * 0.048
+		pink[i] = (b0 + b1 + b2) * 0.55
+	var xf := n / 20
+	for i in xf:
+		var k := float(i) / float(xf)
+		pink[i] = pink[i] * k + pink[n - xf + i] * (1.0 - k)
+	var out := pink.slice(0, n - xf)
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = 22050
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_end = out.size()
+	wav.data = _to_bytes(out)
+	return wav
+
+
 static func _sweep(dur: float, f0: float, f1: float, vol: float, sine := false) -> PackedFloat32Array:
 	var n := int(dur * 22050.0)
 	var out := PackedFloat32Array()
