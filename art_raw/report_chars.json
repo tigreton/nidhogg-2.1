@@ -1,0 +1,770 @@
+{
+ "player_attack_high_p1": {
+  "key": "player_attack_high_p1",
+  "src": "art_raw\\nacho\\player_attack_high_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_attack_high_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   45,
+   56
+  ],
+  "crop": [
+   447,
+   556
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_attack_high_p1_v1.png"
+ },
+ "player_attack_low_p1": {
+  "key": "player_attack_low_p1",
+  "src": "art_raw\\nacho\\player_attack_low_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_attack_low_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   60,
+   44
+  ],
+  "crop": [
+   764,
+   562
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_attack_low_p1_v1.png"
+ },
+ "player_attack_mid_p1": {
+  "key": "player_attack_mid_p1",
+  "src": "art_raw\\nacho\\player_attack_mid_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_attack_mid_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   84,
+   56
+  ],
+  "crop": [
+   790,
+   526
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_attack_mid_p1_v1.png"
+ },
+ "player_crouch_p1": {
+  "key": "player_crouch_p1",
+  "src": "art_raw\\nacho\\player_crouch_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_crouch_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   44,
+   40
+  ],
+  "crop": [
+   617,
+   564
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_crouch_p1_v1.png"
+ },
+ "player_dead_p1": {
+  "key": "player_dead_p1",
+  "src": "art_raw\\nacho\\player_dead_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_dead_p1.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   112,
+   28
+  ],
+  "crop": [
+   1252,
+   313
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_dead_p1_v1.png"
+ },
+ "player_divekick_p1": {
+  "key": "player_divekick_p1",
+  "src": "art_raw\\nacho\\player_divekick_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_divekick_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   58,
+   48
+  ],
+  "crop": [
+   754,
+   625
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_divekick_p1_v1.png"
+ },
+ "player_downed_p1": {
+  "key": "player_downed_p1",
+  "src": "art_raw\\nacho\\player_downed_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_downed_p1.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   124,
+   30
+  ],
+  "crop": [
+   1166,
+   282
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_downed_p1_v1.png"
+ },
+ "player_fall_p1": {
+  "key": "player_fall_p1",
+  "src": "art_raw\\nacho\\player_fall_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_fall_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   68,
+   56
+  ],
+  "crop": [
+   912,
+   750
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_fall_p1_v1.png"
+ },
+ "player_idle_p1": {
+  "key": "player_idle_p1",
+  "src": "art_raw\\nacho\\player_idle_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_idle_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   66,
+   56
+  ],
+  "crop": [
+   730,
+   615
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_idle_p1_v1.png"
+ },
+ "player_jump_p1": {
+  "key": "player_jump_p1",
+  "src": "art_raw\\nacho\\player_jump_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_jump_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   35,
+   56
+  ],
+  "crop": [
+   504,
+   814
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_jump_p1_v1.png"
+ },
+ "player_run_0_p1": {
+  "key": "player_run_0_p1",
+  "src": "art_raw\\nacho\\player_run_0_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_run_0_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   56,
+   56
+  ],
+  "crop": [
+   805,
+   801
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_run_0_p1_v1.png"
+ },
+ "player_run_1_p1": {
+  "key": "player_run_1_p1",
+  "src": "art_raw\\nacho\\player_run_1_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_run_1_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   61,
+   56
+  ],
+  "crop": [
+   772,
+   705
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_run_1_p1_v1.png"
+ },
+ "player_run_2_p1": {
+  "key": "player_run_2_p1",
+  "src": "art_raw\\nacho\\player_run_2_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_run_2_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   86,
+   56
+  ],
+  "crop": [
+   738,
+   480
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_run_2_p1_v1.png"
+ },
+ "player_run_3_p1": {
+  "key": "player_run_3_p1",
+  "src": "art_raw\\nacho\\player_run_3_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_run_3_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   54,
+   56
+  ],
+  "crop": [
+   742,
+   775
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_run_3_p1_v1.png"
+ },
+ "player_slide_p1": {
+  "key": "player_slide_p1",
+  "src": "art_raw\\nacho\\player_slide_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_slide_p1.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   88,
+   30
+  ],
+  "crop": [
+   1355,
+   461
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_slide_p1_v1.png"
+ },
+ "player_throw_p1": {
+  "key": "player_throw_p1",
+  "src": "art_raw\\nacho\\player_throw_p1_001.png",
+  "dst": "godot\\art\\sprites\\player_throw_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   61,
+   56
+  ],
+  "crop": [
+   732,
+   675
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\nacho\\proc\\player_throw_p1_v1.png"
+ },
+ "player_attack_high_p2": {
+  "key": "player_attack_high_p2",
+  "src": "art_raw\\rodrigo\\player_attack_high_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_attack_high_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   45,
+   56
+  ],
+  "crop": [
+   504,
+   624
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_attack_high_p2_v1.png"
+ },
+ "player_attack_low_p2": {
+  "key": "player_attack_low_p2",
+  "src": "art_raw\\rodrigo\\player_attack_low_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_attack_low_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   55,
+   44
+  ],
+  "crop": [
+   572,
+   456
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_attack_low_p2_v1.png"
+ },
+ "player_attack_mid_p2": {
+  "key": "player_attack_mid_p2",
+  "src": "art_raw\\rodrigo\\player_attack_mid_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_attack_mid_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   83,
+   56
+  ],
+  "crop": [
+   637,
+   428
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_attack_mid_p2_v1.png"
+ },
+ "player_crouch_p2": {
+  "key": "player_crouch_p2",
+  "src": "art_raw\\rodrigo\\player_crouch_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_crouch_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   36,
+   40
+  ],
+  "crop": [
+   482,
+   536
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_crouch_p2_v1.png"
+ },
+ "player_dead_p2": {
+  "key": "player_dead_p2",
+  "src": "art_raw\\rodrigo\\player_dead_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_dead_p2.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   93,
+   28
+  ],
+  "crop": [
+   787,
+   237
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_dead_p2_v1.png"
+ },
+ "player_divekick_p2": {
+  "key": "player_divekick_p2",
+  "src": "art_raw\\rodrigo\\player_divekick_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_divekick_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   44,
+   48
+  ],
+  "crop": [
+   517,
+   559
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_divekick_p2_v1.png"
+ },
+ "player_downed_p2": {
+  "key": "player_downed_p2",
+  "src": "art_raw\\rodrigo\\player_downed_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_downed_p2.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   68,
+   30
+  ],
+  "crop": [
+   776,
+   343
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_downed_p2_v1.png"
+ },
+ "player_fall_p2": {
+  "key": "player_fall_p2",
+  "src": "art_raw\\rodrigo\\player_fall_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_fall_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   43,
+   56
+  ],
+  "crop": [
+   503,
+   656
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_fall_p2_v1.png"
+ },
+ "player_idle_p2": {
+  "key": "player_idle_p2",
+  "src": "art_raw\\rodrigo\\player_idle_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_idle_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   45,
+   56
+  ],
+  "crop": [
+   590,
+   731
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_idle_p2_v1.png"
+ },
+ "player_jump_p2": {
+  "key": "player_jump_p2",
+  "src": "art_raw\\rodrigo\\player_jump_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_jump_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   31,
+   56
+  ],
+  "crop": [
+   394,
+   719
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_jump_p2_v1.png"
+ },
+ "player_run_0_p2": {
+  "key": "player_run_0_p2",
+  "src": "art_raw\\rodrigo\\player_run_0_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_run_0_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   45,
+   56
+  ],
+  "crop": [
+   453,
+   564
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_run_0_p2_v1.png"
+ },
+ "player_run_1_p2": {
+  "key": "player_run_1_p2",
+  "src": "art_raw\\rodrigo\\player_run_1_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_run_1_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   50,
+   56
+  ],
+  "crop": [
+   521,
+   586
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_run_1_p2_v1.png"
+ },
+ "player_run_2_p2": {
+  "key": "player_run_2_p2",
+  "src": "art_raw\\rodrigo\\player_run_2_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_run_2_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   51,
+   56
+  ],
+  "crop": [
+   469,
+   511
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_run_2_p2_v1.png"
+ },
+ "player_run_3_p2": {
+  "key": "player_run_3_p2",
+  "src": "art_raw\\rodrigo\\player_run_3_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_run_3_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   36,
+   56
+  ],
+  "crop": [
+   383,
+   601
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_run_3_p2_v1.png"
+ },
+ "player_slide_p2": {
+  "key": "player_slide_p2",
+  "src": "art_raw\\rodrigo\\player_slide_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_slide_p2.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   59,
+   30
+  ],
+  "crop": [
+   570,
+   291
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_slide_p2_v1.png"
+ },
+ "player_throw_p2": {
+  "key": "player_throw_p2",
+  "src": "art_raw\\rodrigo\\player_throw_p2_001.png",
+  "dst": "godot\\art\\sprites\\player_throw_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   55,
+   56
+  ],
+  "crop": [
+   570,
+   577
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\rodrigo\\proc\\player_throw_p2_v1.png"
+ }
+}

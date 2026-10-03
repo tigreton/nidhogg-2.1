@@ -1,0 +1,432 @@
+{
+ "weapon_arrow": {
+  "key": "weapon_arrow",
+  "src": "art_raw\\weapons\\weapon_arrow_001.png",
+  "dst": "godot\\art\\sprites\\weapon_arrow.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   28,
+   6
+  ],
+  "crop": [
+   1530,
+   314
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\weapons\\proc\\weapon_arrow_v1.png"
+ },
+ "weapon_bow": {
+  "key": "weapon_bow",
+  "src": "art_raw\\weapons\\weapon_bow_001.png",
+  "dst": "godot\\art\\sprites\\weapon_bow.png",
+  "src_size": [
+   928,
+   1664
+  ],
+  "out_size": [
+   38,
+   70
+  ],
+  "crop": [
+   872,
+   1610
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\weapons\\proc\\weapon_bow_v1.png"
+ },
+ "weapon_dagger": {
+  "key": "weapon_dagger",
+  "src": "art_raw\\weapons\\weapon_dagger_001.png",
+  "dst": "godot\\art\\sprites\\weapon_dagger.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   55,
+   8
+  ],
+  "crop": [
+   1583,
+   221
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\weapons\\proc\\weapon_dagger_v1.png"
+ },
+ "weapon_longsword": {
+  "key": "weapon_longsword",
+  "src": "art_raw\\weapons\\weapon_longsword_002.png",
+  "dst": "godot\\art\\sprites\\weapon_longsword.png",
+  "src_size": [
+   2048,
+   512
+  ],
+  "out_size": [
+   120,
+   9
+  ],
+  "crop": [
+   1922,
+   149
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 2,
+  "proc": "art_raw\\weapons\\proc\\weapon_longsword_v2.png"
+ },
+ "weapon_rapier": {
+  "key": "weapon_rapier",
+  "src": "art_raw\\weapons\\weapon_rapier_001.png",
+  "dst": "godot\\art\\sprites\\weapon_rapier.png",
+  "src_size": [
+   2048,
+   512
+  ],
+  "out_size": [
+   90,
+   9
+  ],
+  "crop": [
+   1880,
+   178
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\weapons\\proc\\weapon_rapier_v1.png"
+ },
+ "arrow_neutral": {
+  "key": "arrow_neutral",
+  "src": "art_raw\\hud\\arrow_neutral_002.png",
+  "dst": "godot\\art\\sprites\\arrow_neutral.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   64,
+   42
+  ],
+  "crop": [
+   1268,
+   836
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 2,
+  "proc": "art_raw\\hud\\proc\\arrow_neutral_v2.png"
+ },
+ "blood_0": {
+  "key": "blood_0",
+  "src": "art_raw\\hud\\blood_0_002.png",
+  "dst": "godot\\art\\sprites\\blood_0.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   24,
+   24
+  ],
+  "crop": [
+   814,
+   801
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 2,
+  "proc": "art_raw\\hud\\proc\\blood_0_v2.png"
+ },
+ "blood_1": {
+  "key": "blood_1",
+  "src": "art_raw\\hud\\blood_1_002.png",
+  "dst": "godot\\art\\sprites\\blood_1.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   40,
+   24
+  ],
+  "crop": [
+   1271,
+   755
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 2,
+  "proc": "art_raw\\hud\\proc\\blood_1_v2.png"
+ },
+ "blood_2": {
+  "key": "blood_2",
+  "src": "art_raw\\hud\\blood_2_001.png",
+  "dst": "godot\\art\\sprites\\blood_2.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   64,
+   36
+  ],
+  "crop": [
+   1452,
+   819
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\hud\\proc\\blood_2_v1.png"
+ },
+ "pip_filled": {
+  "key": "pip_filled",
+  "src": "art_raw\\hud\\pip_filled_001.png",
+  "dst": "godot\\art\\sprites\\pip_filled.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   26,
+   26
+  ],
+  "crop": [
+   532,
+   524
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\hud\\proc\\pip_filled_v1.png"
+ },
+ "pip_hollow": {
+  "key": "pip_hollow",
+  "src": "art_raw\\hud\\pip_hollow_001.png",
+  "dst": "godot\\art\\sprites\\pip_hollow.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   26,
+   26
+  ],
+  "crop": [
+   588,
+   587
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\hud\\proc\\pip_hollow_v1.png"
+ },
+ "bg_layer0": {
+  "key": "bg_layer0",
+  "src": "art_raw\\scenery\\bg_layer0_001.png",
+  "dst": "godot\\art\\sprites\\bg_layer0.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   960,
+   540
+  ],
+  "crop": [
+   1664,
+   928
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": true,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\scenery\\proc\\bg_layer0_v1.png"
+ },
+ "bg_layer1": {
+  "key": "bg_layer1",
+  "src": "art_raw\\scenery\\bg_layer1_001.png",
+  "dst": "godot\\art\\sprites\\bg_layer1.png",
+  "src_size": [
+   1664,
+   928
+  ],
+  "out_size": [
+   960,
+   540
+  ],
+  "crop": [
+   1664,
+   928
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": true,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\scenery\\proc\\bg_layer1_v1.png"
+ },
+ "bg_title": {
+  "key": "bg_title",
+  "src": "media\\personajes\\duelo_versus.png",
+  "dst": "godot\\art\\sprites\\bg_title.png",
+  "src_size": [
+   2688,
+   1536
+  ],
+  "out_size": [
+   960,
+   540
+  ],
+  "crop": [
+   2688,
+   1536
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": true,
+  "ok": true,
+  "issues": []
+ },
+ "pit_edge": {
+  "key": "pit_edge",
+  "src": "art_raw\\scenery\\pit_edge_002.png",
+  "dst": "godot\\art\\sprites\\pit_edge.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   48,
+   47
+  ],
+  "crop": [
+   855,
+   843
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 2,
+  "proc": "art_raw\\scenery\\proc\\pit_edge_v2.png"
+ },
+ "tile_floor": {
+  "key": "tile_floor",
+  "src": "art_raw\\scenery\\tile_floor_001.png",
+  "dst": "godot\\art\\sprites\\tile_floor.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   48,
+   48
+  ],
+  "crop": [
+   1024,
+   1024
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": true,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\scenery\\proc\\tile_floor_v1.png"
+ },
+ "tile_wall": {
+  "key": "tile_wall",
+  "src": "art_raw\\scenery\\tile_wall_001.png",
+  "dst": "godot\\art\\sprites\\tile_wall.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   48,
+   48
+  ],
+  "crop": [
+   1024,
+   1024
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": true,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\scenery\\proc\\tile_wall_v1.png"
+ },
+ "worm_body": {
+  "key": "worm_body",
+  "src": "art_raw\\worm\\worm_body_002.png",
+  "dst": "godot\\art\\sprites\\worm_body.png",
+  "src_size": [
+   2048,
+   768
+  ],
+  "out_size": [
+   300,
+   103
+  ],
+  "crop": [
+   1699,
+   584
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 2,
+  "proc": "art_raw\\worm\\proc\\worm_body_v2.png"
+ }
+}

@@ -24,6 +24,7 @@ trace_motion.csv
 art_raw/*
 !art_raw/contact_sheet.png
 !art_raw/report.json
+!art_raw/report_chars.json
 media/videos/*.mp4
 media/videos/frames/
 media/videos/*_blobs.csv
