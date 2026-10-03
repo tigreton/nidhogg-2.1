@@ -159,3 +159,13 @@ Aplicada con dos ajustes al fichero de la herramienta (ninguno al juego):
 Resultado: cobertura completa de estados (RUN/JUMP/ATTACK/SIDEKICK/DIVEKICK/
 KNOCKDOWN/STUNNED/DEAD) — el juego recalibrado por 43–49 aguanta partidas
 completas bot vs bot.
+
+## Nota posterior (2026-10-03, tanda 65-77)
+
+Con las tareas 65-68+76/77 aplicadas, el sim a 120 s pasó a fallar SOLO por
+puntos en algunas versiones (bots menos letales con telegrafiado y estancias
+con peso). Aplicado el remedio que esta misma tarea prevé: `SIM_SECONDS`
+120 → 180. Observación para el futuro: entre versiones de código la
+trayectoria cambia con el mismo seed (posible fuente: RNG de `CPUParticles2D`
+o síntesis perezosa de sonidos con `randf`), así que el PASS del sim debe
+leerse por versión, no como bit exacto entre commits.
