@@ -132,12 +132,25 @@ func _pose_name() -> String:
 Última línea esperada: `SMOKE OK - todas las mecánicas funcionan`.
 Y una pasada con render lanzando/recogiendo el arma y tensando el arco.
 
-## Nota de aplicación (2026-10-03): EN ESPERA
+## Nota de aplicación (2026-10-03): EN ESPERA (CLI instalado, credenciales caducadas)
 
-El pipeline (`tools/art_gen.py`) está operativo, pero el CLI `bl` de Bailian
-**no está instalado en esta máquina** (ni en PATH de Git Bash ni de Windows,
-ni como paquete npm global). Sin él no hay generación: la tarea queda en
-espera conforme a su propia especificación, con el fallback vigente (poses
-armadas también al ir desarmado — jugable, pierde lectura de armado).
-Para retomarla: instalar `bailian-cli` (`bl`), verificar con `bl usage`, y
-ejecutar los pasos 1–3 tal cual.
+**CLI instalado**: `bailian-cli` 2.1.0 vía `npm install -g` + `bl skill init`
+(binario `bl` operativo; el residuo `面板入口.html` que deja el CLI se borra
+si aparece en el repo). **El bloqueo ahora son las credenciales**: las dos
+keys guardadas en `~/.bailian/config.json` están muertas — la del perfil
+`token-plan` da 403 Unpurchased en TODO (suscripción caducada, incluso en
+`qwen3.8-max`, su modelo por defecto) y la del perfil `default` (workspace
+`ws-w496…` eu-central-1) da 401 InvalidApiKey; ambas también fallan contra
+el endpoint público `dashscope.aliyuncs.com`. Además `wan2.7-image` ya no
+existe en el catálogo: la generación deberá usar un modelo de edición vivo
+(`wan-image-edit`/`qwen-image-edit-plus` según catálogo con `bl model list
+--capability IG`), documentando el cambio de modelo en la nota final.
+
+**Para desbloquear** (solo el usuario puede): una de
+- `bl auth login --config token-plan --api-key <nueva-key-del-plan>` (la key
+  se copia de la página de suscripción de la consola Bailian), o
+- `bl auth login --console --console-site international` (login con navegador).
+
+Verificar con `bl text chat --message ping` (o una generación de imagen) y
+ejecutar los pasos 1–3 tal cual. El fallback vigente: poses armadas también
+al ir desarmado (jugable, pierde lectura de armado).
