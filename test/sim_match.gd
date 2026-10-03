@@ -16,6 +16,7 @@ var _states := {}
 func _ready() -> void:
 	seed(SIM_SEED)
 	game = load("res://scenes/main.tscn").instantiate()
+	game.skip_countdown = true   # antes de entrar al árbol: _ready ya arranca la ronda (tarea 66)
 	add_child(game)
 	# arranque determinista: frames de física fijos en lugar de create_timer
 	# (el timer de reloj varía con la carga en headless y desincroniza el RNG)

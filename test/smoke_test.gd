@@ -18,6 +18,7 @@ func _check(cond: bool, what: String) -> void:
 
 func _ready() -> void:
 	game = load("res://scenes/main.tscn").instantiate()
+	game.skip_countdown = true   # antes de entrar al árbol: _ready ya arranca la ronda (tarea 66)
 	add_child(game)
 	await get_tree().create_timer(0.2).timeout
 	p1 = game.players[0]

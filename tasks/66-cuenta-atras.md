@@ -90,3 +90,12 @@ Las suites `suite_*.gd` NO tocan nada: heredan el flag del runner.)
 
 Últimas líneas esperadas: `SMOKE OK - todas las mecánicas funcionan` y
 `SIM PASS`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada con una corrección de orden importante: el flag hay que asignarlo
+ANTES de `add_child(game)` — el `_ready` del juego (y con él
+`_start_round`) corre DENTRO del `add_child`, y con el flag después la
+cuenta atrás arrancaba igualmente y congelaba los primeros 2,1 s de los
+tests (el smoke fallaba los casos 1-2). Con el flag premultiplicado por
+árbol: `SMOKE OK`, `ALL PASSED (13)` y `SIM PASS`.

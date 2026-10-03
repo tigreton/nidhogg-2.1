@@ -113,6 +113,8 @@ var scores := [0, 0]
 var weapon_idx := [0, 0]
 var match_over := false
 var round_lock := 0.0
+var skip_countdown := false   # los tests headless lo ponen a true (tarea 66)
+const COUNTDOWN_STEP := 0.7
 var respawn_timers := [0.0, 0.0]
 var shake_time := 0.0
 var parry_cd := 0.0
@@ -1545,7 +1547,15 @@ func _start_round() -> void:
 	for i in players.size():
 		var o: float = offs[i]
 		players[i].reset_to(Vector2(LEVEL_W * 0.5 + o, GROUND_Y - 29.0), -1 if o > 0.0 else 1)
-	_show_fight()
+	if skip_countdown:
+		_show_fight()
+	else:
+		# 3·2·1 con los jugadores congelados (tarea 66); round_lock ya congela
+		round_lock = COUNTDOWN_STEP * 3.0
+		for n in 3:
+			show_msg("%d" % (3 - n), COUNTDOWN_STEP * 0.8)
+			await get_tree().create_timer(COUNTDOWN_STEP).timeout
+		_show_fight()
 
 
 func show_msg(text: String, dur: float) -> void:
