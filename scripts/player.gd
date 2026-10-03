@@ -380,6 +380,9 @@ func _physics_process(delta: float) -> void:
 	if bow_time > 0.0:
 		if held("attack") and state in [State.IDLE, State.RUN, State.JUMP]:
 			bow_time = minf(bow_time + delta, 1.0)
+		elif held("attack") and state in [State.DIVEKICK, State.DIVE, State.KNOCKDOWN]:
+			# tensado en pleno dive-kick (tarea 75): se conserva (no crece)
+			pass
 		elif bow_time >= BOW_DRAW_TIME:
 			# soltar con el tensado completo: dispara a la estancia actual
 			fired_arrow.emit(self, stance, bow_time)

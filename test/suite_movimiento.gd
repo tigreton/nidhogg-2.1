@@ -12,6 +12,7 @@ func get_tests() -> Array:
 		["salto_carrerilla_distancia", _t_salto_carrera],
 		["rodada_estado_y_duracion", _t_rodada],
 		["dive_corriendo", _t_dive],
+		["arco_tensado_en_divekick", _t_arco_dive],
 	]
 
 
@@ -106,3 +107,31 @@ func _t_dive() -> bool:
 	await runner.step_physics(10)
 	runner.release_all()
 	return runner.check(diving, "corriendo+abajo+salto entra en DIVE a 546 px/s")
+
+
+func _t_arco_dive() -> bool:
+	_reset(1600.0, 4400.0)
+	runner.game.players[0].weapon_id = "arco"
+	await runner.step_physics(1)
+	# tensar completo en el suelo
+	Input.action_press("p1_attack")
+	await runner.step_physics(66)
+	# dive SIN soltar ataque (correr + abajo + salto)
+	Input.action_press("p1_right")
+	await runner.step_physics(6)
+	Input.action_press("p1_down")
+	Input.action_press("p1_jump")
+	await runner.step_physics(20)
+	Input.action_release("p1_jump")
+	Input.action_release("p1_down")
+	Input.action_release("p1_right")
+	await runner.step_physics(50)   # aterriza, derribo, se levanta
+	var bow_ok: bool = runner.game.players[0].bow_time >= 1.0
+	Input.action_release("p1_attack")
+	await runner.step_physics(6)
+	var fired: bool = runner.game.arrows.size() >= 1
+	runner.release_all()
+	await runner.wait(0.6)
+	_reset(1600.0, 4400.0)
+	return runner.check(bow_ok, "el tensado se conserva a través del dive") \
+			and runner.check(fired, "al soltar de pie, dispara")  # L75
