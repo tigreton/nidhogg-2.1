@@ -27,6 +27,7 @@ func _ready() -> void:
 	await get_tree().create_timer(0.4).timeout
 	var cam: Camera2D = game.camera
 	cam.position_smoothing_enabled = false
+	game.dynamic_zoom = false   # encuadre fijo para capturas (tarea 78)
 
 	# zonas del mapa
 	for z in [[1000.0, "01_casa_aldea"], [1600.0, "02_hierba_escalera"], [2300.0, "03_foso_puente"], [3250.0, "04_zona_rocosa"], [4400.0, "05_meta_p1"]]:

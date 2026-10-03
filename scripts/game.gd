@@ -116,6 +116,10 @@ var round_lock := 0.0
 var respawn_timers := [0.0, 0.0]
 var shake_time := 0.0
 var parry_cd := 0.0
+const CAM_ZOOM_NEAR := 1.5   # duelo cerrado: personaje ~13-14% de pantalla (tarea 78)
+const CAM_ZOOM_FAR := 1.0    # persecución abierta (nunca menos: no perder presencia)
+const CAM_FIT_USE := 0.72    # fracción del ancho que pueden ocupar los duelistas
+var dynamic_zoom := true
 var bot_level := 1        # dificultad bots equipo derecho (0 = OFF solo afecta a P2)
 var ally_bot_level := 2   # dificultad del aliado P3 (0 = OFF)
 var hitstop_active := false
@@ -1150,6 +1154,7 @@ func set_mode_2v2(on: bool) -> void:
 	match_over = false
 	stats_label.visible = false
 	if not sections_mode:
+		dynamic_zoom = not mode_2v2
 		camera.zoom = Vector2(0.9, 0.9) if mode_2v2 else Vector2.ONE
 	_update_hud()
 	_start_round()
@@ -1739,7 +1744,7 @@ func _physics_process(delta: float) -> void:
 	_update_pickups()
 	_update_sections()
 	_check_goals()
-	_update_camera()
+	_update_camera(delta)
 
 
 func _resolve_attacks() -> void:
@@ -2447,22 +2452,30 @@ func _stats_text() -> String:
 	return "\n".join(lines)
 
 
-func _update_camera() -> void:
+func _update_camera(delta: float) -> void:
 	if sections_mode:
 		_update_section_camera()
 		return
+	# encuadre teatral (tarea 78): los vivos siempre en pantalla
+	var alive_x: Array[float] = []
+	for p in players:
+		if p.state != Player.State.DEAD:
+			alive_x.append(p.position.x)
 	var tx := camera.position.x
-	if right_of_way != null and right_of_way.state != Player.State.DEAD:
-		tx = right_of_way.position.x
-	else:
-		var sum := 0.0
-		var n := 0
-		for p in players:
-			if p.state != Player.State.DEAD:
-				sum += p.position.x
-				n += 1
-		if n > 0:
-			tx = sum / float(n)
+	var lo := 0.0
+	var hi := 0.0
+	if alive_x.size() > 0:
+		lo = alive_x[0]
+		hi = alive_x[0]
+		for x in alive_x:
+			lo = minf(lo, x)
+			hi = maxf(hi, x)
+		tx = (lo + hi) * 0.5
+	if dynamic_zoom and not mode_2v2 and alive_x.size() >= 2:
+		var spread := hi - lo
+		var zt := clampf(VIEW_W * CAM_FIT_USE / maxf(spread, 220.0), CAM_ZOOM_FAR, CAM_ZOOM_NEAR)
+		var z := move_toward(camera.zoom.x, zt, delta * 0.9)
+		camera.zoom = Vector2(z, z)
 	var half := VIEW_W * 0.5 / camera.zoom.x
 	tx = clampf(tx, half, LEVEL_W - half)
 	camera.position = Vector2(tx, VIEW_H * 0.5 + 6.0)
