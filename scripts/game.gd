@@ -2277,6 +2277,9 @@ func _update_arrows(delta: float) -> void:
 			if absf(p.position.x - a.position.x) > 24.0 or absf(p.position.y - a.position.y) > 34.0:
 				continue
 			var guards: bool = (p.stance == a.height and p.state in [Player.State.IDLE, Player.State.RUN]) or p.attack_is_active()
+			# patada desarmada (tarea 74): el puñetazo activo refleja a cualquier altura
+			if not guards and p.attack_is_active() and not p.has_sword:
+				guards = true
 			if guards:
 				a.vel = Vector2(a.vel.x * -0.85, 0.0)
 				a.bounces += 1

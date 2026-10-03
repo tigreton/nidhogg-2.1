@@ -13,6 +13,7 @@ func get_tests() -> Array:
 		["espada_lanzada_desviada_por_guardia", _t_lanzada],
 		["punetazo_desarma", _t_punetazo],
 		["flecha_rebota_en_guardia_igual", _t_flecha],
+		["patada_refleja_flecha", _t_patada_flecha],
 		["lanza_con_salto_ataque", _t_lanza_salto],
 		["arco_soltar_antes_de_tiempo_no_dispara", _t_arco_cancel],
 	]
@@ -136,6 +137,27 @@ func _t_arco_cancel() -> bool:
 	await runner.wait(0.3)
 	_reset(1600.0, 4400.0)
 	return runner.check(no_arrow, "soltar el arco antes de 1,0 s no dispara")  # L48
+
+
+func _t_patada_flecha() -> bool:
+	_reset(1600.0, 1750.0)
+	runner.game.players[0].weapon_id = "arco"
+	runner.game.players[1].has_sword = false
+	await runner.step_physics(1)
+	Input.action_press("p1_attack")
+	await runner.step_physics(66)   # tensado completo (tarea 48)
+	Input.action_release("p1_attack")
+	await runner.step_physics(22)   # la flecha llega: P2 golpea en ese margen
+	Input.action_press("p2_attack")
+	await runner.step_physics(6)
+	Input.action_release("p2_attack")
+	var g: Node = runner.game
+	var p2: Player = g.players[1]
+	var ok: bool = p2.state != Player.State.DEAD and g.arrows.size() >= 1 and g.arrows[0].bounces >= 1
+	runner.release_all()
+	await runner.wait(0.5)
+	_reset(1600.0, 4400.0)
+	return runner.check(ok, "el puñetazo desarmado refleja la flecha a tiempo")  # L74
 
 
 func _t_lanza_salto() -> bool:
