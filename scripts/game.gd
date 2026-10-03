@@ -1277,6 +1277,9 @@ func set_arcade(on: bool) -> void:
 		set_arena(0)
 		show_msg("ARCADE — NIVEL 1", 1.2)
 	else:
+		# sin esto el bot del arcade quedaba pegado a P2 al salir del modo:
+		# Rodrigo seguía moviéndose solo en partidas "normales"
+		players[1].is_bot = false
 		show_msg("ARCADE: DESACTIVADO", 0.8)
 
 
