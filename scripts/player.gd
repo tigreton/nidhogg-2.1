@@ -595,6 +595,28 @@ func _draw() -> void:
 	draw_texture_rect(tex, Rect2(-w * 0.5, POSE_FEET_Y - h, w, h), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+	# estela del tajo (tarea 80): arco desvaneciéndose mientras dura el golpe
+	if state == State.ATTACK and has_sword and weapon_id != "arco":
+		var ext := attack_ext()
+		if ext > 0.05:
+			var a0: Vector2
+			var a1: Vector2
+			match attack_height:
+				H.HIGH:
+					a0 = Vector2(6.0, -34.0)
+					a1 = Vector2(64.0, -52.0)
+				H.LOW:
+					a0 = Vector2(6.0, 6.0)
+					a1 = Vector2(60.0, 16.0)
+				_:
+					a0 = Vector2(6.0, -8.0)
+					a1 = Vector2(86.0, -8.0)
+			for k in 4:
+				var t0 := lerpf(0.15, 1.0, float(k) / 4.0) * ext
+				var t1 := lerpf(0.15, 1.0, float(k + 1) / 4.0) * ext
+				var col := Color(1.0, 0.95, 0.8, 0.34 * ext * (1.0 - float(k) / 4.0))
+				draw_line(a0.lerp(a1, t0), a0.lerp(a1, t1), col, 7.0 - float(k) * 1.5)
+
 	if has_sword and weapon_id == "arco":
 		_draw_bow()
 		return
