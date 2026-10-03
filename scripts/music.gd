@@ -67,8 +67,12 @@ func _build_loop() -> AudioStreamWAV:
 
 
 ## Lee el PCM de un WAV de nuestro pipeline (PCM16 mono) y monta un
-## AudioStreamWAV con bucle nativo. Evita el importador de Godot, que trunca
-## ficheros largos (72 s entraban como 14,7 s).
+## AudioStreamWAV con bucle nativo. No usa el importador de Godot: su
+## compress/mode por defecto es QOA con pérdida, así que el `data` del recurso
+## importado NO es PCM crudo (medirlo como PCM daba "14,7 s" para 72,7 s de
+## audio). El parser manual garantiza PCM intacto y LOOP_FORWARD, libre de
+## los ajustes de importación. (Alternativa oficial 4.4+: el estático
+## AudioStreamWAV.load_from_file(), que hace lo mismo.)
 func _load_music_file() -> AudioStreamWAV:
 	if not FileAccess.file_exists(MUSIC_PATH):
 		return null

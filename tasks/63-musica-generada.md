@@ -94,12 +94,33 @@ eco de corchea con puntillo aplicado **circularmente** (loop perfecto) y
 normalizado a pico 0,55. Fichero: `art/music/loop_main.wav` (3,2 MB, PCM16
 mono 22050).
 
-**Cambio importante respecto al paso 1 de esta tarea:** el importador de
-Godot **trunca el WAV** (72,7 s entraban como 14,7 s), así que `music.gd` lee
-el PCM a mano (`FileAccess` + busca el chunk `data`) y monta el
-`AudioStreamWAV` con `LOOP_FORWARD` nativo — sin re-encolar. El fallback
-procedural (`_build_loop`) se conserva intacto: sin el fichero, el chiptune.
-Verificado: stream de 72,7 s en bucle sonando, tecla M intacta, `SMOKE OK`.
+**Cambio importante respecto al paso 1 de esta tarea:** `music.gd` lee el PCM
+a mano (`FileAccess` + busca el chunk `data`) y monta el `AudioStreamWAV`
+con `LOOP_FORWARD` nativo — sin re-encolar ni depender del importador.
+
+Razón (corregido tras revisar la docu oficial; la primera versión de esta
+nota hablaba de "truncamiento", que era un diagnóstico equivocado): el
+importador de Godot trae `compress/mode = 2` **por defecto = QOA**, una
+compresión con pérdida — el `data` del recurso importado no es PCM16 crudo,
+y medirlo como PCM daba un sinsentido (72,7 s "leídos" como 14,7 s). No hay
+issue conocido de truncado de WAV largos; lo documentado es la compresión y,
+si se activa, `edit/trim` (recorta silencio bajo −50 dB). El parser manual
+garantiza PCM intacto y bucle nativo sea cual sea el ajuste de importación,
+y sirve igual para un WAV de una tanda futura. Referencias:
+
+- ResourceImporterWAV (defaults y modos de compresión):
+  https://docs.godotengine.org/en/stable/classes/class_resourceimporterwav.html
+- AudioStreamWAV (formatos, bucle y el estático `load_from_file` de 4.4+,
+  alternativa oficial al parser manual):
+  https://docs.godotengine.org/en/stable/classes/class_audiostreamwav.html
+- Carga de archivos en runtime (tutorial):
+  https://docs.godotengine.org/en/stable/tutorials/io/runtime_file_loading_and_saving.html
+
+El fallback procedural (`_build_loop`) se conserva intacto: sin el fichero,
+el chiptune. Verificado: stream de 72,7 s en bucle sonando, tecla M intacta,
+`SMOKE OK`. Nota adicional de la docu: un stream con bucle no emite
+`finished`, así que el enfoque re-encolar del paso 1 original tampoco habría
+funcionado con bucle nativo.
 
 Una tanda futura con modelo de música solo tendrá que dejar un WAV/OGG en
 `art/music/` (mismo formato PCM16 mono) para sustituirlo.
