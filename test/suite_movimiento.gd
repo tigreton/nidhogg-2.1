@@ -77,7 +77,8 @@ func _t_salto_carrera() -> bool:
 
 
 func _t_rodada() -> bool:
-	_reset(1600.0, 4400.0)
+	# 1480: la rodada acaba en ~1657, fuera del hielo (1700-2000, tarea 69)
+	_reset(1480.0, 4400.0)
 	Input.action_press("p1_down")
 	await runner.step_physics(1)
 	Input.action_press("p1_jump")

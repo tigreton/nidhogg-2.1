@@ -38,6 +38,8 @@ var bg_tint_far := Color(0.7, 0.72, 0.9)
 var bg_tint_near := Color(0.85, 0.85, 0.95)
 
 const GRASS_X0 := 1150.0
+const ICE_X0 := 1700.0   # franja de hielo (Winter): frena mal (tarea 69)
+const ICE_X1 := 2000.0
 const GRASS_X1 := 1450.0
 const GOAL_W := 130.0
 const WIN_SCORE := 3
@@ -231,6 +233,10 @@ func in_grass(x: float) -> bool:
 	return x > GRASS_X0 and x < GRASS_X1
 
 
+func in_ice(x: float) -> bool:
+	return x > ICE_X0 and x < ICE_X1
+
+
 func _team(p: Player) -> int:
 	return (p.player_id - 1) % 2
 
@@ -378,6 +384,8 @@ func _build_level() -> void:
 		var gh := 44.0 + 20.0 * randf()
 		_poly(PackedVector2Array([Vector2(gx - 7, GROUND_Y), Vector2(gx + 7, GROUND_Y), Vector2(gx + randf_range(-7.0, 7.0), GROUND_Y - gh)]), Color(0.13, 0.30, 0.17).lightened(0.08 * randf()), 3)
 	_flowers()
+	# franja de hielo (tarea 69): tinte azulado brillante sobre los tiles
+	var ice_poly := _poly(PackedVector2Array([Vector2(ICE_X0, GROUND_Y), Vector2(ICE_X1, GROUND_Y), Vector2(ICE_X1, GROUND_Y - 5.0), Vector2(ICE_X0, GROUND_Y - 5.0)]), Color(0.62, 0.78, 0.95, 0.45), 2)
 	# escalera de plataformas (subida a la ruta alta por la izquierda)
 	_platform(1480.0, 1660.0, 448.0)
 	_platform(1660.0, 1800.0, 368.0)

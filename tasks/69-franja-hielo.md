@@ -105,3 +105,10 @@ Tras el bloque de la hierba alta (las briznas), añade:
 
 Últimas líneas esperadas: `SMOKE OK - todas las mecánicas funcionan` y
 `SIM PASS`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada tal cual; la rodada del test de suite aterrizaba dentro de la
+franja (1600+177 px ≈ 1777) y el frenado casi nulo la dejaba en RUN: su
+punto de partida pasa a 1480 (aterriza en ~1657, zona limpia). Con eso:
+`SMOKE OK`, `ALL PASSED (15)` y `SIM PASS`.

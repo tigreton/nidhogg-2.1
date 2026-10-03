@@ -318,6 +318,10 @@ func _physics_process(delta: float) -> void:
 				var sp := DUCK_SPEED if stance == H.LOW else SPEED * (UNARMED_SPEED_MULT if not has_sword else run_mult())
 				# arranque en rampa: acelerar cuesta ~6 frames, frenar ~4
 				var rate := GROUND_ACCEL if dir != 0.0 else GROUND_FRICTION
+				var gz := get_parent()
+				if gz != null and gz.has_method("in_ice") and gz.in_ice(global_position.x) and is_on_floor():
+					# hielo (tarea 69): aceleración mermada y frenado casi nulo
+					rate = 700.0 if dir != 0.0 else 380.0
 				velocity.x = move_toward(velocity.x, dir * sp, rate * delta)
 			state = State.RUN if absf(velocity.x) > 5.0 else State.IDLE
 			run_phase += velocity.x * delta * 0.045
