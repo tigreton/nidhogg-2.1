@@ -2096,8 +2096,9 @@ func _resolve_stomps() -> void:
 				continue
 			if absf(def.position.x - p.position.x) > 34.0 or absf(def.position.y - p.position.y) > 50.0:
 				continue
-			# pisotón letal: el derribado estalla
+			# pisotón letal: el derribado estalla; el ejecutor, invulnerable (tarea 76)
 			_burst(def.position, def.color, 60, 560.0)
+			p.invuln_time = maxf(p.invuln_time, 0.4)
 			_kill(def, p)
 			shake_time = maxf(shake_time, 0.2)
 			break
