@@ -123,3 +123,21 @@ Con capturas de las tres arenas (tecla C):
 
 Últimas líneas esperadas: `SMOKE OK - todas las mecánicas funcionan` y
 `CAPTURAS OK`.
+
+## Nota de aplicación (2026-10-03)
+
+Cerrada en dos sesiones (las capturas 17–20 de poses y la reescritura del
+§8 del INDICE las aplicó la sesión paralela; la verificación y el commit,
+esta):
+
+- **Alineación de poses (17–20):** revisadas por visión — estocada media,
+  zancada `run_2` y agachada con los pies en el suelo, escala correcta y sin
+  glitches. **No hizo falta ningún `POSE_Y_FIX`**: el anclaje por pies de la
+  60 (`POSE_FEET_Y`/`POSE_SCALE`) cuadra tal cual.
+- **Pan de la 15 (deuda de la 52):** re-capturada con la cámara de la 50 ya
+  aplicada y verificada — vista a medias entre dos secciones con la reja
+  hacia el borde derecho; la 16 muestra la sección conquistada con su cartel.
+- INDICE §8 reescrito como "estado de integración" con el detalle por tarea
+  (53–60 y 62).
+- `SMOKE OK`, `ALL PASSED (12)` y `CAPTURAS OK` (01–20). La 61 sigue EN
+  ESPERA por el CLI `bl` (ver su nota).

@@ -141,13 +141,48 @@ Materia bruto: `art_raw/scenery/` (10 + 10 en `proc/`) y `art_raw/worm/` (2 + 2)
 | `clone/` | 11 | fotogramas del clon (comparación contra el original) |
 | *(raíz)* | 10 | fotogramas sueltos con nombre descriptivo: `frame_broadsword_invierno_t57s`, `frame_club_hud_t72s/t75s`, `frame_customizacion_t27s`, `frame_fight_banner_t31s`, `frame_volcano_hud_t7s`, `compare_real_vs_clone`, `real_castle_mid`, `sheet_launch_trailer(_esrb)` — extraídos en marcas de tiempo concretas (t##s = segundo) |
 
-## 8. Cómo usarlo en Nidhogg 2.1
+## 8. Estado de integración en Nidhogg 2.1 (tareas 53–60 y 62 aplicadas)
 
-1. Los sprites finales ya están en `res://art/sprites/` y los sonidos en `res://art/sfx/` — Godot los importará al abrir el proyecto (solo 58 archivos, el `.gdignore` libera a Godot del resto).
-2. Este proyecto dibuja actualmente todo de forma procedural en `scripts/`; para adoptar un sprite basta con asignar la textura a un `Sprite2D` (p. ej. `player_idle_p1.png`).
-3. Los sprites de P1 y P2 existen por separado (azul/rojo); no hace falta `flip_h` para el color, solo para invertir la orientación si el personaje mira a la izquierda.
-4. El ciclo de carrera son 4 fases: `run_0 → run_1 → run_2 → run_3`.
-5. Los 58 ficheros `.import` de Godot viajan junto a sus png/wav: conservan los UID originales y su `source_file` ya apunta a `res://art/...`, así que encajan tal cual (Godot solo regenerará la caché de `.godot/imported/`).
+Los 58 `.import` viajan junto a sus png/wav (conservan los UID originales y su
+`source_file` apunta a `res://art/...`); Godot solo regenera la caché de
+`.godot/imported/`. El ciclo de carrera son 4 fases (`run_0 → … → run_3`) y
+los sprites de P1/P2 existen por separado (azul/rojo; `flip` solo para
+invertir orientación).
+
+**Ya integrado en el juego:**
+
+- **SFX (53):** los 8 WAV suenan — `clash`, `swing`←attack_swipe, `throw`,
+  `kill`, `jump`, `hit`←stomp, más los eventos nuevos `fight` (cartel
+  ¡FIGHT!) y `arrow_bounce` (rebote/clavado de flecha). `respawn`, `pickup`,
+  `point`, `alert` y `crash` siguen sintetizados (no hay WAV para ellos).
+- **Título (54):** `bg_title.png` de fondo y previsualización con los sprites
+  idle de P1/P2. Las teclas de aspecto Z/X/N/M se retiraron.
+- **HUD (55):** `pip_filled/pip_hollow` en los pips de secciones,
+  `arrow_neutral` en las flechas de meta y `blood_0/1/2` como salpicaduras
+  sobre los charcos.
+- **Armas sueltas (56):** `weapon_rapier/longsword/dagger/bow` en el arma
+  caída y lanzada, `weapon_arrow` en la flecha y `weapon_bow` en el arco en
+  mano (cuerda animada procedural).
+- **Escenario (57/58):** `tile_floor/tile_wall` en suelos, plataformas y
+  muros (teñidos con la paleta de cada arena), `pit_edge` en los bordes de
+  foso, y `bg_layer0/1` como parallax con tinte por arena.
+- **Gusano (59):** `worm_body` por regiones; mandíbulas y ojos procedurales.
+- **Personajes (60):** las 32 poses en juego — P1 Nacho (azul), P2 Rodrigo
+  (rojo), P3/P4 y bots reutilizan sprites con tinte; el cadáver usa
+  `player_dead`. La customización de piel/peinado (antigua tarea 38) se
+  retiró al adoptar diseños fijos.
+
+**Pendiente / sin usar:**
+
+- `player_{slide}`: espera la tarea 45 del porteo (slide tackle).
+- `player_{throw}`: reservado (P2 inconsistente: desarmado frente a P1
+  armado); candidato a regeneración.
+- **Poses desarmadas (tarea 61): EN ESPERA** — requiere el CLI `bl`
+  (Bailian) del pipeline `tools/`. Mientras tanto, el desarmado y el arco se
+  muestran con la espada horneada de la pose (fallback aceptado).
+- Música y fuente tipográfica: siguen procedurales (no hay assets).
+- Nota de ajuste (62): el sprite rojo queda ~2 px hundido respecto al azul;
+  tolerable. Si molesta: `POSE_Y_FIX` en `player.gd` (mapa por pose).
 
 ## 9. Documentación, scripts e informes del pipeline multimedia
 

@@ -108,5 +108,32 @@ func _ready() -> void:
 	game.set_sections(false)
 	await get_tree().create_timer(0.2).timeout
 
+	# poses de combate con sprites (tarea 62): ataques por altura y ciclo de carrera
+	_place(2400.0)
+	for h in [2, 1, 0]:
+		game.players[0].state = Player.State.ATTACK
+		game.players[0].attack_height = h
+		game.players[0].attack_time = 0.0
+		game.players[0].velocity = Vector2.ZERO
+		await _snap("17_accion_%s.png" % ["alta", "media", "baja"][2 - h])
+	Input.action_press("p1_right")
+	for k in 4:
+		game.players[0].run_phase = PI * 0.5 * float(k)
+		await _snap("18_carrera_%d.png" % k)
+	Input.action_release("p1_right")
+	game.players[0].state = Player.State.IDLE
+	game.players[0].velocity = Vector2(0.0, -400.0)
+	await _snap("19_salto.png")
+	game.players[0].state = Player.State.IDLE
+	game.players[0].velocity = Vector2.ZERO
+	Input.action_press("p1_down")
+	await get_tree().create_timer(0.05).timeout
+	await _snap("20_agachado.png")
+	Input.action_release("p1_down")
+	game.players[0].state = Player.State.KNOCKDOWN
+	game.players[0].knockdown_time = 5.0
+	await _snap("21_derribado.png")
+	game.players[0].state = Player.State.IDLE
+
 	print("CAPTURAS OK")
 	get_tree().quit(0)
