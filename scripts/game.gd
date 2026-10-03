@@ -40,6 +40,9 @@ var bg_tint_near := Color(0.85, 0.85, 0.95)
 const GRASS_X0 := 1150.0
 const ICE_X0 := 1700.0   # franja de hielo (Winter): frena mal (tarea 69)
 const ICE_X1 := 2000.0
+const BELT_X0 := 2500.0   # cinta transportadora (Volcano, tarea 71): empuja a la izquierda
+const BELT_X1 := 2650.0
+const BELT_V := -120.0
 const GRASS_X1 := 1450.0
 const GOAL_W := 130.0
 const WIN_SCORE := 3
@@ -137,6 +140,7 @@ var pickups: Array[SwordPickup] = []
 var rocks: Array[FallingRock] = []
 var blood: Array[Node] = []
 var goal_polys: Array[Polygon2D] = []
+var _belt_arrows: Array[Polygon2D] = []
 var stats: Array[Dictionary] = []
 var last_x := [0.0, 0.0]
 var _tops: Array[Dictionary] = []   # superficies elevadas {x0, x1, y}
@@ -217,6 +221,11 @@ func _process(_delta: float) -> void:
 	var a := 0.13 + 0.06 * sin(Time.get_ticks_msec() * 0.003)
 	for gp in goal_polys:
 		gp.color.a = a
+	# cinta transportadora (tarea 71): las flechas derivan con el empuje
+	for ar in _belt_arrows:
+		ar.position.x -= 60.0 * _delta
+		if ar.position.x < BELT_X0 - 30.0:
+			ar.position.x += 150.0
 	var rw := right_of_way
 	if rw != null and not match_over and rw.state != Player.State.DEAD and round_lock <= 0.0:
 		run_label.visible = true
@@ -236,6 +245,14 @@ func in_grass(x: float) -> bool:
 
 func in_ice(x: float) -> bool:
 	return x > ICE_X0 and x < ICE_X1
+
+
+func in_belt(x: float) -> bool:
+	return x > BELT_X0 and x < BELT_X1
+
+
+func belt_velocity() -> float:
+	return BELT_V
 
 
 func _team(p: Player) -> int:
@@ -395,6 +412,12 @@ func _build_level() -> void:
 	_flowers()
 	# franja de hielo (tarea 69): tinte azulado brillante sobre los tiles
 	var ice_poly := _poly(PackedVector2Array([Vector2(ICE_X0, GROUND_Y), Vector2(ICE_X1, GROUND_Y), Vector2(ICE_X1, GROUND_Y - 5.0), Vector2(ICE_X0, GROUND_Y - 5.0)]), Color(0.62, 0.78, 0.95, 0.45), 2)
+	# cinta transportadora (tarea 71): base más oscura + flechas que derivan
+	_poly(PackedVector2Array([Vector2(BELT_X0, GROUND_Y), Vector2(BELT_X1, GROUND_Y), Vector2(BELT_X1, GROUND_Y - 4.0), Vector2(BELT_X0, GROUND_Y - 4.0)]), Color(0.1, 0.09, 0.14, 0.85), 2)
+	_belt_arrows.clear()
+	for k in 4:
+		var bx := BELT_X0 + 40.0 + k * 40.0
+		_belt_arrows.append(_poly(PackedVector2Array([Vector2(bx, GROUND_Y - 10.0), Vector2(bx + 16.0, GROUND_Y - 10.0), Vector2(bx + 16.0, GROUND_Y - 14.0), Vector2(bx + 26.0, GROUND_Y - 8.0), Vector2(bx + 16.0, GROUND_Y - 2.0), Vector2(bx + 16.0, GROUND_Y - 6.0), Vector2(bx, GROUND_Y - 6.0)]), Color(0.42, 0.4, 0.5), 3))
 	# escalera de plataformas (subida a la ruta alta por la izquierda)
 	_platform(1480.0, 1660.0, 448.0)
 	_platform(1660.0, 1800.0, 368.0)

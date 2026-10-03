@@ -358,6 +358,12 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+	# cinta transportadora (tarea 71): deriva horizontal sobre el suelo de la franja
+	if is_on_floor():
+		var gb := get_parent()
+		if gb != null and gb.has_method("belt_velocity") and gb.in_belt(global_position.x):
+			position.x += gb.belt_velocity() * delta
+
 	if is_on_floor():
 		if state == State.JUMP:
 			state = State.IDLE
