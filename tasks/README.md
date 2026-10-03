@@ -96,6 +96,26 @@ Reglas de oro para ti (el humano que supervisa):
 | `62-ajuste-capturas.md` | Ajuste fino visual con capturas y cierre del track arte | media | `player.gd`, `game.gd`, `test/screenshots.gd`, `INDICE-MULTIMEDIA.md` |
 | `63-musica-generada.md` | Bucle de música real (72,7 s compuesto offline) con fallback procedural | baja | `music.gd`, `game.gd`, `art/music/` — **aplicada** |
 | `64-fuente-pixel.md` | Fuente pixel VT323 (OFL) opcional para título y HUD | baja | `title.gd`, `game.gd`, `art/fonts/` — **aplicada** |
+| `65-flecha-paso.md` | Flecha grande del paso en el color del verdugo | baja | `game.gd` |
+| `66-cuenta-atras.md` | Cuenta atrás 3·2·1·¡FIGHT! (tests exentos con flag) | baja | `game.gd`, una línea en smoke/runner/sim |
+| `67-muerte-subita.md` | 45 s sin muertes → aviso y todo choque mata | baja/media | `game.gd` |
+| `68-publico-murmullo.md` | Murmullo de público reactivo (ruido rosa procedural) | media | `sfx.gd`, `game.gd` |
+| `69-franja-hielo.md` | Franja de hielo: se acelera igual, frena mal | baja | `game.gd`, `player.gd` |
+| `70-puente-cae.md` | Plataforma del foso central en 4 tramos que se caen | media | `game.gd` |
+| `71-cinta-transportadora.md` | Tramo de suelo que empuja horizontalmente | media | `game.gd`, `player.gd` |
+| `72-giro-automatico.md` | Giro automático al tener un rival pegado por la espalda | baja | `player.gd` |
+| `73-levantarse-elegido.md` | Derribado: arriba = in situ, lateral = rodando | media | `player.gd`, `game.gd`, `test/smoke_test.gd` |
+| `74-patada-refleja-flecha.md` | El puñetazo desarmado refleja flechas a tiempo | baja | `game.gd`, `test/suite_combate.gd` |
+| `75-arco-en-divekick.md` | Tensado conservado en dive-kick y caída | baja | `player.gd`, `test/suite_movimiento.gd` |
+| `76-stomp-invulnerable.md` | Invulnerabilidad de 0,4 s al ejecutar el stomp | baja | `game.gd` |
+| `77-empalado-movil.md` | El cadáver empalado sube/baja con la estancia | baja | `game.gd` |
+| `78-zoom-dinamico.md` | Cámara acerca/aleja según la distancia de los duelistas | media | `game.gd` |
+| `79-musica-dinamica.md` | Crossfade base/completa por emoción (dos mezclas) | alta | `music.gd`, `game.gd`, `tools/render_music.py` |
+| `80-estela-tajo.md` | Estela de tajo en el ataque cuerpo a cuerpo | baja | `player.gd` |
+
+Las tareas 65–80 cierran las brechas contra el juego original detectadas en
+la comparativa con `docs/RESEARCH.md` (presentación del paso, antidesgaste,
+hazards normativos de arena y microdetalles de combate).
 
 Las tareas 41–52 portan lo único técnico del proyecto hermano
 (`Nidhogg 2`): visión de conjunto, mapa de valores y orden en
@@ -134,6 +154,12 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
     al final `60` → `61` → `62` (personajes, hueco desarmado y ajuste).
     Idealmente con el porteo 41–52 ya aplicado (la 45 trae el estado slide
     que usa `player_slide`). Detalle completo en `PLAN-ARTE.md`.
+13. Cierre de brechas contra el original (65–80): identidad y ritmo primero
+    (`65` flecha del paso → `66` cuenta atrás → `67` muerte súbita →
+    `68` público), microdetalles de combate (`76` → `77` → `72` → `74` →
+    `75` → `80`), luego hazards de arena de una en una (`69` → `70` →
+    `71` — las tres tocan zonas de `player.gd`/`game.gd` cercanas) y al
+    final `78` (zoom) y `79` (música dinámica, la más grande).
 
 ## Conflictos conocidos (por tocar el mismo código)
 
@@ -174,6 +200,13 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
 | `60` y `38` | La `60` retira la customización que añadió la `38` (los sprites son diseños fijos; decisión de `PLAN-ARTE.md`). |
 | `60` y `43`/`44` | El ritmo del ciclo `run_0..3` depende de `run_phase`, que `43`/`44` recalibran. Aplica el porteo antes de la `60`, o re-tuna el factor de ciclo (lo revisa la `62`). |
 | `61` y pipeline | La `61` genera sprites con `tools/art_gen.py` y requiere el CLI `bl` (Bailian). Sin él, queda en espera con el fallback documentado. |
+| `66` y harnesses | La cuenta atrás congela 2,1 s a los jugadores: la `66` añade `game.skip_countdown = true` (una línea) a smoke, runner y sim. Aplícala ANTES de `67`/`68` para no re-verificar tres veces. |
+| `67` y `47` | La muerte súbita convierte `parry`/`clash` en `trade` en el mismo `match outcome` que toca la `47`. Componen; revisa el diff si van seguidas. |
+| `69` y `71` | Las dos añaden consultas de zona (`in_ice`/`in_belt`) al mismo bloque de movimiento de `player.gd`. De una en una; la `69` además toca el `rate` de la 44. |
+| `70` y `50`/bots | La `70` trocea la plataforma que el bot usa para cruzar el foso: si el sim (`51`) baja de kills o deja de anotar, sube el temblor a 0,5 s y reintenta. |
+| `73` y `45`/`46` | El levantamiento rodando reutiliza las variables de la rodada (`roll_*`) y suelte el auto-levantamiento que el smoke daba por hecho (los casos 33/34 ya pasan: P2 queda en 6). El bot necesita su rama nueva. |
+| `74`/`75` y `48` | Ambas suites usan el tensado completo de 66 frames de la `48`; no cambies esos números al aplicarlas. |
+| `79` y `63`/`68` | La `79` reestructura `_ready()` de `music.gd` (dos voces) y comparte métrica de emoción con la `68` (señales separadas). Aplica tras `63` (hecha) y revisa el toggle M. |
 
 ## Comando de verificación (común a todas las tareas)
 
