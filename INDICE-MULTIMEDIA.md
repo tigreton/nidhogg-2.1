@@ -163,6 +163,11 @@ invertir orientación).
 - **Armas sueltas (56):** `weapon_rapier/longsword/dagger/bow` en el arma
   caída y lanzada, `weapon_arrow` en la flecha y `weapon_bow` en el arco en
   mano (cuerda animada procedural).
+- **Desarmado (61):** 18 sprites nuevos `player_{pose}_noarme_{p1,p2}`
+  (idle, run_0–3, jump, fall, crouch, throw) generados con
+  `qwen-image-edit-plus` — al ir sin espada o con el arco el renderer usa la
+  variante desarmada. Logs en `art_raw/log_noarme.txt` y
+  `art_raw/report_noarme.json`.
 - **Escenario (57/58):** `tile_floor/tile_wall` en suelos, plataformas y
   muros (teñidos con la paleta de cada arena), `pit_edge` en los bordes de
   foso, y `bg_layer0/1` como parallax con tinte por arena.

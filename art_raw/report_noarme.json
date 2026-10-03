@@ -1,0 +1,434 @@
+{
+ "player_crouch_noarme_p1": {
+  "key": "player_crouch_noarme_p1",
+  "src": "art_raw\\noarme\\player_crouch_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_crouch_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   34,
+   40
+  ],
+  "crop": [
+   515,
+   605
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_crouch_noarme_p1_v1.png"
+ },
+ "player_crouch_noarme_p2": {
+  "key": "player_crouch_noarme_p2",
+  "src": "art_raw\\noarme\\player_crouch_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_crouch_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   28,
+   40
+  ],
+  "crop": [
+   539,
+   772
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_crouch_noarme_p2_v1.png"
+ },
+ "player_fall_noarme_p1": {
+  "key": "player_fall_noarme_p1",
+  "src": "art_raw\\noarme\\player_fall_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_fall_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   41,
+   56
+  ],
+  "crop": [
+   500,
+   682
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_fall_noarme_p1_v1.png"
+ },
+ "player_fall_noarme_p2": {
+  "key": "player_fall_noarme_p2",
+  "src": "art_raw\\noarme\\player_fall_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_fall_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   28,
+   56
+  ],
+  "crop": [
+   447,
+   909
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_fall_noarme_p2_v1.png"
+ },
+ "player_idle_noarme_p1": {
+  "key": "player_idle_noarme_p1",
+  "src": "art_raw\\noarme\\player_idle_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_idle_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   31,
+   56
+  ],
+  "crop": [
+   416,
+   743
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_idle_noarme_p1_v1.png"
+ },
+ "player_idle_noarme_p2": {
+  "key": "player_idle_noarme_p2",
+  "src": "art_raw\\noarme\\player_idle_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_idle_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   34,
+   56
+  ],
+  "crop": [
+   487,
+   814
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_idle_noarme_p2_v1.png"
+ },
+ "player_jump_noarme_p1": {
+  "key": "player_jump_noarme_p1",
+  "src": "art_raw\\noarme\\player_jump_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_jump_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   33,
+   56
+  ],
+  "crop": [
+   381,
+   646
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_jump_noarme_p1_v1.png"
+ },
+ "player_jump_noarme_p2": {
+  "key": "player_jump_noarme_p2",
+  "src": "art_raw\\noarme\\player_jump_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_jump_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   32,
+   56
+  ],
+  "crop": [
+   463,
+   818
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_jump_noarme_p2_v1.png"
+ },
+ "player_run_0_noarme_p1": {
+  "key": "player_run_0_noarme_p1",
+  "src": "art_raw\\noarme\\player_run_0_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_run_0_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   54,
+   56
+  ],
+  "crop": [
+   758,
+   791
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_run_0_noarme_p1_v1.png"
+ },
+ "player_run_0_noarme_p2": {
+  "key": "player_run_0_noarme_p2",
+  "src": "art_raw\\noarme\\player_run_0_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_run_0_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   46,
+   56
+  ],
+  "crop": [
+   580,
+   713
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_run_0_noarme_p2_v1.png"
+ },
+ "player_run_1_noarme_p1": {
+  "key": "player_run_1_noarme_p1",
+  "src": "art_raw\\noarme\\player_run_1_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_run_1_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   43,
+   56
+  ],
+  "crop": [
+   503,
+   648
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_run_1_noarme_p1_v1.png"
+ },
+ "player_run_1_noarme_p2": {
+  "key": "player_run_1_noarme_p2",
+  "src": "art_raw\\noarme\\player_run_1_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_run_1_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   45,
+   56
+  ],
+  "crop": [
+   683,
+   847
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_run_1_noarme_p2_v1.png"
+ },
+ "player_run_2_noarme_p1": {
+  "key": "player_run_2_noarme_p1",
+  "src": "art_raw\\noarme\\player_run_2_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_run_2_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   39,
+   56
+  ],
+  "crop": [
+   595,
+   848
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_run_2_noarme_p1_v1.png"
+ },
+ "player_run_2_noarme_p2": {
+  "key": "player_run_2_noarme_p2",
+  "src": "art_raw\\noarme\\player_run_2_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_run_2_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   39,
+   56
+  ],
+  "crop": [
+   539,
+   765
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_run_2_noarme_p2_v1.png"
+ },
+ "player_run_3_noarme_p1": {
+  "key": "player_run_3_noarme_p1",
+  "src": "art_raw\\noarme\\player_run_3_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_run_3_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   38,
+   56
+  ],
+  "crop": [
+   605,
+   899
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_run_3_noarme_p1_v1.png"
+ },
+ "player_run_3_noarme_p2": {
+  "key": "player_run_3_noarme_p2",
+  "src": "art_raw\\noarme\\player_run_3_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_run_3_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   44,
+   56
+  ],
+  "crop": [
+   578,
+   744
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_run_3_noarme_p2_v1.png"
+ },
+ "player_throw_noarme_p1": {
+  "key": "player_throw_noarme_p1",
+  "src": "art_raw\\noarme\\player_throw_noarme_p1_001.png",
+  "dst": "art\\sprites\\player_throw_noarme_p1.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   41,
+   56
+  ],
+  "crop": [
+   603,
+   815
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_throw_noarme_p1_v1.png"
+ },
+ "player_throw_noarme_p2": {
+  "key": "player_throw_noarme_p2",
+  "src": "art_raw\\noarme\\player_throw_noarme_p2_001.png",
+  "dst": "art\\sprites\\player_throw_noarme_p2.png",
+  "src_size": [
+   1024,
+   1024
+  ],
+  "out_size": [
+   40,
+   56
+  ],
+  "crop": [
+   498,
+   705
+  ],
+  "cut": [],
+  "resample": "box",
+  "opaque": false,
+  "ok": true,
+  "issues": [],
+  "variant": 1,
+  "proc": "art_raw\\noarme\\proc\\player_throw_noarme_p2_v1.png"
+ }
+}

@@ -33,3 +33,4 @@ media/videos/*_blobs.csv
 trace_motion.csv.import
 # traducciones espurias que Godot genera del CSV de trazas
 trace_motion.*.translation
+!art_raw/report_noarme.json

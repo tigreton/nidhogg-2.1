@@ -43,11 +43,14 @@ const POSE_FEET_Y := 32.0        # dónde quedan los pies respecto al origen
 static var _pose_tex := {}
 
 static func pose_texture(pose: String, side: String) -> Texture2D:
-	# carga perezosa de las 32 poses (p1 azul, p2 rojo)
+	# carga perezosa de las 32 poses (p1 azul, p2 rojo) + las desarmadas (61)
 	if _pose_tex.is_empty():
 		for p in POSES:
 			for s in ["p1", "p2"]:
 				_pose_tex["%s_%s" % [p, s]] = load("res://art/sprites/player_%s_%s.png" % [p, s])
+				var u: Texture2D = load("res://art/sprites/player_%s_noarme_%s.png" % [p, s])
+				if u != null:
+					_pose_tex["%s_noarme_%s" % [p, s]] = u
 	return _pose_tex.get("%s_%s" % [pose, side], _pose_tex["idle_p1"])
 
 var player_id := 1
@@ -436,6 +439,16 @@ func reset_to(pos: Vector2, face: int) -> void:
 
 
 func _pose_name() -> String:
+	var pose := _pose_name_armed()
+	# desarmado (o con el arco, que se dibuja aparte): variante sin arma (61)
+	if not has_sword or weapon_id == "arco":
+		var side := "p1" if (player_id == 1 or player_id == 3) else "p2"
+		if _pose_tex.has("%s_noarme_%s" % [pose, side]):
+			pose += "_noarme"
+	return pose
+
+
+func _pose_name_armed() -> String:
 	# suelta del lanzamiento: pose breve de brazo extendido tras soltar el arma
 	if throw_pose_time > 0.0 and state in [State.IDLE, State.RUN]:
 		return "throw"

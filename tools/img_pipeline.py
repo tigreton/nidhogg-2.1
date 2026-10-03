@@ -40,6 +40,11 @@ MANIFEST = {}
 for _pose, _h in POSES.items():
     for _p in ("p1", "p2"):
         MANIFEST["player_%s_%s" % (_pose, _p)] = (None, _h)
+# variantes desarmadas (tarea 61): solo las poses que el renderer usa sin arma
+for _pose in ("idle", "run_0", "run_1", "run_2", "run_3", "jump", "fall",
+              "crouch", "throw"):
+    for _p in ("p1", "p2"):
+        MANIFEST["player_%s_noarme_%s" % (_pose, _p)] = (None, POSES[_pose])
 MANIFEST.update({
     "weapon_rapier": (90, 8),
     "weapon_longsword": (120, 10),

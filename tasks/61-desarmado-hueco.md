@@ -132,25 +132,37 @@ func _pose_name() -> String:
 Última línea esperada: `SMOKE OK - todas las mecánicas funcionan`.
 Y una pasada con render lanzando/recogiendo el arma y tensando el arco.
 
-## Nota de aplicación (2026-10-03): EN ESPERA (CLI instalado, credenciales caducadas)
+## Nota de aplicación (2026-10-03): APLICADA ✅
 
-**CLI instalado**: `bailian-cli` 2.1.0 vía `npm install -g` + `bl skill init`
-(binario `bl` operativo; el residuo `面板入口.html` que deja el CLI se borra
-si aparece en el repo). **El bloqueo ahora son las credenciales**: las dos
-keys guardadas en `~/.bailian/config.json` están muertas — la del perfil
-`token-plan` da 403 Unpurchased en TODO (suscripción caducada, incluso en
-`qwen3.8-max`, su modelo por defecto) y la del perfil `default` (workspace
-`ws-w496…` eu-central-1) da 401 InvalidApiKey; ambas también fallan contra
-el endpoint público `dashscope.aliyuncs.com`. Además `wan2.7-image` ya no
-existe en el catálogo: la generación deberá usar un modelo de edición vivo
-(`wan-image-edit`/`qwen-image-edit-plus` según catálogo con `bl model list
---capability IG`), documentando el cambio de modelo en la nota final.
+**Odisea de desbloqueo** (queda como receta): CLI `bailian-cli` 2.1.0 instalado
+(`npm install -g` + `bl skill init`). El login por navegador fallaba con un
+error CORS en la web: el callback local sí funcionaba — se completó a mano
+entregando el `state` (GET) y el payload JSON del token (POST) con curl al
+puerto local del CLI. Las keys antiguas estaban muertas; la clave fue una
+**API key ordinaria** de la consola internacional guardada como
+`bl auth login --api-key … --base-url https://dashscope-intl.aliyuncs.com`
+(perfil `default`). Además el CLI 2.1.0 tiene un bug para cuentas intl: la
+subida de ficheros usa la base de **China** hardcodeada — parche local en
+`bailian-cli-core/dist/index.mjs` cambiando `${I.cn}/api/v1/uploads` por
+`${I.intl}` (backup `.bak`; reportable en modelstudioai/cli).
 
-**Para desbloquear** (solo el usuario puede): una de
-- `bl auth login --config token-plan --api-key <nueva-key-del-plan>` (la key
-  se copia de la página de suscripción de la consola Bailian), o
-- `bl auth login --console --console-site international` (login con navegador).
+**Cambio de modelo**: `wan2.7-image` está retirado del catálogo. El lote se
+generó con **`qwen-image-edit-plus`** (0,2/imagen, 33 ediciones ≈ 6,6). El
+modelo de edición conserva el fondo blanco de la hoja de referencia en vez de
+pintar el magenta pedido: pre-paso de normalización con flood-fill (fondo
+blanco del borde → magenta puro; en 4 crudos el fondo salió magenta oscuro
+~(198,0,128) y se normalizó igual) y reprocesado con `--reuse-raw` (coste 0).
+Esto quedó incorporado al flujo, no al código del pipeline.
 
-Verificar con `bl text chat --message ping` (o una generación de imagen) y
-ejecutar los pasos 1–3 tal cual. El fallback vigente: poses armadas también
-al ir desarmado (jugable, pierde lectura de armado).
+**Lote**: grupo `noarme` nuevo en `tools/art_gen.py` (8 poses × 2 personajes,
+fijando `"model"` por spec; `SPRITES` corregido a `art/sprites`, la ruta era
+la del hermano `godot/art/sprites`) + manifiesto en `tools/img_pipeline.py`.
+Resultado: **16/16 OK** (56 px de alto, crouch 40, alfa real, 0% de magenta
+residual), verificado por píxeles y por visión (desarmados, identidades
+correctas por personaje). Renderer: `pose_texture()` carga `_noarme` si
+existen y `_pose_name()` aplica el sufijo al ir sin espada o con el arco.
+
+**Verificación**: `SMOKE OK`, `ALL PASSED (12)`, `CAPTURAS OK` con las
+capturas nuevas 24–26 (desarmado idle/carrera y arco tensando sobre pose
+desarmada) — revisadas por visión. Captura de la tira de sprites en
+`art_raw/tmp/noarme_test/strip_check.png`.

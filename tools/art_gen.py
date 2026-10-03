@@ -23,9 +23,9 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import img_pipeline as P   # noqa: E402
 
-SPRITES = os.path.join("godot", "art", "sprites")
+SPRITES = os.path.join("art", "sprites")
 RAW = "art_raw"
-MODEL = "wan2.7-image"
+MODEL = "wan2.7-image"   # retirado del catalogo: los lotes nuevos fijan "model"
 
 STYLE = ("pixel art game sprite, side view, full body, grotesque colorful cartoon "
          "style like Nidhogg 2, thick black outline, limited color palette, flat "
@@ -78,6 +78,29 @@ POSES = {
                "wide"),
     "dead": ("ragdoll lying limp on the ground, limbs loose, eyes as X marks", "wide"),
 }
+
+# Poses desarmadas (tarea 61): mismas composiciones sin arma. Solo las que el
+# renderer necesita al ir sin espada o con el arco (idle/correr/saltar/caer/
+# agacharse); ataques, dead y downed no llevan variante.
+NOARME_POSES = {
+    "idle": ("standing fencing en garde stance, knees bent, empty hands relaxed",
+             "sq"),
+    "run_0": ("running, contact pose: right leg extended forward heel down, left "
+              "leg trailing back, arms pumping", "sq"),
+    "run_1": ("running, passing pose: legs crossing mid-air under the body", "sq"),
+    "run_2": ("running, push-off pose: left leg driving behind, body leaning "
+              "forward", "sq"),
+    "run_3": ("running, recovery pose: front knee lifted high, arms swinging "
+              "opposite", "sq"),
+    "jump": ("rising jump, legs tucked up, arms raised", "sq"),
+    "fall": ("falling down, arms up, legs apart", "sq"),
+    "crouch": ("crouching low on one knee, open empty hand extended forward at "
+               "knee height", "sq"),
+    "throw": ("throwing pose, throwing arm fully extended forward, hand open, "
+              "body twisted", "sq"),
+}
+NOARME_EXTRA = ("EMPTY HANDS with open relaxed fists, no weapon, no sword, no bow, "
+                "holding nothing, completely unarmed")
 
 SIZES = {"sq": "1024*1024", "wide": "1664*928", "tall": "928*1664",
          "strip": "2048*512", "long": "2048*768"}
@@ -162,6 +185,17 @@ def build_specs():
                           "cropped or touching the frame edges. %s, %s"
                           % (block, desc, STYLE, BG),
             }
+    for who, block in (("p1", NACHO), ("p2", RODRIGO)):
+        for pose, (desc, canvas) in NOARME_POSES.items():
+            specs["player_%s_noarme_%s" % (pose, who)] = {
+                "mode": "edit", "ref": REFS[who], "group": "noarme",
+                "size": SIZES[canvas], "model": "qwen-image-edit-plus",
+                "prompt": "%s, %s, %s, facing RIGHT, single character alone, one "
+                          "figure only, whole body completely inside the frame "
+                          "with wide empty margins on all sides, nothing cropped "
+                          "or touching the frame edges. %s, %s"
+                          % (block, desc, NOARME_EXTRA, STYLE, BG),
+            }
     for key, (desc, canvas) in WEAPONS.items():
         specs[key] = {
             "mode": "generate", "group": "weapons", "size": SIZES[canvas],
@@ -184,7 +218,7 @@ def build_specs():
 
 SPECS = build_specs()
 GROUPS = {"nacho": [], "rodrigo": [], "weapons": [], "scenery": [], "hud": [],
-          "worm": []}
+          "worm": [], "noarme": []}
 for _k, _s in SPECS.items():
     GROUPS[_s["group"]].append(_k)
 for _g in GROUPS:
@@ -229,7 +263,7 @@ def generate(key, spec, variants, dry=False, reuse=False):
         if old.startswith(key + "_") and old.endswith(".png"):
             os.remove(os.path.join(out_dir, old))
 
-    cmd = ["bl", "image", spec["mode"], "--model", MODEL,
+    cmd = ["bl", "image", spec["mode"], "--model", spec.get("model", MODEL),
            "--prompt", spec["prompt"], "--size", spec["size"],
            "--watermark", "false", "--prompt-extend", "false",
            "--n", str(variants), "--out-dir", out_dir, "--out-prefix", key]

@@ -160,5 +160,27 @@ func _ready() -> void:
 	game.players[0].state = Player.State.IDLE
 	game.players[0].velocity = Vector2.ZERO
 
+	# desarmado (61): poses sin espada tras soltar el arma
+	game.players[0].has_sword = false
+	await get_tree().create_timer(0.1).timeout
+	await _snap("24_desarmado_idle.png")
+	Input.action_press("p1_right")
+	await get_tree().create_timer(0.25).timeout
+	await _snap("25_desarmado_carrera.png")
+	Input.action_release("p1_right")
+	game.players[0].state = Player.State.IDLE
+	game.players[0].velocity = Vector2.ZERO
+
+	# arco equipado: pose desarmada + arco en mano con cuerda tensada a medias
+	game.players[0].has_sword = true
+	game.players[0].weapon_id = "arco"
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.6).timeout
+	await _snap("26_arco_tensando.png")
+	Input.action_release("p1_attack")
+	await get_tree().create_timer(0.4).timeout
+	game.players[0].state = Player.State.IDLE
+	game.players[0].velocity = Vector2.ZERO
+
 	print("CAPTURAS OK")
 	get_tree().quit(0)

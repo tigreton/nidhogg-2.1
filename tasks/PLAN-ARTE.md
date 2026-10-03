@@ -148,7 +148,7 @@ Comando común (desde la raíz del proyecto):
 
 ## Estado de aplicación (2026-10-03) y pendientes
 
-**Aplicadas y commiteadas: 53–60 y 62.** El porteo hermano 41–52 también
+**Aplicadas y commiteadas: 53–62 completas.** El porteo hermano 41–52 también
 está completo. Detalle del estado de integración de cada asset en la §8 de
 `INDICE-MULTIMEDIA.md`.
 
@@ -156,9 +156,15 @@ Pendientes del track arte:
 
 | Pendiente | Qué hace falta | Dónde retomarlo |
 |---|---|---|
-| Tarea 61 (poses desarmadas) | Instalar/configurar el CLI `bl` (Bailian) y correr el pipeline `tools/art_gen.py` + `tools/img_pipeline.py`. Mientras tanto, desarmado y arco se ven con la espada horneada | `tasks/61-desarmado-hueco.md` (EN ESPERA documentada) |
-| `player_throw_p1` regenerar | La pose ya se usa (0,22 s de suelta tras lanzar); regenerar la de P1 en versión desarmada para igualar a P2 | junto con la tanda de la 61 |
-| Música y fuente | Siguen procedurales: no existen assets para ellas — tareas 63/64 creadas (EN ESPERA, mismo CLI) | `tasks/63-musica-generada.md`, `tasks/64-fuente-pixel.md` |
+| Música y fuente | Siguen procedurales: no existen assets para ellas — tareas 63/64 creadas. Con el CLI `bl` ya operativo (ver nota de la 61) quedan desbloqueadas | `tasks/63-musica-generada.md`, `tasks/64-fuente-pixel.md` |
+
+Cerrada la **tarea 61** (2026-10-03): 18 sprites `_noarme` (9 poses × 2
+personajes, incluida la suelta `throw` para P1 y P2) generados con
+`qwen-image-edit-plus` (wan2.7 retirado del catálogo) vía CLI parcheado para
+cuentas intl, fondo normalizado por flood-fill (el modelo de edición conserva
+el fondo de la referencia), 18/18 QA OK y verificados en juego (capturas
+24–26). Cayeron con ella los dos primeros pendientes de la tabla anterior
+(poses desarmadas y `player_throw_p1`).
 
 Cerrados tras revisión (2026-10-03, segunda pasada):
 
