@@ -1,10 +1,12 @@
 class_name Music
 extends Node
-## Música procedural: un bucle de 32 semicorcheas generado por código (sin assets).
+## Música: bucle real de res://art/music si existe; si no, el chiptune
+## procedural de siempre (fallback automático, sin tocar nada más).
 
 const BPM := 132.0
 const STEPS := 32
 const MIX := 22050
+const MUSIC_PATH := "res://art/music/loop_main.wav"
 
 
 static func _note(freq: float, dur: float, vol: float, duty := 0.5) -> PackedFloat32Array:
@@ -64,9 +66,43 @@ func _build_loop() -> AudioStreamWAV:
 	return wav
 
 
+## Lee el PCM de un WAV de nuestro pipeline (PCM16 mono) y monta un
+## AudioStreamWAV con bucle nativo. Evita el importador de Godot, que trunca
+## ficheros largos (72 s entraban como 14,7 s).
+func _load_music_file() -> AudioStreamWAV:
+	if not FileAccess.file_exists(MUSIC_PATH):
+		return null
+	var f := FileAccess.open(MUSIC_PATH, FileAccess.READ)
+	if f == null:
+		return null
+	var raw := f.get_buffer(f.get_length())
+	f.close()
+	var idx := -1
+	for i in range(raw.size() - 12):
+		if raw[i] == 0x64 and raw[i + 1] == 0x61 and raw[i + 2] == 0x74 and raw[i + 3] == 0x61:
+			idx = i
+			break
+	if idx < 0:
+		return null
+	var pcm := raw.slice(idx + 8)
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = MIX
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = pcm.size() / 2
+	wav.data = pcm
+	return wav
+
+
 func _ready() -> void:
 	var p := AudioStreamPlayer.new()
-	p.stream = _build_loop()
+	var stream := _load_music_file()
+	if stream != null:
+		p.stream = stream
+	else:
+		p.stream = _build_loop()
 	p.volume_db = -16.0
 	p.name = "MusicPlayer"
 	add_child(p)

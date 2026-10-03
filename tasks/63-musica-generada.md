@@ -84,3 +84,22 @@ junto al asset, como se hizo con `art/sprites`).
 ```
 
 Última línea esperada: `SMOKE OK - todas las mecánicas funcionan`.
+
+## Nota de aplicación (2026-10-03): APLICADA
+
+El bucle se **compuso y renderizó offline** (Python/numpy, semilla fija) en
+vez de esperar a un modelo de música: 40 compases a 132 BPM (72,7 s, E menor,
+4 secciones: pulso → arpegio + melodía → pulso → variación con melodía),
+eco de corchea con puntillo aplicado **circularmente** (loop perfecto) y
+normalizado a pico 0,55. Fichero: `art/music/loop_main.wav` (3,2 MB, PCM16
+mono 22050).
+
+**Cambio importante respecto al paso 1 de esta tarea:** el importador de
+Godot **trunca el WAV** (72,7 s entraban como 14,7 s), así que `music.gd` lee
+el PCM a mano (`FileAccess` + busca el chunk `data`) y monta el
+`AudioStreamWAV` con `LOOP_FORWARD` nativo — sin re-encolar. El fallback
+procedural (`_build_loop`) se conserva intacto: sin el fichero, el chiptune.
+Verificado: stream de 72,7 s en bucle sonando, tecla M intacta, `SMOKE OK`.
+
+Una tanda futura con modelo de música solo tendrá que dejar un WAV/OGG en
+`art/music/` (mismo formato PCM16 mono) para sustituirlo.
