@@ -13,6 +13,7 @@ func get_tests() -> Array:
 		["espada_lanzada_desviada_por_guardia", _t_lanzada],
 		["punetazo_desarma", _t_punetazo],
 		["flecha_rebota_en_guardia_igual", _t_flecha],
+		["lanza_con_salto_ataque", _t_lanza_salto],
 		["arco_soltar_antes_de_tiempo_no_dispara", _t_arco_cancel],
 	]
 
@@ -31,6 +32,17 @@ func _reset(x1: float, x2: float) -> void:
 		p.attack_time = 0.0
 		p.bow_time = 0.0
 		g.respawn_timers[p.player_id - 1] = 0.0
+	# hermeticidad (tarea 84): flechas/proyectiles/pickups de tests previos
+	# (una flecha reboteando tarda >1 s en clavarse) no deben filtrarse
+	for a in g.arrows:
+		a.queue_free()
+	g.arrows.clear()
+	for pr in g.projectiles:
+		pr.queue_free()
+	g.projectiles.clear()
+	for pk in g.pickups:
+		pk.queue_free()
+	g.pickups.clear()
 	g.round_lock = 0.0
 	g.right_of_way = null
 
@@ -124,6 +136,25 @@ func _t_arco_cancel() -> bool:
 	await runner.wait(0.3)
 	_reset(1600.0, 4400.0)
 	return runner.check(no_arrow, "soltar el arco antes de 1,0 s no dispara")  # L48
+
+
+func _t_lanza_salto() -> bool:
+	_reset(1600.0, 4400.0)
+	await runner.step_physics(1)
+	# en el aire: mantener salto y pulsar ataque lanza el arma
+	Input.action_press("p1_jump")
+	await runner.step_physics(2)
+	Input.action_release("p1_jump")
+	Input.action_press("p1_jump")
+	Input.action_press("p1_attack")
+	await runner.step_physics(4)
+	var thrown: bool = not runner.game.players[0].has_sword and runner.game.projectiles.size() >= 1
+	Input.action_release("p1_attack")
+	Input.action_release("p1_jump")
+	runner.release_all()
+	await runner.wait(0.5)
+	_reset(1600.0, 4400.0)
+	return runner.check(thrown, "salto+ataque en el aire lanza el arma")  # L84
 
 
 func _t_flecha() -> bool:

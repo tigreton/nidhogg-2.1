@@ -244,7 +244,12 @@ func _physics_process(delta: float) -> void:
 			state = State.JUMP
 			_sfx("jump", -16.0)
 		elif hit("attack"):
-			if weapon_id == "arco":
+			if held("jump") and has_sword and MatchRules.allow_throw:
+				# lanzamiento del original (tarea 84): salto+ataque, suelo o aire
+				has_sword = false
+				throw_pose_time = 0.22
+				threw_sword.emit(self)
+			elif weapon_id == "arco":
 				# tensar el arco: el disparo sale al soltar
 				bow_time = 0.0001
 				_sfx("swing", -26.0)

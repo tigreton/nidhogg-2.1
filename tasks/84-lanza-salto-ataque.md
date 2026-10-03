@@ -105,3 +105,12 @@ func _t_lanza_salto() -> bool:
 
 Últimas líneas esperadas: `RESULT: ALL PASSED (13)` y
 `SMOKE OK - todas las mecánicas funcionan`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada tal cual, con una enmienda de higiene en la suite: el test nuevo,
+al insertarse entre el de la flecha rebotada y el del arco, hacía que la
+flecha HEREDADA del test anterior (una flecha tarda >1 s en clavarse) ya no
+desembocara limpia — el `_reset` de `suite_combate.gd` ahora libera
+`arrows`/`projectiles`/`pickups` para que cada test arranque hermético.
+Con eso: `RESULT: ALL PASSED (13)` y `SMOKE OK`.
