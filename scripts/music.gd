@@ -73,10 +73,10 @@ func _build_loop() -> AudioStreamWAV:
 ## audio). El parser manual garantiza PCM intacto y LOOP_FORWARD, libre de
 ## los ajustes de importación. (Alternativa oficial 4.4+: el estático
 ## AudioStreamWAV.load_from_file(), que hace lo mismo.)
-func _load_music_file() -> AudioStreamWAV:
-	if not FileAccess.file_exists(MUSIC_PATH):
+func _load_music_file(path: String) -> AudioStreamWAV:
+	if not FileAccess.file_exists(path):
 		return null
-	var f := FileAccess.open(MUSIC_PATH, FileAccess.READ)
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return null
 	var raw := f.get_buffer(f.get_length())
@@ -100,14 +100,39 @@ func _load_music_file() -> AudioStreamWAV:
 	return wav
 
 
+const MUSIC_BASE := "res://art/music/loop_base.wav"
+
+var full: AudioStreamPlayer
+var base: AudioStreamPlayer
+var intensity := 0.0   # 0 = calma (base), 1 = combate (completa) — tarea 79
+
+
 func _ready() -> void:
-	var p := AudioStreamPlayer.new()
-	var stream := _load_music_file()
-	if stream != null:
-		p.stream = stream
+	full = AudioStreamPlayer.new()
+	full.name = "MusicPlayer"   # la tecla M sigue encontrándolo
+	full.volume_db = -16.0
+	add_child(full)
+	var s_full := _load_music_file(MUSIC_PATH)
+	var s_base := _load_music_file(MUSIC_BASE)
+	if s_full == null:
+		full.stream = _build_loop()   # fallback procedural (una sola voz)
+	elif s_base == null:
+		full.stream = s_full
 	else:
-		p.stream = _build_loop()
-	p.volume_db = -16.0
-	p.name = "MusicPlayer"
-	add_child(p)
-	p.play()
+		full.stream = s_full
+		base = AudioStreamPlayer.new()
+		base.name = "MusicBase"
+		base.volume_db = -60.0    # arranca inaudible
+		base.stream = s_base
+		add_child(base)
+		base.play()
+	full.play()
+
+
+func set_intensity(f: float, delta: float) -> void:
+	# crossfade suave (tarea 79); con una sola voz, no hace nada
+	if base == null or base.stream == null:
+		return
+	intensity = move_toward(intensity, clampf(f, 0.0, 1.0), delta * 0.8)
+	full.volume_db = lerpf(-26.0, -14.0, intensity)
+	base.volume_db = lerpf(-16.0, -38.0, intensity)

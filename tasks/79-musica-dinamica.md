@@ -141,3 +141,12 @@ En `game.gd::_physics_process`, junto al descuento de `parry_cd`:
 
 Últimas líneas esperadas: `SMOKE OK - todas las mecánicas funcionan` y
 `SIM PASS`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada tal cual: `loop_base.wav` renderizada con la herramienta (misma
+semilla/longitud/eco → sincronía muestra a muestra), `music.gd` con dos
+voces y `set_intensity`, y el juego alimenta la intensidad (corredor a
+<600 px de meta, o ventana de ronda). Diagnóstico del crossfade: intensidad
+1 → −14/−38 dB, intensidad 0 → −26/−16 dB, ambas voces presentes y la
+tecla M para las dos. `SMOKE OK` y `SIM PASS`.

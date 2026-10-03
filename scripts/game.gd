@@ -1844,6 +1844,15 @@ func _physics_process(delta: float) -> void:
 	crowd_excite = move_toward(crowd_excite, clampf(near_goal + crowd_kill_flash, 0.0, 1.0), delta * 0.6)
 	if crowd != null:
 		crowd.volume_db = lerpf(-44.0, -26.0, crowd_excite)
+	# música dinámica (tarea 79): el corredor cerca de meta sube la mezcla
+	if music != null:
+		var em := 0.0
+		if right_of_way != null and right_of_way.state != Player.State.DEAD:
+			var gx2 := LEVEL_W - GOAL_W if right_of_way.goal_dir > 0 else GOAL_W
+			em = clampf(1.0 - absf(right_of_way.position.x - gx2) / 600.0, 0.0, 1.0)
+		if round_lock > 0.0:
+			em = 1.0
+		music.set_intensity(em, delta)
 	if round_lock > 0.0:
 		round_lock -= delta
 		if round_lock <= 0.0:
@@ -1903,6 +1912,13 @@ func _physics_process(delta: float) -> void:
 				mp.stop()
 			else:
 				mp.play()
+		# la voz base de la música dinámica sigue a la principal (tarea 79)
+		var mb := music.get_node_or_null("MusicBase") as AudioStreamPlayer
+		if mb != null:
+			if mb.playing:
+				mb.stop()
+			else:
+				mb.play()
 	if chaos and not match_over and round_lock <= 0.0:
 		chaos_timer -= delta
 		if chaos_timer <= 0.0:
