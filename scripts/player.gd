@@ -297,6 +297,19 @@ func _physics_process(delta: float) -> void:
 		if dir != 0.0:
 			facing = 1 if dir > 0.0 else -1
 
+	# giro automático (tarea 72): un rival pegado por la espalda te obliga a mirarlo
+	if state in [State.IDLE, State.RUN]:
+		var g := get_parent()
+		if g != null and g.get("players") != null:
+			var my_team := (player_id - 1) % 2
+			for q in g.players:
+				if q == self or q.state == State.DEAD:
+					continue
+				if (q.player_id - 1) % 2 == my_team:
+					continue
+				if absf(q.position.x - position.x) < 46.0 and absf(q.position.y - position.y) < 56.0:
+					facing = 1 if q.position.x >= position.x else -1
+
 	match state:
 		State.IDLE, State.RUN:
 			if push_time > 0.0:
