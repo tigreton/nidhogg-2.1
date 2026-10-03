@@ -13,6 +13,7 @@ func get_tests() -> Array:
 		["rodada_estado_y_duracion", _t_rodada],
 		["dive_corriendo", _t_dive],
 		["arco_tensado_en_divekick", _t_arco_dive],
+		["arcade_off_devuelve_p2_humano", _t_arcade_off],
 	]
 
 
@@ -136,3 +137,18 @@ func _t_arco_dive() -> bool:
 	_reset(1600.0, 4400.0)
 	return runner.check(bow_ok, "el tensado se conserva a través del dive") \
 			and runner.check(fired, "al soltar de pie, dispara")  # L75
+
+
+## Bug "Rodrigo se mueve solo sin tocar teclas": salir del modo arcade (Y)
+## dejaba a P2 como bot permanentemente — el vaivén era la IA, no el jugador.
+func _t_arcade_off() -> bool:
+	var g: Node = runner.game
+	g.players[1].is_bot = false
+	g.set_arcade(true)
+	var bot_on: bool = g.players[1].is_bot
+	g.set_arcade(false)
+	var bot_off: bool = not g.players[1].is_bot
+	# volver al estado limpio del suite por si la arena/mensagens quedaron raros
+	g.set_arcade(false)
+	return runner.check(bot_on, "entrar al arcade pone a P2 como bot") \
+			and runner.check(bot_off, "salir del arcade devuelve el control humano a P2")
