@@ -113,7 +113,8 @@ func _ready() -> void:
 	for h in [2, 1, 0]:
 		game.players[0].state = Player.State.ATTACK
 		game.players[0].attack_height = h
-		game.players[0].attack_time = 0.0
+		# en pleno golpe, ya pasado el windup del telegrafiado (tarea 81)
+		game.players[0].attack_time = game.players[0].attack_from() + 0.03
 		game.players[0].velocity = Vector2.ZERO
 		await _snap("17_accion_%s.png" % ["alta", "media", "baja"][2 - h])
 	Input.action_press("p1_right")

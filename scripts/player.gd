@@ -80,6 +80,7 @@ var bot_held := {}          # acciones que el bot mantiene pulsadas (solo si is_
 var bot_held_prev := {}     # estado del tick anterior, para detectar "recién pulsada"
 var bot_think := 0.0        # cronómetro entre decisiones del bot (lo usa game.gd)
 var was_on_floor := true
+var land_squash := 0.0   # squash breve al aterrizar (tarea 81)
 var dust_cd := 0.0
 var roll_time := 0.0
 var roll_cd := 0.0
@@ -130,6 +131,7 @@ func _physics_process(delta: float) -> void:
 	invuln_time = maxf(0.0, invuln_time - delta)
 	flash_time = maxf(0.0, flash_time - delta)
 	roll_cd = maxf(0.0, roll_cd - delta)
+	land_squash = maxf(0.0, land_squash - delta)
 	push_time = maxf(0.0, push_time - delta)
 	throw_pose_time = maxf(0.0, throw_pose_time - delta)
 	attack_dash_time = maxf(0.0, attack_dash_time - delta)
@@ -311,6 +313,7 @@ func _physics_process(delta: float) -> void:
 
 	dust_cd = maxf(0.0, dust_cd - delta)
 	if is_on_floor() and not was_on_floor:
+		land_squash = 0.12
 		_dust(10, 150.0)
 	elif state == State.RUN and dust_cd <= 0.0:
 		dust_cd = 0.16
@@ -462,6 +465,12 @@ func _pose_name_armed() -> String:
 		State.DIVEKICK, State.DIVE:
 			return "divekick"
 		State.ATTACK:
+			# telegrafiado (tarea 81): hasta attack_from() se mantiene la
+			# pose neutra — el windup dura lo que el arma tarda en golpear
+			if attack_time < attack_from():
+				if not is_on_floor():
+					return "jump" if velocity.y < 0.0 else "fall"
+				return "crouch" if stance == H.LOW else "idle"
 			match attack_height:
 				H.HIGH:
 					return "attack_high"
@@ -510,6 +519,14 @@ func _draw() -> void:
 		State.ATTACK:
 			if attack_dash_time > 0.0:
 				t_rot = 0.15
+
+	if land_squash > 0.0:
+		# squash de aterrizaje (tarea 81): se recupera en 0,12 s
+		var k := land_squash / 0.12
+		t_scl = Vector2(1.0 + 0.14 * k, 1.0 - 0.16 * k)
+	elif state == State.RUN and push_time <= 0.0:
+		# inclinación hacia delante proporcional a la velocidad
+		t_rot = signf(velocity.x) * minf(absf(velocity.x) / 330.0, 1.0) * 0.10
 
 	# sprite de la pose, anclado por los pies; P3/P4 reutilizan el de su par teñido
 	var side := "p1" if (player_id == 1 or player_id == 3) else "p2"
