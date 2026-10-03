@@ -109,13 +109,20 @@ Reglas de oro para ti (el humano que supervisa):
 | `75-arco-en-divekick.md` | Tensado conservado en dive-kick y caída | baja | `player.gd`, `test/suite_movimiento.gd` |
 | `76-stomp-invulnerable.md` | Invulnerabilidad de 0,4 s al ejecutar el stomp | baja | `game.gd` |
 | `77-empalado-movil.md` | El cadáver empalado sube/baja con la estancia | baja | `game.gd` |
-| `78-zoom-dinamico.md` | Cámara acerca/aleja según la distancia de los duelistas | media | `game.gd` |
+| `78-zoom-dinamico.md` | Cámara teatral: encuadra a los vivos, personaje ~14% de pantalla | media | `game.gd`, una línea en `screenshots.gd` |
 | `79-musica-dinamica.md` | Crossfade base/completa por emoción (dos mezclas) | alta | `music.gd`, `game.gd`, `tools/render_music.py` |
 | `80-estela-tajo.md` | Estela de tajo en el ataque cuerpo a cuerpo | baja | `player.gd` |
+| `81-telegrafiado-ataque.md` | Windup legible (pose neutra hasta attack_from) + squash e inclinación | media | `player.gd`, `screenshots.gd` (bloque 17) |
+| `82-estancias-con-peso.md` | Cambiar de estancia tarda según el arma (`stance_time`) | media | `game_config.gd`, `player.gd`, smoke (contingencia) |
+| `83-sonido-movimiento.md` | Pasos, aterrizaje y whoosh con pitch por arma | baja/media | `sfx.gd`, `game.gd`, `player.gd` |
+| `84-lanza-salto-ataque.md` | Mantener salto + atacar lanza el arma (suelo y aire) | baja | `player.gd`, `test/suite_combate.gd` |
 
 Las tareas 65–80 cierran las brechas contra el juego original detectadas en
 la comparativa con `docs/RESEARCH.md` (presentación del paso, antidesgaste,
-hazards normativos de arena y microdetalles de combate).
+hazards normativos de arena y microdetalles de combate). Las 81–84 (con la
+78 reescrita) cierran las brechas de **feel** medidas contra
+`docs/VIDEO_ANALYSIS.md` (telegrafiado, estancias con peso, sonido de
+movimiento, encuadre teatral y el input de lanzamiento del original).
 
 Las tareas 41–52 portan lo único técnico del proyecto hermano
 (`Nidhogg 2`): visión de conjunto, mapa de valores y orden en
@@ -160,6 +167,11 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
     `75` → `80`), luego hazards de arena de una en una (`69` → `70` →
     `71` — las tres tocan zonas de `player.gd`/`game.gd` cercanas) y al
     final `78` (zoom) y `79` (música dinámica, la más grande).
+14. Feel (81–84 + 78 reescrita): primero el que más cambia la lectura del
+    duelo — `81` telegrafiado → `82` estancias con peso → `83` sonido de
+    movimiento → `84` lanzamiento salto+ataque — y la `78` (encuadre
+    teatral) cuando quieras probar la cámara; va sola pero cambia TODAS
+    las capturas del recorrido si no se exime (línea incluida en la tarea).
 
 ## Conflictos conocidos (por tocar el mismo código)
 
@@ -207,6 +219,11 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
 | `73` y `45`/`46` | El levantamiento rodando reutiliza las variables de la rodada (`roll_*`) y suelte el auto-levantamiento que el smoke daba por hecho (los casos 33/34 ya pasan: P2 queda en 6). El bot necesita su rama nueva. |
 | `74`/`75` y `48` | Ambas suites usan el tensado completo de 66 frames de la `48`; no cambies esos números al aplicarlas. |
 | `79` y `63`/`68` | La `79` reestructura `_ready()` de `music.gd` (dos voces) y comparte métrica de emoción con la `68` (señales separadas). Aplica tras `63` (hecha) y revisa el toggle M. |
+| `78` y capturas | La 78 reescrita encuadra a los vivos: el recorrido se exime con `game.dynamic_zoom = false` (línea incluida en la tarea). Sin ella, las 23 capturas cambian de encuadre. |
+| `81` y capturas | El windup de la 81 deja el bloque 17 en pose neutra: la tarea reajusta `attack_time` de ese bloque a `attack_from() + 0.03`. |
+| `82` y smoke | La 82 rompe cualquier caso que ataque en el MISMO frame en que pulsa up/down (esperaba estancia instantánea): su paso 4 es la contingencia (añadir ~0,12 s de espera, nunca tocar `stance_time`). Compón con la 20 (tajo aéreo). |
+| `83` y `53` | La 83 añade pitch al wrapper `sfx()` (firma nueva con valor por defecto: compatible) y dos ids sintetizados; no toca la tabla `WAVS` de la 53. |
+| `84` y `75` | La suite de la 75 mantiene ataque pulsado y PRESIONA salto (no al revés): el disparo de la 84 exige `hit("attack")` con salto mantenido, así que no colisionan. Si la 75 fallara tras la 84, revisa el orden de pulsaciones del caso. |
 
 ## Comando de verificación (común a todas las tareas)
 
