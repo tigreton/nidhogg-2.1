@@ -17,10 +17,11 @@ const WAVS := {
 }
 
 
-static func play(parent: Node, pos: Vector2, id: String, db := -10.0) -> void:
+static func play(parent: Node, pos: Vector2, id: String, db := -10.0, pitch := 1.0) -> void:
 	var p := AudioStreamPlayer2D.new()
 	p.stream = stream(id)
 	p.volume_db = db
+	p.pitch_scale = pitch
 	p.position = pos
 	p.max_distance = 2400.0
 	parent.add_child(p)
@@ -58,6 +59,10 @@ static func stream(id: String) -> AudioStreamWAV:
 			data = _arp([880.0, 880.0], 0.06, 0.14)
 		"crash":
 			data = _noise(0.3, 13.0, 0.55)
+		"step":
+			data = _noise(0.03, 90.0, 0.10)
+		"land":
+			data = _sweep(0.09, 130.0, 55.0, 0.30)
 		_:
 			data = _noise(0.05, 40.0, 0.2)
 	var wav := AudioStreamWAV.new()

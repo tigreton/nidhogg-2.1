@@ -81,6 +81,7 @@ var is_bot := false
 var bot_held := {}          # acciones que el bot mantiene pulsadas (solo si is_bot)
 var bot_held_prev := {}     # estado del tick anterior, para detectar "recién pulsada"
 var bot_think := 0.0        # cronómetro entre decisiones del bot (lo usa game.gd)
+var step_phase := 0.0   # acumula PI por zancada para el pie (tarea 83)
 var was_on_floor := true
 var land_squash := 0.0   # squash breve al aterrizar (tarea 81)
 var dust_cd := 0.0
@@ -126,6 +127,18 @@ func _sfx(id: String, db := -12.0) -> void:
 	var g := get_parent()
 	if g != null and g.has_method("sfx"):
 		g.sfx(position, id, db)
+
+
+func _swing_sfx(db := -20.0) -> void:
+	# el whoosh del arma (tarea 83): el espadón corta grave, la daga agudo
+	var pitch := 1.0
+	if weapon_id == "espada":
+		pitch = 0.78
+	elif weapon_id == "daga":
+		pitch = 1.3
+	var g := get_parent()
+	if g != null and g.has_method("sfx"):
+		g.sfx(position, "swing", db, pitch)
 
 
 func _physics_process(delta: float) -> void:
@@ -203,7 +216,7 @@ func _physics_process(delta: float) -> void:
 			stance = H.MID
 			stance_target = stance
 			velocity = Vector2(facing * DIVE_SPEED, 0.0)
-			_sfx("swing", -18.0)
+			_swing_sfx(-18.0)
 		elif hit("jump") and held("down") and is_on_floor() and roll_cd > 0.0 and has_sword and absf(velocity.x) < 120.0:
 			# sidekick desde agachado (adaptación del hermano: el slot
 			# agachado+salto libre solo existe mientras la rodada enfría)
@@ -215,7 +228,7 @@ func _physics_process(delta: float) -> void:
 			sidekick_time = 0.0
 			sidekick_resolved = false
 			velocity = Vector2(facing * 440.0, -160.0)
-			_sfx("swing", -18.0)
+			_swing_sfx(-18.0)
 		elif hit("jump") and held("down") and is_on_floor() and roll_cd <= 0.0 and MatchRules.allow_roll:
 			# rodar: esquiva rápida agachada (cuenta como estancia baja)
 			state = State.ROLL
@@ -224,7 +237,7 @@ func _physics_process(delta: float) -> void:
 			roll_cd = ROLL_COOLDOWN
 			stance = H.LOW
 			stance_target = stance
-			_sfx("swing", -22.0)
+			_swing_sfx(-22.0)
 		elif hit("jump") and is_on_floor():
 			# salto doble: parado ~1 personaje, con carrerilla el ápice completo
 			velocity.y = JUMP_VY_RUN if state == State.RUN else JUMP_VY_STAND
@@ -241,7 +254,7 @@ func _physics_process(delta: float) -> void:
 				sidekick_time = 0.0
 				sidekick_resolved = false
 				velocity = Vector2(facing * 440.0, -160.0)
-				_sfx("swing", -18.0)
+				_swing_sfx(-18.0)
 			elif is_on_floor():
 				# ataque de espada o puñetazo (sin espada): reutiliza ATTACK
 				state = State.ATTACK
@@ -252,7 +265,7 @@ func _physics_process(delta: float) -> void:
 					# estocada: embestida al atacar corriendo
 					attack_dash_time = attack_dur()
 					velocity.x = facing * LUNGE_SPEED
-				_sfx("swing", -20.0)
+				_swing_sfx(-20.0)
 			elif has_sword and (held("up") or held("down")):
 				# tajo aéreo: elegir altura manteniendo arriba/abajo
 				state = State.ATTACK
@@ -260,14 +273,14 @@ func _physics_process(delta: float) -> void:
 				attack_resolved = false
 				attack_height = stance
 				velocity.y = maxf(velocity.y, -80.0)
-				_sfx("swing", -20.0)
+				_swing_sfx(-20.0)
 			else:
 				state = State.DIVEKICK
 				divekick_resolved = false
 				stance = H.MID
 				stance_target = stance
 				velocity = Vector2(facing * 430.0, 440.0)
-				_sfx("swing", -20.0)
+				_swing_sfx(-20.0)
 		elif hit("throw") and has_sword and MatchRules.allow_throw:
 			has_sword = false
 			throw_pose_time = 0.22   # pose de suelta breve tras lanzar el arma
@@ -290,6 +303,12 @@ func _physics_process(delta: float) -> void:
 				velocity.x = move_toward(velocity.x, dir * sp, rate * delta)
 			state = State.RUN if absf(velocity.x) > 5.0 else State.IDLE
 			run_phase += velocity.x * delta * 0.045
+			# pasos al ritmo de las zancadas (tarea 83): un pie por medio ciclo
+			step_phase += absf(velocity.x) * delta * 0.045
+			if step_phase >= PI:
+				step_phase -= PI
+				if is_on_floor() and absf(velocity.x) > 60.0:
+					_sfx("step", -26.0)
 		State.JUMP:
 			velocity.x = move_toward(velocity.x, dir * SPEED, AIR_ACCEL * delta)
 		State.ATTACK:
@@ -328,6 +347,7 @@ func _physics_process(delta: float) -> void:
 	dust_cd = maxf(0.0, dust_cd - delta)
 	if is_on_floor() and not was_on_floor:
 		land_squash = 0.12
+		_sfx("land", -18.0)
 		_dust(10, 150.0)
 	elif state == State.RUN and dust_cd <= 0.0:
 		dust_cd = 0.16

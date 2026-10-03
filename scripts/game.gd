@@ -203,8 +203,8 @@ func _process(_delta: float) -> void:
 		run_label.visible = false
 
 
-func sfx(pos: Vector2, id: String, db := -10.0) -> void:
-	Sfx.play(self, pos, id, db)
+func sfx(pos: Vector2, id: String, db := -10.0, pitch := 1.0) -> void:
+	Sfx.play(self, pos, id, db, pitch)
 
 
 func in_grass(x: float) -> bool:
