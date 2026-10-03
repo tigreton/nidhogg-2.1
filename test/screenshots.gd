@@ -135,5 +135,18 @@ func _ready() -> void:
 	await _snap("21_derribado.png")
 	game.players[0].state = Player.State.IDLE
 
+	# rodada: sprite de barrido (slide) girando con el transform del ROLL
+	game.players[0].velocity = Vector2.ZERO
+	await get_tree().physics_frame
+	Input.action_press("p1_down")
+	Input.action_press("p1_jump")
+	await get_tree().create_timer(0.07).timeout
+	await _snap("22_rodada_slide.png")
+	Input.action_release("p1_jump")
+	Input.action_release("p1_down")
+	await get_tree().create_timer(0.6).timeout
+	game.players[0].state = Player.State.IDLE
+	game.players[0].velocity = Vector2.ZERO
+
 	print("CAPTURAS OK")
 	get_tree().quit(0)

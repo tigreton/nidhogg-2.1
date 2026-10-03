@@ -264,3 +264,9 @@ son el tinte con el que se dibujan sus sprites.
 Última línea esperada: `SMOKE OK - todas las mecánicas funcionan`.
 Y una pasada con render: correr, saltar, atacar en las 3 alturas, rodar,
 divekick, derribo, muerte (cadáver) y revancha.
+
+## Nota posterior (2026-10-03)
+
+El mapeo `State.ROLL` del paso 2 cambió de `"jump"` a `"slide"` para estrenar
+el sprite de barrido (la 45 no creó estado SLIDE propio). Detalle en
+`PLAN-ARTE.md` y verificación en `screens/22_rodada_slide.png`.

@@ -67,10 +67,9 @@ tareas atómicas ejecutables por un LLM básico, una tarea = un commit.
 | ATTACK | `attack_high` / `attack_mid` / `attack_low` según `attack_height` |
 | KNOCKDOWN | `downed` (la pose ya está tumbada: sin rotación) |
 | STUNNED | `idle` inclinado (transform) |
-| ROLL | `jump` girando (transform, como hoy) |
+| ROLL | `slide` girando (desde 2026-10-03; antes `jump`) |
 | SIDEKICK | `crouch` + transform |
 | DEAD | no se dibuja; el `Corpse` usa `dead` |
-| SLIDE (tras tarea 45) | `slide` |
 
 ## Qué NO tiene cabida (y por qué)
 
@@ -80,11 +79,10 @@ tareas atómicas ejecutables por un LLM básico, una tarea = un commit.
    `duelo_versus.png` → `bg_title.png`.
 2. **`art_raw/` completo (265 archivos)** — variantes crudas, recortes
    `proc/` y QA del pipeline: materia prima para regenerar, no arte del juego.
-3. **`player_slide_{p1,p2}.png`** — sigue SIN uso: la tarea 45 ya está
-   aplicada pero con la adaptación acordada (atacar durante la RODADA, sin
-   estado SLIDE nuevo) y el renderer mapea ROLL→`jump`. Para estrenar el
-   sprite: mapear ROLL→`slide` (pose de barrido por el suelo) o crear el
-   estado propio.
+3. **`player_slide_{p1,p2}.png`** — ESTRENADO (2026-10-03): la 45 no creó
+   estado SLIDE (adaptó la rodada), así que el renderer mapea ROLL→`slide`
+   (la pose de barrido gira con el transform de la voltereta). Verificado en
+   `screens/22_rodada_slide.png`.
 4. **`player_throw_p2.png`** — inconsistente: P2 aparece desarmado en la
    suelta y P1 armado. No se usa en v1 (la 62 puede regenerarlo).
 5. **`stomp.wav`, `fight.wav`, `arrow_bounce.wav`** — sus eventos no existen

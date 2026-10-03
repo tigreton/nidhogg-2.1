@@ -453,7 +453,7 @@ func _pose_name() -> String:
 		State.KNOCKDOWN:
 			return "downed"
 		State.ROLL:
-			return "jump"
+			return "slide"
 		State.SIDEKICK:
 			return "crouch"
 		_:
