@@ -156,7 +156,11 @@ Pendientes del track arte:
 
 | Pendiente | Qué hace falta | Dónde retomarlo |
 |---|---|---|
-| Música y fuente | Siguen procedurales: no existen assets para ellas — tareas 63/64 creadas. Con el CLI `bl` ya operativo (ver nota de la 61) quedan desbloqueadas | `tasks/63-musica-generada.md`, `tasks/64-fuente-pixel.md` |
+| Música de modelo | La 63 está APLICADA con bucle compuesto offline (72,7 s); si una tanda quiere música de modelo, basta sustituir `art/music/loop_main.wav` (PCM16 mono) | `tasks/63-musica-generada.md` |
+| Fuente propia del pipeline | La 64 está APLICADA con VT323 (OFL); una fuente generada solo tendrá que sustituir `art/fonts/pixel.ttf` | `tasks/64-fuente-pixel.md` |
+
+Con esto el track arte queda **completo**: 53–64 aplicadas, sin pendientes de
+código.
 
 Cerrada la **tarea 61** (2026-10-03): 18 sprites `_noarme` (9 poses × 2
 personajes, incluida la suelta `throw` para P1 y P2) generados con

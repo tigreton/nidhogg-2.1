@@ -75,3 +75,13 @@ archivo (como `art/sprites`).
 
 Últimas líneas esperadas: `SMOKE OK - todas las mecánicas funcionan` y
 `CAPTURAS OK`.
+
+## Nota de aplicación (2026-10-03): APLICADA
+
+Fuente elegida: **VT323** (Google Fonts, licencia OFL, 153 KB) en
+`art/fonts/pixel.ttf` — terminal pixel, escala dignamente de 14 a 96 px y
+cubre todos los glifos españoles (verificado con PIL: ¡¿áéíóúñüÁÉÍÓÚÑÜ · —,
+ninguno faltante). Cableado el helper `_apply_pixel_font`/`_all_labels` en
+`title.gd` y `game.gd` tal cual el paso 1 (aplica solo si el fichero existe).
+Verificado por visión: título y reglas con 'SÍ' acentuado, ¡FIGHT! y marcador
+en pixel sin tofu ni recortes; `SMOKE OK`, `ALL PASSED (12)`, `CAPTURAS OK`.

@@ -46,6 +46,29 @@ func _ready() -> void:
 	hint.add_theme_color_override("font_color", Color(0.6, 0.58, 0.7))
 	add_child(hint)
 	_update_rules()
+	_apply_pixel_font(self)
+
+
+## Fuente pixel opcional (tarea 64): si existe res://art/fonts/pixel.ttf se
+## aplica a todos los Labels; si no, todo queda con la fuente por defecto.
+const FONT_PATH := "res://art/fonts/pixel.ttf"
+
+
+func _apply_pixel_font(root: Node) -> void:
+	if not ResourceLoader.exists(FONT_PATH):
+		return
+	var f: FontFile = load(FONT_PATH)
+	for n in _all_labels(root):
+		n.add_theme_font_override("font", f)
+
+
+func _all_labels(node: Node) -> Array[Label]:
+	var out: Array[Label] = []
+	for c in node.get_children():
+		if c is Label:
+			out.append(c)
+		out.append_array(_all_labels(c))
+	return out
 
 
 func _update_rules() -> void:

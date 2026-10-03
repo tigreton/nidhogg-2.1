@@ -1470,6 +1470,30 @@ func _build_hud() -> void:
 	fight_label.visible = false
 	cl.add_child(fight_label)
 
+	_apply_pixel_font(cl)
+
+
+## Fuente pixel opcional (tarea 64): si existe res://art/fonts/pixel.ttf se
+## aplica a todos los Labels del HUD; si no, todo queda con la fuente por defecto.
+const FONT_PATH := "res://art/fonts/pixel.ttf"
+
+
+func _apply_pixel_font(root: Node) -> void:
+	if not ResourceLoader.exists(FONT_PATH):
+		return
+	var f: FontFile = load(FONT_PATH)
+	for n in _all_labels(root):
+		n.add_theme_font_override("font", f)
+
+
+func _all_labels(node: Node) -> Array[Label]:
+	var out: Array[Label] = []
+	for c in node.get_children():
+		if c is Label:
+			out.append(c)
+		out.append_array(_all_labels(c))
+	return out
+
 
 func _start_round() -> void:
 	if worm != null:
