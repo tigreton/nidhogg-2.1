@@ -118,6 +118,9 @@ const COUNTDOWN_STEP := 0.7
 var respawn_timers := [0.0, 0.0]
 var shake_time := 0.0
 var parry_cd := 0.0
+var calm_time := 0.0            # segundos sin muertes (tarea 67)
+var sudden_death := false
+const SUDDEN_DEATH_AFTER := 45.0
 const CAM_ZOOM_NEAR := 1.5   # duelo cerrado: personaje ~13-14% de pantalla (tarea 78)
 const CAM_ZOOM_FAR := 1.0    # persecución abierta (nunca menos: no perder presencia)
 const CAM_FIT_USE := 0.72    # fracción del ancho que pueden ocupar los duelistas
@@ -1536,6 +1539,8 @@ func _start_round() -> void:
 		corpses[k].queue_free()
 	corpses.clear()
 	right_of_way = null
+	calm_time = 0.0        # la muerte súbita no sobrevive a la revancha (tarea 67)
+	sudden_death = false
 	section_index = 3
 	sect_conquered = [0, 0]
 	weapon_idx = [0, 0]
@@ -1685,6 +1690,14 @@ func _physics_process(delta: float) -> void:
 		return
 	shake_time = maxf(0.0, shake_time - delta)
 	parry_cd = maxf(0.0, parry_cd - delta)
+	# muerte súbita (tarea 67): 45 s sin sangre y todo choque mata
+	if not match_over and round_lock <= 0.0:
+		calm_time += delta
+		if not sudden_death and calm_time >= SUDDEN_DEATH_AFTER:
+			sudden_death = true
+			show_msg("¡MUERTE SÚBITA!", 1.4)
+			sfx(camera.position, "alert", -4.0)
+			shake_time = maxf(shake_time, 0.2)
 	if round_lock > 0.0:
 		round_lock -= delta
 		if round_lock <= 0.0:
@@ -1806,6 +1819,8 @@ func _resolve_attacks() -> void:
 				outcome = "miss"
 			elif h == Player.H.LOW and not def.is_on_floor():
 				outcome = "miss"
+		if sudden_death and outcome in ["clash", "parry", "miss"]:
+			outcome = "trade"   # muerte súbita: todo contacto mata a ambos
 		atk.attack_resolved = true
 		match outcome:
 			"kill":
@@ -2035,6 +2050,9 @@ func _resolve_guard_impale() -> void:
 			if not hacia:
 				continue
 			if f.stance == g.stance:
+				if sudden_death:
+					_kill(f, g)   # en muerte súbita el rebote también mata (tarea 67)
+					return
 				if parry_cd > 0.0:
 					continue
 				# rebote mínimo: ambos se separan sin stun ni desarme
@@ -2070,6 +2088,8 @@ func _resolve_stomps() -> void:
 func _kill(def: Player, atk: Player) -> void:
 	if def.state == Player.State.DEAD:
 		return
+	calm_time = 0.0        # cualquier muerte apaga la muerte súbita (tarea 67)
+	sudden_death = false
 	def.die()
 	stats[def.player_id - 1]["deaths"] += 1
 	if atk != null:
