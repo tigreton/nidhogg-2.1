@@ -131,3 +131,13 @@ func _pose_name() -> String:
 
 Última línea esperada: `SMOKE OK - todas las mecánicas funcionan`.
 Y una pasada con render lanzando/recogiendo el arma y tensando el arco.
+
+## Nota de aplicación (2026-10-03): EN ESPERA
+
+El pipeline (`tools/art_gen.py`) está operativo, pero el CLI `bl` de Bailian
+**no está instalado en esta máquina** (ni en PATH de Git Bash ni de Windows,
+ni como paquete npm global). Sin él no hay generación: la tarea queda en
+espera conforme a su propia especificación, con el fallback vigente (poses
+armadas también al ir desarmado — jugable, pierde lectura de armado).
+Para retomarla: instalar `bailian-cli` (`bl`), verificar con `bl usage`, y
+ejecutar los pasos 1–3 tal cual.
