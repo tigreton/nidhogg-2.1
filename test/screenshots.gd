@@ -148,5 +148,17 @@ func _ready() -> void:
 	game.players[0].state = Player.State.IDLE
 	game.players[0].velocity = Vector2.ZERO
 
+	# lanzamiento: pose de suelta (throw) con el arma volando
+	game.players[0].has_sword = true
+	game.players[0].weapon_id = "florete"
+	await get_tree().physics_frame
+	Input.action_press("p1_throw")
+	await get_tree().create_timer(0.1).timeout
+	await _snap("23_lanzamiento.png")
+	Input.action_release("p1_throw")
+	await get_tree().create_timer(0.8).timeout
+	game.players[0].state = Player.State.IDLE
+	game.players[0].velocity = Vector2.ZERO
+
 	print("CAPTURAS OK")
 	get_tree().quit(0)

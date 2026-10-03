@@ -87,6 +87,7 @@ var sidekick_time := 0.0
 var sidekick_resolved := false
 var attack_dash_time := 0.0   # > 0 mientras la estocada empuja hacia delante
 var bow_time := 0.0
+var throw_pose_time := 0.0   # > 0 mientras se ve la pose de suelta del lanzamiento
 
 
 func _ready() -> void:
@@ -127,6 +128,7 @@ func _physics_process(delta: float) -> void:
 	flash_time = maxf(0.0, flash_time - delta)
 	roll_cd = maxf(0.0, roll_cd - delta)
 	push_time = maxf(0.0, push_time - delta)
+	throw_pose_time = maxf(0.0, throw_pose_time - delta)
 	attack_dash_time = maxf(0.0, attack_dash_time - delta)
 
 	if state == State.DEAD:
@@ -251,6 +253,7 @@ func _physics_process(delta: float) -> void:
 				_sfx("swing", -20.0)
 		elif hit("throw") and has_sword and MatchRules.allow_throw:
 			has_sword = false
+			throw_pose_time = 0.22   # pose de suelta breve tras lanzar el arma
 			threw_sword.emit(self)
 
 	var dir := 0.0
@@ -433,6 +436,9 @@ func reset_to(pos: Vector2, face: int) -> void:
 
 
 func _pose_name() -> String:
+	# suelta del lanzamiento: pose breve de brazo extendido tras soltar el arma
+	if throw_pose_time > 0.0 and state in [State.IDLE, State.RUN]:
+		return "throw"
 	match state:
 		State.RUN:
 			if stance == H.LOW:

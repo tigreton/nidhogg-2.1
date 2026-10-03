@@ -83,8 +83,12 @@ tareas atómicas ejecutables por un LLM básico, una tarea = un commit.
    estado SLIDE (adaptó la rodada), así que el renderer mapea ROLL→`slide`
    (la pose de barrido gira con el transform de la voltereta). Verificado en
    `screens/22_rodada_slide.png`.
-4. **`player_throw_p2.png`** — inconsistente: P2 aparece desarmado en la
-   suelta y P1 armado. No se usa en v1 (la 62 puede regenerarlo).
+4. **`player_throw_{p1,p2}.png`** — ESTRENADO (2026-10-03): pose de suelta
+   visible 0,22 s tras lanzar el arma (`throw_pose_time`; captura
+   `23_lanzamiento.png`). Queda regenerar `player_throw_p1` en versión
+   desarmada (P2 ya salió desarmado) junto a la tanda de la 61: mientras
+   tanto P1 muestra la espada en mano durante esos 0,22 s aunque el arma ya
+   vuele (imperceptible en juego).
 5. **`stomp.wav`, `fight.wav`, `arrow_bounce.wav`** — sus eventos no existen
    en el código: los crea la tarea 53 (mapeo stomp→`hit`, más los eventos
    nuevos `fight` y `arrow_bounce`).
@@ -153,9 +157,17 @@ Pendientes del track arte:
 | Pendiente | Qué hace falta | Dónde retomarlo |
 |---|---|---|
 | Tarea 61 (poses desarmadas) | Instalar/configurar el CLI `bl` (Bailian) y correr el pipeline `tools/art_gen.py` + `tools/img_pipeline.py`. Mientras tanto, desarmado y arco se ven con la espada horneada | `tasks/61-desarmado-hueco.md` (EN ESPERA documentada) |
-| `player_throw` sin uso | P2 sale desarmado y P1 armado (inconsistente): regenerar la pose | junto con la tanda de la 61 |
-| Sprite rojo ~2 px hundido | Tolerable según la 62; si molesta, mapa `POSE_Y_FIX` por pose | `player.gd` |
-| Música y fuente | Siguen procedurales: no existen assets para ellas | nueva tanda de generación (backlog) |
+| `player_throw_p1` regenerar | La pose ya se usa (0,22 s de suelta tras lanzar); regenerar la de P1 en versión desarmada para igualar a P2 | junto con la tanda de la 61 |
+| Música y fuente | Siguen procedurales: no existen assets para ellas — tareas 63/64 creadas (EN ESPERA, mismo CLI) | `tasks/63-musica-generada.md`, `tasks/64-fuente-pixel.md` |
+
+Cerrados tras revisión (2026-10-03, segunda pasada):
+
+- **Sprite rojo ~2 px hundido: falso positivo.** Medido sobre captura
+  controlada con ambos jugadores en suelo llano: las suelas de P1 y P2 caen
+  en la misma fila exacta (delta 0 px) y el anclaje por pies es idéntico
+  (`position.y + POSE_FEET_Y`); confirmado también por visión. La lectura
+  original de la 62 probablemente venía del ancho menor del idle de P2
+  (45 px vs 66). Sin `POSE_Y_FIX` necesario.
 
 Notas de cierre:
 
