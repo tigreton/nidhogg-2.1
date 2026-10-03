@@ -160,3 +160,11 @@ En `_start_round()`, junto a `right_of_way = null`:
 
 Últimas líneas esperadas: `SMOKE OK - todas las mecánicas funcionan` y
 `SIM PASS`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada con la clase `CrumbleTile` reescrita limpia (el borrado de `_tops`
+como bucle inverso `_top_drop`, sin el ternario frágil del borrador) y con
+`restore()` que re-registra el top si faltaba. El sim baja de letalidad con
+el puente trampa (los bots lo cruzan por la vía alta) pero pasa a 180 s:
+`SIM RESULT t=180 kills=4 puntos=1` + `SMOKE OK` + `ALL PASSED (15)`.

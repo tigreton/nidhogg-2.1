@@ -156,6 +156,7 @@ var sections_mode := false
 var section_index := 3
 var sect_conquered := [0, 0]
 var gates: Array[SectionGate] = []
+var crumble_tiles: Array[CrumbleTile] = []
 
 var camera: Camera2D
 var section_cam_tween: Tween
@@ -373,7 +374,15 @@ func _build_level() -> void:
 	_poly(PackedVector2Array([Vector2(PIT2_X0, GROUND_Y + 4), Vector2(PIT2_X1, GROUND_Y + 4), Vector2(PIT2_X1 - 26, 800.0), Vector2(PIT2_X0 + 26, 800.0)]), col_pit, -6)
 	_pit_edges(PIT_X0, PIT_X1)
 	_pit_edges(PIT2_X0, PIT2_X1)
-	_platform(PLAT_X0, PLAT_X1, PLAT_Y)
+	# crumble bridge (tarea 70): 4 tramos sobre el foso en vez de plataforma fija
+	crumble_tiles.clear()
+	var tw := (PLAT_X1 - PLAT_X0) / 4.0
+	for k in 4:
+		var tile := CrumbleTile.new(PLAT_X0 + tw * float(k), PLAT_X0 + tw * (float(k) + 1.0), PLAT_Y)
+		tile.z_index = -4
+		_register_top(tile.x0, tile.x1, PLAT_Y)
+		_add_level(tile)
+		crumble_tiles.append(tile)
 	_bridge()
 	_house()
 	_rocks_zone()
@@ -816,6 +825,85 @@ class BloodPool extends Node2D:
 			for i in drips.size():
 				var dx := -14.0 + 12.0 * float(i)
 				draw_rect(Rect2(dx, 0.0, 3.0, drips[i] * g), Color(col.r, col.g, col.b, a * 0.8))
+
+
+class CrumbleTile extends Node2D:
+	## Tramo de plataforma que tiembla al pisarlo y cae (tarea 70).
+	var x0: float
+	var x1: float
+	var y: float
+	var body: StaticBody2D
+	var state := 0          # 0 intacto, 1 temblando, 2 caído
+	var t := 0.0
+
+	func _init(px0: float, px1: float, py: float) -> void:
+		x0 = px0
+		x1 = px1
+		y = py
+		position = Vector2((x0 + x1) * 0.5, y + 8.0)
+		body = StaticBody2D.new()
+		body.collision_layer = 2
+		body.collision_mask = 0
+		var cs := CollisionShape2D.new()
+		var rect := RectangleShape2D.new()
+		rect.size = Vector2(x1 - x0, 16.0)
+		cs.shape = rect
+		body.add_child(cs)
+		add_child(body)
+
+	func restore(game: Node) -> void:
+		state = 0
+		t = 0.0
+		position = Vector2((x0 + x1) * 0.5, y + 8.0)
+		rotation = 0.0
+		body.get_child(0).set_deferred("disabled", false)
+		var ya := false
+		for top in game._tops:
+			if absf(float(top["x0"]) - x0) < 0.5 and absf(float(top["y"]) - y) < 0.5:
+				ya = true
+				break
+		if not ya:
+			game._register_top(x0, x1, y)
+		queue_redraw()
+
+	func _top_drop(game: Node) -> void:
+		# quita la entrada de _tops de este tramo (por x0 e y)
+		for i in range(game._tops.size() - 1, -1, -1):
+			var top: Dictionary = game._tops[i]
+			if absf(float(top["x0"]) - x0) < 0.5 and absf(float(top["y"]) - y) < 0.5:
+				game._tops.remove_at(i)
+
+	func _process(delta: float) -> void:
+		var game := get_parent().get_parent()
+		match state:
+			0:
+				for p in game.players:
+					if p.is_on_floor() and p.position.y > y - 40.0 and p.position.y < y + 8.0 and p.position.x > x0 and p.position.x < x1:
+						state = 1
+						t = 0.0
+						break
+			1:
+				t += delta
+				position.x = (x0 + x1) * 0.5 + sin(t * 60.0) * 2.5
+				if t >= 0.4:
+					state = 2
+					position.x = (x0 + x1) * 0.5
+					body.get_child(0).set_deferred("disabled", true)
+					_top_drop(game)
+			2:
+				position.y += 620.0 * delta
+				rotation += delta * 1.2
+				if position.y > 900.0:
+					position.y = 900.0
+		queue_redraw()
+
+	func _draw() -> void:
+		if state == 2:
+			draw_rect(Rect2(-(x1 - x0) * 0.5, -16.0, x1 - x0, 16.0), Color(0.16, 0.14, 0.22))
+			return
+		var host := get_parent().get_parent()
+		draw_texture_rect(host.TEX_FLOOR, Rect2(-(x1 - x0) * 0.5, -8.0, x1 - x0, 16.0), true, host.col_plat)
+		draw_texture_rect(host.TEX_FLOOR, Rect2(-(x1 - x0) * 0.5, -8.0, x1 - x0, 5.0), true, host.col_plat_top)
 
 
 class Pip extends Node2D:
@@ -1564,6 +1652,8 @@ func _start_round() -> void:
 	corpses.clear()
 	right_of_way = null
 	calm_time = 0.0        # la muerte súbita no sobrevive a la revancha (tarea 67)
+	for tile in crumble_tiles:
+		tile.restore(self)   # el puente vuelve a estar (tarea 70)
 	sudden_death = false
 	section_index = 3
 	sect_conquered = [0, 0]
