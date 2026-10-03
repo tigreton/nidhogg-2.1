@@ -169,3 +169,9 @@ con peso). Aplicado el remedio que esta misma tarea prevé: `SIM_SECONDS`
 trayectoria cambia con el mismo seed (posible fuente: RNG de `CPUParticles2D`
 o síntesis perezosa de sonidos con `randf`), así que el PASS del sim debe
 leerse por versión, no como bit exacto entre commits.
+
+**Actualización misma tarde:** con el backlog de feel completo (69-84) el sim
+volvió a flaquear POR PUNTOS de forma INTERMITENTE en el mismo commit
+(ejecuciones del mismo HEAD daban 2-9 bajas y 0-3 puntos): el residual de
+no-determinismo (partículas/síntesis perezosa) más bots menos letales hace
+el criterio de 1 punto en 180 s justísimo. `SIM_SECONDS` 180 → 240.

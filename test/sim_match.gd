@@ -4,7 +4,7 @@ extends Node
 ## Verifica el flujo de punta a punta: bajas, puntos y cobertura de estados.
 ##   godot --headless --path . res://test/sim_match.tscn
 
-const SIM_SECONDS := 180.0
+const SIM_SECONDS := 240.0
 const SIM_SEED := 20260907
 
 var game: Node
