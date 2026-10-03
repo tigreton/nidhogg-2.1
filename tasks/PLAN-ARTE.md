@@ -80,8 +80,11 @@ tareas atómicas ejecutables por un LLM básico, una tarea = un commit.
    `duelo_versus.png` → `bg_title.png`.
 2. **`art_raw/` completo (265 archivos)** — variantes crudas, recortes
    `proc/` y QA del pipeline: materia prima para regenerar, no arte del juego.
-3. **`player_slide_{p1,p2}.png`** — la mecánica slide tackle no existe en el
-   código (tarea 45 del porteo, pendiente). Encajará al aplicarla.
+3. **`player_slide_{p1,p2}.png`** — sigue SIN uso: la tarea 45 ya está
+   aplicada pero con la adaptación acordada (atacar durante la RODADA, sin
+   estado SLIDE nuevo) y el renderer mapea ROLL→`jump`. Para estrenar el
+   sprite: mapear ROLL→`slide` (pose de barrido por el suelo) o crear el
+   estado propio.
 4. **`player_throw_p2.png`** — inconsistente: P2 aparece desarmado en la
    suelta y P1 armado. No se usa en v1 (la 62 puede regenerarlo).
 5. **`stomp.wav`, `fight.wav`, `arrow_bounce.wav`** — sus eventos no existen
