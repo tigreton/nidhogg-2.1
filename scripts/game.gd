@@ -159,6 +159,8 @@ var pause_label: Label
 var stats_label: Label
 var fight_label: Label
 var fight_tween: Tween
+var step_arrow: TextureRect
+var step_arrow_tween: Tween
 var pips: Array[Pip] = []
 var pips_row: Node2D
 var respawn_bar: RespawnBar
@@ -1477,6 +1479,15 @@ func _build_hud() -> void:
 
 	_apply_pixel_font(cl)
 
+	# flecha grande del derecho de avance (tarea 65)
+	step_arrow = TextureRect.new()
+	step_arrow.texture = preload("res://art/sprites/arrow_neutral.png")
+	step_arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	step_arrow.pivot_offset = Vector2(32.0, 21.0)
+	step_arrow.position = Vector2(VIEW_W * 0.5 - 32.0, 108.0)
+	step_arrow.modulate.a = 0.0
+	cl.add_child(step_arrow)
+
 
 ## Fuente pixel opcional (tarea 64): si existe res://art/fonts/pixel.ttf se
 ## aplica a todos los Labels del HUD; si no, todo queda con la fuente por defecto.
@@ -1559,6 +1570,21 @@ func _show_fight() -> void:
 	fight_tween.tween_interval(0.45)
 	fight_tween.tween_property(fight_label, "modulate:a", 0.0, 0.3)
 	fight_tween.tween_callback(func(): fight_label.visible = false)
+
+
+func _show_step_arrow(p: Player) -> void:
+	# flecha grande del derecho de avance (tarea 65): color del verdugo, hacia su meta
+	if step_arrow == null:
+		return
+	step_arrow.flip_h = p.goal_dir < 0
+	step_arrow.modulate = Color(p.color.r, p.color.g, p.color.b, 0.0)
+	step_arrow.scale = Vector2(2.6, 2.6)
+	if step_arrow_tween:
+		step_arrow_tween.kill()
+	step_arrow_tween = step_arrow.create_tween()
+	step_arrow_tween.tween_property(step_arrow, "modulate:a", 1.0, 0.12)
+	step_arrow_tween.tween_interval(0.9)
+	step_arrow_tween.tween_property(step_arrow, "modulate:a", 0.0, 0.3)
 
 
 func _hitstop(dur: float) -> void:
@@ -2079,11 +2105,13 @@ func _after_death(def: Player, atk: Player) -> void:
 	# hereda el paso del portador caído (o lo gana el último vivo en 1v1)
 	if atk != null and atk.state != Player.State.DEAD:
 		right_of_way = atk
+		_show_step_arrow(atk)
 		return
 	if right_of_way == def:
 		var mate := _living_teammate(def)
 		if mate != null:
 			right_of_way = mate
+			_show_step_arrow(mate)
 			return
 		right_of_way = null
 	var alive := 0
