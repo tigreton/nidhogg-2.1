@@ -140,3 +140,27 @@ Comando común (desde la raíz del proyecto):
   render: `--path . res://test/screenshots.tscn` → `CAPTURAS OK`, revisando
   las capturas generadas en `screens/`.
 - La 62 es exclusivamente verificación y ajuste con capturas.
+
+## Estado de aplicación (2026-10-03) y pendientes
+
+**Aplicadas y commiteadas: 53–60 y 62.** El porteo hermano 41–52 también
+está completo. Detalle del estado de integración de cada asset en la §8 de
+`INDICE-MULTIMEDIA.md`.
+
+Pendientes del track arte:
+
+| Pendiente | Qué hace falta | Dónde retomarlo |
+|---|---|---|
+| Tarea 61 (poses desarmadas) | Instalar/configurar el CLI `bl` (Bailian) y correr el pipeline `tools/art_gen.py` + `tools/img_pipeline.py`. Mientras tanto, desarmado y arco se ven con la espada horneada | `tasks/61-desarmado-hueco.md` (EN ESPERA documentada) |
+| `player_throw` sin uso | P2 sale desarmado y P1 armado (inconsistente): regenerar la pose | junto con la tanda de la 61 |
+| Sprite rojo ~2 px hundido | Tolerable según la 62; si molesta, mapa `POSE_Y_FIX` por pose | `player.gd` |
+| Música y fuente | Siguen procedurales: no existen assets para ellas | nueva tanda de generación (backlog) |
+
+Notas de cierre:
+
+- La captura `15_pan_seccion.png` ya muestra el pan real de sección desde
+  que la 50 está aplicada (recorrido regenerado a las 01:40 junto a su
+  commit).
+- Si el recorrido de capturas se queda colgado, casi siempre es la ventana
+  del juego minimizada/tapada (sin `frame_post_draw`): re-ejecutar sin
+  minimizar.
