@@ -415,6 +415,9 @@ func _ready() -> void:
 	p2.invuln_time = 0.0
 	p1.facing = 1
 	await get_tree().physics_frame
+	# con estancias con peso (tarea 82), la hoja viene de LOW (stomp del caso
+	# 21): dejarla llegar a MEDIA para que el golpe sea puñetazo de pie
+	await get_tree().create_timer(0.12).timeout
 	Input.action_press("p1_attack")
 	await get_tree().create_timer(0.2).timeout
 	Input.action_release("p1_attack")
@@ -425,8 +428,9 @@ func _ready() -> void:
 	p2.position = Vector2(1645.0, 531.0)
 	p2.velocity = Vector2.ZERO
 	Input.action_press("p1_down")
-	# esperar a que P1 salga del ATTACK del puñetazo (0,30 s) antes de patear
-	await get_tree().create_timer(0.15).timeout
+	# esperar a que P1 salga del ATTACK del puñetazo (0,30 s + margen) antes
+	# de patear; con la hoja ya en LOW (tarea 82), sale la patada baja
+	await get_tree().create_timer(0.35).timeout
 	Input.action_press("p1_attack")
 	await get_tree().create_timer(0.2).timeout
 	Input.action_release("p1_attack")

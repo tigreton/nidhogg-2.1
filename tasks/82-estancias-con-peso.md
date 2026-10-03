@@ -126,3 +126,13 @@ alta 30+ frames) ya tienen margen de sobra.
 
 Últimas líneas esperadas: `SMOKE OK - todas las mecánicas funcionan` y
 `RESULT: ALL PASSED (12)`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada con la contingencia del paso 4 usada DOS veces en el caso 22 del
+smoke: el stomp del caso 21 deja la hoja en LOW, y el puñetazo de pie se
+distingue de la patada baja por `atk.stance != H.LOW` en `_melee_hit` — sin
+esperas, el puñetazo salía como patada (hoja aún viajando) y la patada como
+puñetazo. Añadidos +0,12 s antes del primer ataque y 0,15→0,35 s en el
+segundo (que además pisaba la animación del primero). `SMOKE OK`,
+`ALL PASSED (12)` y `SIM PASS` (kills=10, puntos=3).

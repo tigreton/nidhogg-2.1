@@ -60,6 +60,8 @@ var frozen := false
 
 var state: int = State.IDLE
 var stance: int = H.MID
+var stance_target: int = H.MID   # a dónde va la hoja (tarea 82)
+var stance_shift := 0.0          # > 0 mientras la hoja viaja
 var facing := 1
 var has_sword := true
 var weapon_id := "florete"
@@ -142,14 +144,21 @@ func _physics_process(delta: float) -> void:
 	var can_act: bool = (not frozen) and state in [State.IDLE, State.RUN, State.JUMP]
 
 	if can_act:
+		# estancias con peso (tarea 82): la hoja viaja según el arma
+		var want: int = H.MID
 		if held("up"):
-			stance = H.HIGH
+			want = H.HIGH
 		elif held("down"):
-			stance = H.LOW
-		else:
-			stance = H.MID
-		if weapon_id == "espada" and stance == H.MID:
-			stance = H.LOW
+			want = H.LOW
+		if weapon_id == "espada" and want == H.MID:
+			want = H.LOW
+		if want != stance and want != stance_target:
+			stance_target = want
+			stance_shift = float(weapon()["stance_time"])
+		if stance_shift > 0.0:
+			stance_shift -= delta
+		elif stance_target != stance:
+			stance = stance_target
 
 	match state:
 		State.ATTACK:
@@ -192,6 +201,7 @@ func _physics_process(delta: float) -> void:
 			roll_hit = false
 			roll_cd = DIVE_TIME
 			stance = H.MID
+			stance_target = stance
 			velocity = Vector2(facing * DIVE_SPEED, 0.0)
 			_sfx("swing", -18.0)
 		elif hit("jump") and held("down") and is_on_floor() and roll_cd > 0.0 and has_sword and absf(velocity.x) < 120.0:
@@ -213,6 +223,7 @@ func _physics_process(delta: float) -> void:
 			roll_hit = false
 			roll_cd = ROLL_COOLDOWN
 			stance = H.LOW
+			stance_target = stance
 			_sfx("swing", -22.0)
 		elif hit("jump") and is_on_floor():
 			# salto doble: parado ~1 personaje, con carrerilla el ápice completo
@@ -254,6 +265,7 @@ func _physics_process(delta: float) -> void:
 				state = State.DIVEKICK
 				divekick_resolved = false
 				stance = H.MID
+				stance_target = stance
 				velocity = Vector2(facing * 430.0, 440.0)
 				_sfx("swing", -20.0)
 		elif hit("throw") and has_sword and MatchRules.allow_throw:
@@ -294,10 +306,12 @@ func _physics_process(delta: float) -> void:
 		State.ROLL:
 			velocity.x = facing * ROLL_SPEED
 			stance = H.LOW
+			stance_target = stance
 		State.DIVE:
 			velocity.x = facing * DIVE_SPEED
 			velocity.y = 0.0
 			stance = H.MID
+			stance_target = stance
 		State.SIDEKICK:
 			velocity.x = facing * 440.0
 
