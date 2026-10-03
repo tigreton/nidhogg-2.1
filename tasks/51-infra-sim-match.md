@@ -143,3 +143,19 @@ real de 43–49 y hay que revisarla antes de cerrar esta tarea.
 ```
 
 Últimas líneas esperadas: `SIM PASS` y `SMOKE OK - todas las mecánicas funcionan`.
+
+## Nota de aplicación (2026-10-03)
+
+Aplicada con dos ajustes al fichero de la herramienta (ninguno al juego):
+
+1. `var score_sum := game.scores[0] + ...` no infiere (`game` es `Node`):
+   pasa a `var score_sum: int = ...`.
+2. **Determinismo:** el arranque con `create_timer(0.2)` es tiempo de pared —
+   en headless el número de ticks antes de activar los bots varía con la carga
+   y desincroniza el RNG (dos pasadas daban kills 11 vs 6). Sustituido por 12
+   `physics_frame` fijos: tres pasadas seguidas dan idéntico resultado
+   (kills=11, puntos=1, `SIM PASS`).
+
+Resultado: cobertura completa de estados (RUN/JUMP/ATTACK/SIDEKICK/DIVEKICK/
+KNOCKDOWN/STUNNED/DEAD) — el juego recalibrado por 43–49 aguanta partidas
+completas bot vs bot.
