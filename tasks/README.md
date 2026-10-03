@@ -94,6 +94,8 @@ Reglas de oro para ti (el humano que supervisa):
 | `60-personajes-sprites.md` | Personajes con sprites (retira la customización de 38) | alta | `player.gd`, `game.gd`, `match_rules.gd`, `title.gd` |
 | `61-desarmado-hueco.md` | Genera las 14 poses desarmadas que faltan y las enchufa | media | pipeline `tools/` + `player.gd` |
 | `62-ajuste-capturas.md` | Ajuste fino visual con capturas y cierre del track arte | media | `player.gd`, `game.gd`, `test/screenshots.gd`, `INDICE-MULTIMEDIA.md` |
+| `63-musica-generada.md` | Bucle de música real con fallback procedural | baja | `music.gd`, `game.gd`, nuevo `art/music/` — **EN ESPERA** (falta asset; `bl` no genera música) |
+| `64-fuente-pixel.md` | Fuente pixel opcional para título y HUD | baja | `title.gd`, `game.gd`, nuevo `art/fonts/` — **EN ESPERA** (falta fuente con licencia abierta) |
 
 Las tareas 41–52 portan lo único técnico del proyecto hermano
 (`Nidhogg 2`): visión de conjunto, mapa de valores y orden en
