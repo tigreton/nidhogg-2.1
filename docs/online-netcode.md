@@ -1,7 +1,9 @@
-# Online 1v1 — decisiones de diseño (tarea 85)
+# Online 1v1 — decisiones de diseño
 
-Rama: `online-multiplayer` (worktree `nidhogg-online`).
-Objetivo: dos jugadores jugando por red, versión simple pero sólida.
+Rama de origen: `online-multiplayer` (worktree `nidhogg-online`; su commit la
+numeró «tarea 85», número que en main pertenece a la torre de dos pisos —
+fusionada en main el 2026-10-04). Objetivo: dos jugadores jugando por red,
+versión simple pero sólida.
 
 ## Modelo de red
 
@@ -91,11 +93,11 @@ cd ../nidhogg-online-client && godot --headless --path . --audio-driver Dummy \
     --script test/online_client.gd > /tmp/client.log 2>&1
 ```
 
-Resultado de la última ejecución (2026-10-04):
+Resultado de la última ejecución (2026-10-04, ya sobre main fusionado):
 
 ```
-HOST_RESULT:   OK — cliente_listo=true p1_movio=true p2_movio=true bajas=6 score=[1, 0]
-CLIENT_RESULT: OK — snapshots=true deriva_max=81px bajas_vistas=12 score=[1, 0]
+HOST_RESULT:   OK — cliente_listo=true p1_movio=true p2_movio=true bajas=7 score=[1, 0]
+CLIENT_RESULT: OK — snapshots=true deriva_max=74px bajas_vistas=14 score=[1, 0]
 ```
 
 Es decir: handshake, cuenta atrás, duelo con bajas y reapariciones,

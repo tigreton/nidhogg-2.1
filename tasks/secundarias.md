@@ -2,9 +2,11 @@
 
 > **2026-10-04: BACKLOG AGOTADO.** Las dos últimas ideas grandes ya son tareas
 > formales aplicadas: la torre de dos pisos (`85`, cuarta arena TORRE DEL
-> CENTINELA) y la arena aleatoria por puntos (`86`, tecla X). Todo lo que
-> pasó por este fichero está promocionado o aplicado; cuando entre una idea
-> nueva, sigue la guía del final para convertirla en tarea con este formato.
+> CENTINELA) y la arena aleatoria por puntos (`86`, tecla X). Ese mismo día
+> se fusionó además la rama `online-multiplayer` (duelo 1v1 por red, ver
+> `tasks/README.md` y `docs/online-netcode.md`). Todo lo que pasó por este
+> fichero está promocionado o aplicado; cuando entre una idea nueva, sigue
+> la guía del final para convertirla en tarea con este formato.
 
 ---
 

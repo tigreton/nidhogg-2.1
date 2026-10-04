@@ -16,7 +16,7 @@ Nidhogg 2.1/
 │   └── + report.json, report_chars.json, log_b3456.txt, log_chars.txt, tmp/prompt_idle*.txt
 ├── media/ (7 653)        ← vídeos, fotogramas extraídos, capturas y hojas de personaje (.gdignore)
 │   └── videos/ + analyze_blobs.py, detect_transitions.py, tracker.py y *_blobs.csv
-├── docs/ (6)             ← documentación del arte y del análisis multimedia
+├── docs/ (7)             ← documentación del arte, del análisis multimedia y del netcode
 └── tools/ (2)            ← scripts del pipeline de generación de arte
 ```
 
@@ -191,7 +191,7 @@ invertir orientación).
 
 ## 9. Documentación, scripts e informes del pipeline multimedia
 
-### docs/ — documentación (proveniente del proyecto origen)
+### docs/ — documentación (proveniente del proyecto origen, salvo el netcode)
 | Fichero | Contenido |
 |---|---|
 | `docs/ART_PROMPTS.md` | **Manual de assets (Track B)**: manifiesto de los 50 sprites con los prompts exactos de generación, comandos, modo manual, post-proceso y QA. |
@@ -200,6 +200,7 @@ invertir orientación).
 | `docs/VIDEO_ANALYSIS.md` | Análisis de los tráilers: hallazgos visuales (HUD, sangre por jugador, armas lanzadas) e inventario de fotogramas. |
 | `docs/RESEARCH.md` | Investigación de mecánicas del juego a partir del análisis visual de las capturas y tráilers de `media/`. |
 | `docs/plan_diseño_enparalelo.md` | Plan de trabajo en paralelo CÓDIGO ‖ ARTE (workers, contrato de desacople, externalización del arte). |
+| `docs/online-netcode.md` | Documentación del 1v1 online (rama `online-multiplayer`, fusionada en main): arquitectura ENet host-autoridad, snapshots y predicción. |
 
 ### tools/ — scripts del pipeline de arte
 | Fichero | Función |

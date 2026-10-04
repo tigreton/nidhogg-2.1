@@ -129,6 +129,14 @@ movimiento, encuadre teatral y el input de lanzamiento del original). Las
 (la sala vertical de dos pisos como cuarta arena y el barajado de tramos
 por punto).
 
+> **Fuera del sistema de tareas:** el **duelo 1v1 online** (ENet host-cliente,
+> autoload `Net`, menú con O en el título) se desarrolló en la rama
+> `online-multiplayer` y se fusionó en main (`77c7f6a`). Su commit de origen
+> la llama «Tarea 85», número que aquí pertenece a la torre de dos pisos; no
+> tiene archivo propio porque llegó ya aplicada. Documentación y decisiones:
+> `docs/online-netcode.md`; verificación E2E: `test/online_host.gd` +
+> `test/online_client.gd` (dos procesos).
+
 Las tareas 41–52 portan lo único técnico del proyecto hermano
 (`Nidhogg 2`): visión de conjunto, mapa de valores y orden en
 **`PLAN-PORT.md`**. Las tareas 53–62 integran el arte y sonido reales

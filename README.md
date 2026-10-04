@@ -24,6 +24,7 @@ el partido.
 | Modo 2v2 por equipos | V |
 | Lluvia de rocas (modo caos) | T |
 | Cambiar de arena | C |
+| Arena barajada por puntos (tramos del medio) | X |
 | Modo pantallas (secciones con rejas) | P |
 | Modo arcade (escalera de bots) | Y |
 | Modo copa (semifinales + final) | O |
@@ -54,7 +55,9 @@ puro (sin bots ni modos extra, sin pausa ESC).
 - **Juego desarmado**: el puñetazo de pie DESARMA (y el rival ya no tiene guarda media que le frene), la patada baja derriba y corres un 15 % más rápido. La patada voladora también suelta el arma de la víctima.
 - **Guardia pasiva**: parado con el arma en guardia, quien corre contra ti a otra altura se empala y muere (correr no guarda: el arma solo mata por sí sola si estás parado).
 - **Lanzar espada**: vuela recta; el rival la desvía si está en guardia media o atacando. La espada cae y se recoge pasando por encima.
-- **Foso central**: caer dentro es muerte. Hay una plataforma para cruzar… y un **puente alto** de madera.
+- **Foso central**: caer dentro es muerte. Se cruza por un **puente tembloroso** de 4 tramos que tiemblan 0,4 s al pisarlos y caen (se restauran cada ronda)… o por el **puente alto** de madera.
+- **Hazards del pasillo**: una **franja de hielo** donde se resbala y una **cinta transportadora** que empuja hacia atrás.
+- **Cuenta atrás**: cada ronda arranca congelada en 3·2·1·¡FIGHT!; a los 45 s sin sangre entra la **muerte súbita** (todo choque mata).
 - **Reaparición**: el muerto reaparece cayendo del cielo, delante del corredor y hacia su meta, con 1,3 s de invulnerabilidad.
 
 ## Armas con ciclo de muerte
@@ -104,6 +107,19 @@ arco** (y la que llevabas cae al suelo, donde cualquiera puede recogerla):
 - **Torre a la izquierda y casa a la derecha**, foso pequeño junto a la meta de P1.
 - Velas fantasmales con llama verde y lápidas decorativas.
 
+**Torre del Centinela** — fortaleza interior con vigas y banderolas:
+
+- **Sala vertical de dos pisos**: el pasillo de siempre abajo (con hierba,
+  hielo y cinta) y un **piso superior continuo con dos huecos** por los que
+  caer o tirarse en dive-kick.
+- **Escaleras de plataformas flotantes** en ambos extremos suben al piso sin
+  bloquear el paso por debajo; el foso central queda a cielo abierto.
+
+**Arena barajada (tecla X)** — cada punto se juega con un orden distinto de
+los seis tramos del medio (puente tembloroso, foso seco, hierba alta, hielo,
+cinta y escalera de plataformas); las bocas de meta quedan fijas. No
+disponible en la Torre del Centinela.
+
 ## Modos de juego
 
 - **Duelo (1v1)**: el clásico. Bot disponible en el P2 con tres dificultades.
@@ -144,14 +160,23 @@ godot --path .
 
 ```
 godot --headless --path . res://test/smoke_test.tscn
+godot --headless --path . res://test/test_runner.tscn   # suites de movimiento y combate (16 tests)
 ```
 
-Verifica movimiento, salto, choque de espadas, muerte, paso, meta, marcador,
-reinicio de ronda, lanzamiento de espada, las alturas nuevas (peldaño, tejado,
-puente), la lluvia de rocas, el modo 2v2, el cambio de arena, el ciclo de
-armas, el arco, el modo pantallas y su HUD, stomp, desarmado, dive, sidekick,
+El smoke verifica movimiento, salto, choque de espadas, muerte, paso, meta,
+marcador, reinicio de ronda, lanzamiento de espada, las alturas nuevas (peldaño,
+tejado, puente), la lluvia de rocas, el modo 2v2, el cambio de arena, el ciclo
+de armas, el arco, el modo pantallas y su HUD, stomp, desarmado, dive, sidekick,
 sangre, cadáveres, gusano de victoria, estela, la tercera arena, la guardia
-pasiva, el arcade y la copa.
+pasiva, el arcade y la copa; las suites añaden la física de movimiento y el
+combate fino (doble salto, aceleración, slide, parada-rebote, arco tensado).
+
+El 1v1 online tiene su E2E de dos procesos (host + cliente en localhost):
+
+```
+godot --headless --path . --script test/online_host.gd &
+godot --headless --path . --script test/online_client.gd
+```
 
 ## Capturas de las zonas
 
@@ -163,11 +188,13 @@ Guarda PNGs de cada zona en `screens/` (carpeta fuera del repositorio).
 
 ## Estructura
 
-- `scenes/title.tscn` + `scripts/title.gd` — pantalla de título y reglas.
+- `scenes/title.tscn` + `scripts/title.gd` — pantalla de título, reglas y menú online.
 - `scripts/match_rules.gd` — reglas configurables del partido (estáticas).
-- `scenes/main.tscn` + `scripts/game.gd` — nivel, combate, cámara, modos y HUD.
-- `scenes/player.tscn` + `scripts/player.gd` — control y dibujo procedural del duelistas.
+- `scripts/net.gd` — autoload `Net`: ciclo de vida ENet del 1v1 online (host/cliente).
+- `scenes/main.tscn` + `scripts/game.gd` — nivel, combate, cámara, modos, HUD y sincronización online.
+- `scenes/player.tscn` + `scripts/player.gd` — control y dibujo procedural de los duelistas.
 - `scripts/game_config.gd` — stats de las armas y orden del ciclo de muerte.
+- `scripts/music.gd` — música procedural con mezcla dinámica por emoción.
 - `scripts/arrow.gd` — flecha del arco (rebotes y clavado).
 - `scripts/falling_rock.gd` — roca del modo caos (aviso + caída).
 - `scripts/sfx.gd` — efectos de sonido generados por código (sin assets).

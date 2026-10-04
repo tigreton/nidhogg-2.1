@@ -1,16 +1,21 @@
 # Nidhogg-like — Las 22 tareas en un solo documento
 
-> **2026-10-03: ESTE DOCUMENTO YA ESTÁ EJECUTADO.** Las 22 tareas de aquí
-> abajo están aplicadas, y también las `23`–`40` (armas con ciclo, arco,
-> modo pantallas, HUD, stomp, desarmado, dive, sidekick, sangre, cadáveres,
-> gusano de victoria, estela, guardia pasiva, título con reglas,
-> customización, arcade, copa y tercera arena), el porteo hermano `41`–`52`
+> **2026-10-04: ESTE DOCUMENTO YA ESTÁ EJECUTADO AL COMPLETO.** Las 22 tareas
+> de aquí abajo están aplicadas, y también las `23`–`86`: armas con ciclo,
+> arco, modo pantallas, HUD, stomp, desarmado, dive, sidekick, sangre,
+> cadáveres, gusano de victoria, estela, guardia pasiva, título con reglas,
+> customización, arcade, copa y tercera arena; el porteo hermano `41`–`52`
 > (trazas, runner, física doble, combate, arco completo, cámara por
-> secciones, sim) y el track arte `53`–`60` + `62` (SFX reales, título, HUD,
-> armas, tiles, parallax, gusano y personajes con sprites). **Única
-> pendiente: la 61** (poses desarmadas, EN ESPERA por el CLI `bl`). Este
-> texto se conserva como referencia del formato y del contexto que usa cada
-> tarea.
+> secciones, sim); el track arte `53`–`60` + `62` (SFX reales, título, HUD,
+> armas, tiles, parallax, gusano y personajes con sprites); la `61` (poses
+> desarmadas `_noarme`, aplicada en `ec53b57`); las brechas `63`–`84` del
+> análisis comparativo; y las dos últimas del backlog: `85` (torre de dos
+> pisos) y `86` (arena barajada por puntos). Además, el **duelo 1v1 online
+> (ENet)** entró por la rama `online-multiplayer` fusionada en `77c7f6a`
+> (documentado en `docs/online-netcode.md`; su commit de origen la llamó
+> «Tarea 85», número que en main pertenece a la torre). Las definiciones de
+> la 23 en adelante viven en `tasks/`. Este texto se conserva como
+> referencia del formato y del contexto que usa cada tarea.
 
 **Para el LLM que ejecuta:** este documento reúne las 22 tareas atómicas del
 proyecto, concatenadas e íntegras. Cada tarea es autocontenida (duplica el
