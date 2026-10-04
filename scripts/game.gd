@@ -37,13 +37,17 @@ var parallax_bg: ParallaxBackground
 var bg_tint_far := Color(0.7, 0.72, 0.9)
 var bg_tint_near := Color(0.85, 0.85, 0.95)
 
-const GRASS_X0 := 1150.0
-const ICE_X0 := 1700.0   # franja de hielo (Winter): frena mal (tarea 69)
-const ICE_X1 := 2000.0
-const BELT_X0 := 2500.0   # cinta transportadora (Volcano, tarea 71): empuja a la izquierda
-const BELT_X1 := 2650.0
+# hazards de suelo: var (no const) porque la arena barajada los reposiciona (tarea 86)
+var GRASS_X0 := 1150.0
+var ICE_X0 := 1700.0   # franja de hielo (Winter): frena mal (tarea 69)
+var ICE_X1 := 2000.0
+var BELT_X0 := 2500.0   # cinta transportadora (Volcano, tarea 71): empuja a la izquierda
+var BELT_X1 := 2650.0
 const BELT_V := -120.0
-const GRASS_X1 := 1450.0
+var GRASS_X1 := 1450.0
+var LADDER_X := 1480.0  # escalera de plataformas: origen del primer peldaño
+var random_arena := false  # arena barajada por puntos (tarea 86, tecla X)
+var _shuffled := false     # el nivel del disco actual viene de un barajado
 const GOAL_W := 130.0
 const WIN_SCORE := 3
 const VIEW_W := 1152.0
@@ -301,6 +305,7 @@ func _setup_input() -> void:
 		"toggle_sections": [KEY_P],
 		"toggle_arcade": [KEY_Y],
 		"toggle_cup": [KEY_O],
+		"toggle_random": [KEY_X],
 		# P3/P4 solo se controlan por bot: acciones registradas vacías
 		"p3_left": [], "p3_right": [], "p3_up": [], "p3_down": [],
 		"p3_jump": [], "p3_attack": [], "p3_throw": [],
@@ -392,14 +397,7 @@ func _build_level() -> void:
 	_pit_edges(PIT_X0, PIT_X1)
 	_pit_edges(PIT2_X0, PIT2_X1)
 	# crumble bridge (tarea 70): 4 tramos sobre el foso en vez de plataforma fija
-	crumble_tiles.clear()
-	var tw := (PLAT_X1 - PLAT_X0) / 4.0
-	for k in 4:
-		var tile := CrumbleTile.new(PLAT_X0 + tw * float(k), PLAT_X0 + tw * (float(k) + 1.0), PLAT_Y)
-		tile.z_index = -4
-		_register_top(tile.x0, tile.x1, PLAT_Y)
-		_add_level(tile)
-		crumble_tiles.append(tile)
+	_make_crumbles()
 	if arena_id != 3:
 		# el puente alto de madera pisaría el piso superior de la torre
 		_bridge()
@@ -407,25 +405,10 @@ func _build_level() -> void:
 	_rocks_zone()
 	if arena_id == 3:
 		_tower_floor()
-	# hierba alta: oculta la estancia de quien entra
-	_poly(PackedVector2Array([Vector2(GRASS_X0, GROUND_Y), Vector2(GRASS_X1, GROUND_Y), Vector2(GRASS_X1, GROUND_Y - 34.0), Vector2(GRASS_X0, GROUND_Y - 34.0)]), Color(0.09, 0.18, 0.11), 2)
-	for i in 22:
-		var gx := GRASS_X0 + (GRASS_X1 - GRASS_X0) * (float(i) + 0.5) / 22.0
-		var gh := 44.0 + 20.0 * randf()
-		_poly(PackedVector2Array([Vector2(gx - 7, GROUND_Y), Vector2(gx + 7, GROUND_Y), Vector2(gx + randf_range(-7.0, 7.0), GROUND_Y - gh)]), Color(0.13, 0.30, 0.17).lightened(0.08 * randf()), 3)
-	_flowers()
-	# franja de hielo (tarea 69): tinte azulado brillante sobre los tiles
-	var ice_poly := _poly(PackedVector2Array([Vector2(ICE_X0, GROUND_Y), Vector2(ICE_X1, GROUND_Y), Vector2(ICE_X1, GROUND_Y - 5.0), Vector2(ICE_X0, GROUND_Y - 5.0)]), Color(0.62, 0.78, 0.95, 0.45), 2)
-	# cinta transportadora (tarea 71): base más oscura + flechas que derivan
-	_poly(PackedVector2Array([Vector2(BELT_X0, GROUND_Y), Vector2(BELT_X1, GROUND_Y), Vector2(BELT_X1, GROUND_Y - 4.0), Vector2(BELT_X0, GROUND_Y - 4.0)]), Color(0.1, 0.09, 0.14, 0.85), 2)
-	_belt_arrows.clear()
-	for k in 4:
-		var bx := BELT_X0 + 40.0 + k * 40.0
-		_belt_arrows.append(_poly(PackedVector2Array([Vector2(bx, GROUND_Y - 10.0), Vector2(bx + 16.0, GROUND_Y - 10.0), Vector2(bx + 16.0, GROUND_Y - 14.0), Vector2(bx + 26.0, GROUND_Y - 8.0), Vector2(bx + 16.0, GROUND_Y - 2.0), Vector2(bx + 16.0, GROUND_Y - 6.0), Vector2(bx, GROUND_Y - 6.0)]), Color(0.42, 0.4, 0.5), 3))
-	# escalera de plataformas (subida a la ruta alta por la izquierda)
-	_platform(1480.0, 1660.0, 448.0)
-	_platform(1660.0, 1800.0, 368.0)
-	_platform(1800.0, 1900.0, 288.0)
+	_draw_grass()
+	_draw_ice()
+	_draw_belt()
+	_ladder(LADDER_X)
 	_wall(-46.0, 6.0)
 	_wall(LEVEL_W - 6.0, LEVEL_W + 46.0)
 	_goal_zone(LEVEL_W - GOAL_W, LEVEL_W, P1_COLOR)
@@ -434,9 +417,52 @@ func _build_level() -> void:
 	_torch_at(LEVEL_W - 210.0)
 	_torch_at(HOUSE_X + 124.0)
 	_fence(FENCE_X0, FENCE_X1)
-	if arena_id == 2:
+	if arena_id == 2 and not _shuffled:
+		# velas y lápidas van en x fijas: fuera de la arena barajada
 		_candles()
 		_tombstones()
+
+
+func _make_crumbles() -> void:
+	crumble_tiles.clear()
+	var tw := (PLAT_X1 - PLAT_X0) / 4.0
+	for k in 4:
+		var tile := CrumbleTile.new(PLAT_X0 + tw * float(k), PLAT_X0 + tw * (float(k) + 1.0), PLAT_Y)
+		tile.z_index = -4
+		_register_top(tile.x0, tile.x1, PLAT_Y)
+		_add_level(tile)
+		crumble_tiles.append(tile)
+
+
+func _draw_grass() -> void:
+	# hierba alta: oculta la estancia de quien entra
+	_poly(PackedVector2Array([Vector2(GRASS_X0, GROUND_Y), Vector2(GRASS_X1, GROUND_Y), Vector2(GRASS_X1, GROUND_Y - 34.0), Vector2(GRASS_X0, GROUND_Y - 34.0)]), Color(0.09, 0.18, 0.11), 2)
+	for i in 22:
+		var gx := GRASS_X0 + (GRASS_X1 - GRASS_X0) * (float(i) + 0.5) / 22.0
+		var gh := 44.0 + 20.0 * randf()
+		_poly(PackedVector2Array([Vector2(gx - 7, GROUND_Y), Vector2(gx + 7, GROUND_Y), Vector2(gx + randf_range(-7.0, 7.0), GROUND_Y - gh)]), Color(0.13, 0.30, 0.17).lightened(0.08 * randf()), 3)
+	_flowers()
+
+
+func _draw_ice() -> void:
+	# franja de hielo (tarea 69): tinte azulado brillante sobre los tiles
+	_poly(PackedVector2Array([Vector2(ICE_X0, GROUND_Y), Vector2(ICE_X1, GROUND_Y), Vector2(ICE_X1, GROUND_Y - 5.0), Vector2(ICE_X0, GROUND_Y - 5.0)]), Color(0.62, 0.78, 0.95, 0.45), 2)
+
+
+func _draw_belt() -> void:
+	# cinta transportadora (tarea 71): base más oscura + flechas que derivan
+	_poly(PackedVector2Array([Vector2(BELT_X0, GROUND_Y), Vector2(BELT_X1, GROUND_Y), Vector2(BELT_X1, GROUND_Y - 4.0), Vector2(BELT_X0, GROUND_Y - 4.0)]), Color(0.1, 0.09, 0.14, 0.85), 2)
+	_belt_arrows.clear()
+	for k in 4:
+		var bx := BELT_X0 + 40.0 + k * 40.0
+		_belt_arrows.append(_poly(PackedVector2Array([Vector2(bx, GROUND_Y - 10.0), Vector2(bx + 16.0, GROUND_Y - 10.0), Vector2(bx + 16.0, GROUND_Y - 14.0), Vector2(bx + 26.0, GROUND_Y - 8.0), Vector2(bx + 16.0, GROUND_Y - 2.0), Vector2(bx + 16.0, GROUND_Y - 6.0), Vector2(bx, GROUND_Y - 6.0)]), Color(0.42, 0.4, 0.5), 3))
+
+
+func _ladder(x0: float) -> void:
+	# escalera de plataformas (subida a la ruta alta)
+	_platform(x0, x0 + 180.0, 448.0)
+	_platform(x0 + 180.0, x0 + 320.0, 368.0)
+	_platform(x0 + 320.0, x0 + 420.0, 288.0)
 
 
 func _register_top(x0: float, x1: float, y: float) -> void:
@@ -622,7 +648,20 @@ func _load_arena(id: int) -> void:
 			cel_detail = Color(0.10, 0.09, 0.15)
 			bg_tint_far = Color(0.55, 0.62, 0.85)
 			bg_tint_near = Color(0.72, 0.74, 0.92)
+	# hazards y escalera a sus posiciones por defecto (la barajada los mueve)
+	GRASS_X0 = 1150.0
+	GRASS_X1 = 1450.0
+	ICE_X0 = 1700.0
+	ICE_X1 = 2000.0
+	BELT_X0 = 2500.0
+	BELT_X1 = 2650.0
+	LADDER_X = 1480.0
+	_shuffled = false
 	# tejados derivados del anclaje de la casa
+	_derive_roofs()
+
+
+func _derive_roofs() -> void:
 	ROOF_L_X0 = HOUSE_X
 	ROOF_L_X1 = HOUSE_X + 102.0
 	ROOF_L_Y = 472.0
@@ -634,6 +673,9 @@ func _load_arena(id: int) -> void:
 func set_arena(id: int) -> void:
 	if id % ARENA_NAMES.size() == arena_id:
 		return
+	if random_arena and id % ARENA_NAMES.size() == 3:
+		# la torre de dos pisos no admite barajado (el piso fija el centro)
+		random_arena = false
 	_load_arena(id)
 	if parallax_bg != null:
 		parallax_bg.queue_free()
@@ -646,6 +688,7 @@ func set_arena(id: int) -> void:
 	goal_polys.clear()
 	_tops.clear()
 	blood.clear()
+	crumble_tiles.clear()
 	_build_level()
 	scores = [0, 0]
 	stats = _fresh_stats()
@@ -655,6 +698,106 @@ func set_arena(id: int) -> void:
 	_update_hud()
 	_start_round()
 	show_msg("ARENA: %s" % ARENA_NAMES[arena_id], 1.2)
+
+
+func set_random_arena(on: bool) -> void:
+	# arena barajada (tarea 86): al activar, el siguiente _start_round baraja;
+	# al desactivar, se reconstruye el layout por defecto de la arena actual
+	random_arena = on
+	if not on:
+		_reshuffle_level()
+	_start_round()
+	show_msg("ARENA BARAJADA: %s" % ("ACTIVADA" if on else "DESACTIVADA"), 1.0)
+
+
+func _random_layout() -> void:
+	# baraja los seis tramos del medio entre las dos bocas de meta y fija
+	# las estructuras grandes en las bocas (metas siempre en los extremos)
+	_load_arena(arena_id)   # paleta y valores por defecto como base
+	_shuffled = true
+	# boca izquierda: meta + peldaño + valla + casa con tejado
+	STEP_L_X0 = 200.0
+	STEP_L_X1 = 292.0
+	STEP_L_Y = 516.0
+	FENCE_X0 = 330.0
+	FENCE_X1 = 420.0
+	HOUSE_X = 500.0
+	_derive_roofs()
+	# boca derecha: meta + peldaño + peñasco + torre de piedra
+	STEP_R_X0 = 4070.0
+	STEP_R_X1 = 4162.0
+	STEP_R_Y = 516.0
+	BOULDER_X0 = 4180.0
+	BOULDER_X1 = 4408.0
+	BOULDER_Y = 440.0
+	TOWER_X0 = 4420.0
+	TOWER_X1 = 4588.0
+	TOWER_Y = 330.0
+	# los seis tramos: foso con puente (560), foso seco (240), hierba (340),
+	# hielo (340), cinta (190) y escalera (470) — 2140 en total
+	var feats := ["foso_central", "foso_seco", "hierba", "hielo", "cinta", "escalera"]
+	feats.shuffle()
+	var span_x0 := 770.0
+	var span_x1 := 4060.0
+	var gap := (span_x1 - span_x0 - 2140.0) / 7.0
+	var x := span_x0 + gap
+	for f in feats:
+		match f:
+			"foso_central":
+				var cx := x + 280.0
+				PLAT_X0 = cx - 165.0
+				PLAT_X1 = cx + 165.0
+				PLAT_Y = 448.0
+				PIT_X0 = cx - 85.0
+				PIT_X1 = cx + 85.0
+				BRIDGE_X0 = PLAT_X0 - 230.0
+				BRIDGE_X1 = PLAT_X1 + 230.0
+				BRIDGE_Y = 288.0
+				x += 560.0
+			"foso_seco":
+				PIT2_X0 = x + 30.0
+				PIT2_X1 = x + 210.0
+				x += 240.0
+			"hierba":
+				GRASS_X0 = x + 20.0
+				GRASS_X1 = x + 320.0
+				x += 340.0
+			"hielo":
+				ICE_X0 = x + 20.0
+				ICE_X1 = x + 320.0
+				x += 340.0
+			"cinta":
+				BELT_X0 = x + 20.0
+				BELT_X1 = x + 170.0
+				x += 190.0
+			"escalera":
+				LADDER_X = x + 25.0
+				x += 470.0
+		x += gap
+	# PIT_* queda anclado a la zona del puente (PLAT_*): _build_level ya ordena
+	# los dos fosos por posición al tender los segmentos de suelo
+
+
+func _reshuffle_level() -> void:
+	# reconstruye el nivel con el layout barajado (o el por defecto) sin
+	# tocar marcador ni estadísticas
+	if random_arena:
+		_random_layout()
+	else:
+		_load_arena(arena_id)
+	if parallax_bg != null:
+		parallax_bg.queue_free()
+		parallax_bg = null
+	if level_root != null:
+		level_root.queue_free()
+	level_root = Node2D.new()
+	level_root.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(level_root)
+	goal_polys.clear()
+	_tops.clear()
+	blood.clear()
+	crumble_tiles.clear()
+	_build_level()
 
 
 func _top_below(x: float, from_y: float) -> float:
@@ -1204,9 +1347,10 @@ func _rocks_zone() -> void:
 	# gallardete en la torre
 	_poly(PackedVector2Array([Vector2((TOWER_X0 + TOWER_X1) * 0.5, TOWER_Y - 2.0), Vector2((TOWER_X0 + TOWER_X1) * 0.5, TOWER_Y - 52.0)]), Color(0.30, 0.22, 0.14), -3)
 	_poly(PackedVector2Array([Vector2((TOWER_X0 + TOWER_X1) * 0.5, TOWER_Y - 50.0), Vector2((TOWER_X0 + TOWER_X1) * 0.5 + 34.0, TOWER_Y - 44.0), Vector2((TOWER_X0 + TOWER_X1) * 0.5, TOWER_Y - 30.0)]), Color(0.75, 0.30, 0.22), -3)
-	# piedras sueltas decorativas (en sitios libres en todas las arenas)
-	for r in [[1700.0, 12.0], [2050.0, 16.0], [2600.0, 10.0], [4420.0, 11.0]]:
-		_poly(_circle_points(r[0], GROUND_Y - r[1] * 0.4, r[1], 9), Color(0.19, 0.18, 0.23), -3)
+	# piedras sueltas decorativas (en sitios libres; x fijas, fuera del barajado)
+	if not _shuffled:
+		for r in [[1700.0, 12.0], [2050.0, 16.0], [2600.0, 10.0], [4420.0, 11.0]]:
+			_poly(_circle_points(r[0], GROUND_Y - r[1] * 0.4, r[1], 9), Color(0.19, 0.18, 0.23), -3)
 
 
 func _add_level(node: Node) -> void:
@@ -1620,7 +1764,7 @@ func _build_hud() -> void:
 	cl.add_child(msg_label)
 
 	var hint := Label.new()
-	hint.text = "P1: A/D mover · W saltar/arriba · S agachar · F atacar · G lanzar    P2: ←/→ · ↑ · ↓ · K atacar · L lanzar    R: revancha\nB: bot P2 · H: aliado P3 · N: bot vs bot · V: 2v2 · T: lluvia de rocas · C: cambiar arena · M: música · Mando: stick · A saltar · X atacar · B lanzar"
+	hint.text = "P1: A/D mover · W saltar/arriba · S agachar · F atacar · G lanzar    P2: ←/→ · ↑ · ↓ · K atacar · L lanzar    R: revancha\nB: bot P2 · H: aliado P3 · N: bot vs bot · V: 2v2 · T: lluvia de rocas · C: cambiar arena · X: arena barajada · M: música · Mando: stick · A saltar · X atacar · B lanzar"
 	hint.position = Vector2(22, VIEW_H - 64)
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.62, 0.60, 0.72))
@@ -1727,6 +1871,9 @@ func _all_labels(node: Node) -> Array[Label]:
 
 
 func _start_round() -> void:
+	if random_arena or _shuffled:
+		# arena barajada (tarea 86): cada punto, tramos nuevos
+		_reshuffle_level()
 	if worm != null:
 		worm.queue_free()
 		worm = null
@@ -1763,7 +1910,9 @@ func _start_round() -> void:
 	var offs := [-220.0, 220.0, -620.0, 620.0]
 	for i in players.size():
 		var o: float = offs[i]
-		players[i].reset_to(Vector2(LEVEL_W * 0.5 + o, GROUND_Y - 29.0), -1 if o > 0.0 else 1)
+		# el barajado puede poner un foso bajo el centro: reaparición a suelo firme
+		var sx := clampf(_out_of_pit(LEVEL_W * 0.5 + o), GOAL_W + 60.0, LEVEL_W - GOAL_W - 60.0)
+		players[i].reset_to(Vector2(sx, GROUND_Y - 29.0), -1 if o > 0.0 else 1)
 	if skip_countdown:
 		_show_fight()
 	else:
@@ -1972,6 +2121,12 @@ func _physics_process(delta: float) -> void:
 		set_mode_2v2(not mode_2v2)
 	if Input.is_action_just_pressed("toggle_arena") and not arcade and not cup:
 		set_arena(arena_id + 1)
+	if Input.is_action_just_pressed("toggle_random") and not arcade and not cup:
+		# arena barajada (tarea 86): cada punto se juega con tramos distintos
+		if arena_id == 3:
+			show_msg("ARENA BARAJADA: NO DISPONIBLE EN LA TORRE", 1.0)
+		else:
+			set_random_arena(not random_arena)
 	if Input.is_action_just_pressed("toggle_sections"):
 		set_sections(not sections_mode)
 	if Input.is_action_just_pressed("toggle_arcade"):
@@ -2421,7 +2576,8 @@ func _next_weapon(p: Player) -> String:
 func _respawn_pos(p: Player) -> Vector2:
 	if right_of_way == null:
 		var offs := [220.0, -220.0, 620.0, -620.0]
-		return Vector2(LEVEL_W * 0.5 + offs[p.player_id - 1], 200.0)
+		var fx := clampf(_out_of_pit(LEVEL_W * 0.5 + offs[p.player_id - 1]), GOAL_W + 60.0, LEVEL_W - GOAL_W - 60.0)
+		return Vector2(fx, 200.0)
 	if sections_mode:
 		var w := LEVEL_W / float(SECTION_COUNT)
 		var sdir := 1 if right_of_way.goal_dir > 0 else -1
@@ -2430,7 +2586,7 @@ func _respawn_pos(p: Player) -> Vector2:
 		if sec == section_index:
 			# ya no hay sección delante: reaparece al fondo de la actual
 			cx = w * float(sec + 1) - 100.0 if sdir > 0 else w * float(sec) + 100.0
-		return Vector2(cx, 200.0)
+		return Vector2(_out_of_pit(cx), 200.0)
 	var dir := float(right_of_way.goal_dir)
 	var x := right_of_way.position.x + dir * 540.0
 	if x > PIT_X0 - 50.0 and x < PIT_X1 + 50.0:
