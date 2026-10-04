@@ -89,3 +89,11 @@ necesarias — QA a la primera (COHERENT / GOOD).
 **Coste total del proyecto: 83 generaciones ≈ ¥18-24 (~$3).** Con esto TODO el
 arte visible del juego (personajes, armas, escenario, título, HUD) comparte el
 mismo estilo chunky. Queda fuera: `worm_body` (opcional, reestilizado futuro).
+
+### Gusano (cierre del arte)
+
+`worm_body` 300x103 (3 paneles de 100): candidato B v2 — semilla 6003, cabeza
+compacta con cúpula superior limpia (los ojos amarillos procedurales del juego
+caen ya en su sitio) y anillas limpias sin los triangulos sueltos de la primera
+version (regenerado por indicacion del usuario). Preview:
+`worm/worm_preview_b2.png`. Coste total: 86 generaciones ~ 20-25 CNY (~$3).
