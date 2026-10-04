@@ -67,3 +67,25 @@ dibuja apuntando arriba) para que apunten a la derecha; el arco queda vertical.
 `art_raw/redesign_ia/`: `candidatos_vista.png`, `puerta2_vista.png`,
 `puerta3_vista.png`, `final_sheet.png`, `qa_p1.png`, `qa_p2.png`, bases en
 `base/`, prompts íntegros en el historial de la sesión.
+
+## Fase 2 — escenario, título y HUD (PUERTAS A/B, mismas reglas de aprobación)
+
+Mismo circuito con el usuario. Semillas: tileset/parallax 4001-4005
+(`escenario/`), bg_title 5001 y hoja de HUD 5002 (`hud/`). Sin regeneraciones
+necesarias — QA a la primera (COHERENT / GOOD).
+
+- **PUERTA A (commit `150aedc`):** `tile_floor`/`tile_wall` 48×48 neutros y
+  claros (el juego los multiplica por la paleta oscura de cada arena),
+  `pit_edge` (17×47, salió fino y se aceptó), `bg_layer0/1` 960×540 pálidos
+  para teñir. Vista previa de arena montada con tintes reales:
+  `escenario/arena_preview.png`.
+- **PUERTA B:** `bg_title` 960×540 — salón gótico SIN personajes (el título
+  superpone a los duelistas en 420/732 y=462 y el rótulo arriba); HUD
+  segmentado de una hoja ordenada: `pip_filled/hollow` 26×26, `arrow_neutral`
+  64×42 apuntando a la derecha (el juego voltea con flip_h) y
+  `blood_0/1/2` con base pálida para el tinte por jugador. Maqueta:
+  `hud/puerta_b_preview.png`.
+
+**Coste total del proyecto: 83 generaciones ≈ ¥18-24 (~$3).** Con esto TODO el
+arte visible del juego (personajes, armas, escenario, título, HUD) comparte el
+mismo estilo chunky. Queda fuera: `worm_body` (opcional, reestilizado futuro).
