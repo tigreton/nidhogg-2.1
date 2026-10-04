@@ -14,8 +14,10 @@
 > (ENet)** entró por la rama `online-multiplayer` fusionada en `77c7f6a`
 > (documentado en `docs/online-netcode.md`; su commit de origen la llamó
 > «Tarea 85», número que en main pertenece a la torre). Las definiciones de
-> la 23 en adelante viven en `tasks/`. Este texto se conserva como
-> referencia del formato y del contexto que usa cada tarea.
+> la 23 en adelante viven en `tasks/`; las **87–94 están PENDIENTES** (los
+> bugs encontrados por esa misma revisión post-fusión, más una limpieza de
+> código muerto). Este texto se conserva como referencia del formato y del
+> contexto que usa cada tarea.
 
 **Para el LLM que ejecuta:** este documento reúne las 22 tareas atómicas del
 proyecto, concatenadas e íntegras. Cada tarea es autocontenida (duplica el

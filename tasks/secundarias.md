@@ -1,12 +1,42 @@
 # Tareas secundarias (backlog)
 
-> **2026-10-04: BACKLOG AGOTADO.** Las dos últimas ideas grandes ya son tareas
-> formales aplicadas: la torre de dos pisos (`85`, cuarta arena TORRE DEL
-> CENTINELA) y la arena aleatoria por puntos (`86`, tecla X). Ese mismo día
-> se fusionó además la rama `online-multiplayer` (duelo 1v1 por red, ver
-> `tasks/README.md` y `docs/online-netcode.md`). Todo lo que pasó por este
-> fichero está promocionado o aplicado; cuando entre una idea nueva, sigue
-> la guía del final para convertirla en tarea con este formato.
+> **2026-10-04: BACKLOG AGOTADO… y reabierto con lo estructural.** Las dos
+> últimas ideas grandes ya son tareas formales aplicadas: la torre de dos
+> pisos (`85`, cuarta arena TORRE DEL CENTINELA) y la arena aleatoria por
+> puntos (`86`, tecla X). Ese mismo día se fusionó además la rama
+> `online-multiplayer` (duelo 1v1 por red, ver `tasks/README.md` y
+> `docs/online-netcode.md`) y la revisión profunda posterior dejó DOS
+> colas: los **bugs de juego** ya están como tareas formales **87–94**
+> (PENDIENTES, en `tasks/`), y las **mejoras estructurales** —ideas que NO
+> caben en una tarea atómica de una sesión— entran abajo. Cuando entre una
+> idea nueva, sigue la guía del final para convertirla en tarea con este
+> formato.
+
+---
+
+## Estructural (revisión post-fusión, 2026-10-04) — PENDIENTE
+
+No son tareas atómicas: cada una necesita su propio plan (o una mini-serie
+de tareas). Se promocionan diseñándolas, no copiando la plantilla tal cual.
+
+- **Dividir `game.gd`** (~3.700 líneas: 4 arenas, 7 modos, HUD y ~600
+  líneas de sincronización online). Cortes naturales: construcción de
+  arenas/layout, modos de juego (arcade, copa, pantallas), resolución de
+  combate, y sync online (que ya tiene su `net.gd` de apoyo). Riesgo alto
+  de regresión → batería completa (smoke + suites + countdown_probe +
+  E2E online) tras cada corte, un commit por corte.
+- **Orquestador del E2E online**: script (`.ps1`/`.sh`) que copia el
+  proyecto a dos carpetas, lanza `online_host.gd` + `online_client.gd`
+  headless contra `127.0.0.1` y reporta los dos `RESULT`. Hoy el flujo es
+  manual (documentado en `docs/online-netcode.md`); con el script se
+  podría colgar de la batería normal.
+- **CI headless**: workflow (GitHub Actions o similar) que ejecute smoke,
+  suites, `countdown_probe` y el sim en cada push con Godot 4.6 headless.
+  La batería ya es determinista y headless: solo falta el arnés.
+- **Online v2**: NAT traversal o al menos una guía de port-forwarding del
+  puerto 24565 (`docs/online-netcode.md` hoy asume IP directa/LAN);
+  considerar retransmisión (relay) si se quieren partidas abiertas por
+  Internet sin abrir puertos.
 
 ---
 

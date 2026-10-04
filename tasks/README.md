@@ -118,6 +118,14 @@ Reglas de oro para ti (el humano que supervisa):
 | `84-lanza-salto-ataque.md` | Mantener salto + atacar lanza el arma (suelo y aire) | baja | `player.gd`, `test/suite_combate.gd` |
 | `85-torre-dos-pisos.md` | Torre de dos pisos (4ª arena TORRE DEL CENTINELA) | alta | `game.gd` |
 | `86-arena-aleatoria.md` | Arena barajada por puntos (tecla X, tramos del medio) | alta | `game.gd` |
+| `87-fix-barra-reaparicion.md` | Fix: barra de reaparición en coordenadas de pantalla | media | `game.gd` |
+| `88-fix-arcade-reintentar.md` | Fix: "Y: reintentar" arranca aunque la derrota fuera en la arena 1 | baja | `game.gd` |
+| `89-bot-torre-vertical.md` | El bot sube/baja los dos pisos de la Torre del Centinela | alta | `game.gd` |
+| `90-fix-armas-2v2.md` | Fix: P3/P4 ciclan armas en 2v2 | baja | `game.gd` |
+| `91-fix-pantallas-arcade-copa.md` | Fix: tecla P bloqueada dentro de arcade y copa | baja | `game.gd` |
+| `92-fix-pips-retroceso.md` | Fix: pips de conquista solo con el avance | baja | `game.gd` |
+| `93-sangre-superficies-altas.md` | Charcos de sangre en puente y piso de la torre | baja | `game.gd` |
+| `94-limpieza-codigo-muerto.md` | Limpieza: WIN_SCORE, rama muerta de flechas y señal `died` | baja | `game.gd`, `player.gd` |
 
 Las tareas 65–80 cierran las brechas contra el juego original detectadas en
 la comparativa con `docs/RESEARCH.md` (presentación del paso, antidesgaste,
@@ -136,6 +144,15 @@ por punto).
 > tiene archivo propio porque llegó ya aplicada. Documentación y decisiones:
 > `docs/online-netcode.md`; verificación E2E: `test/online_host.gd` +
 > `test/online_client.gd` (dos procesos).
+
+Las tareas **87–94 son PENDIENTES** (no están aplicadas): salen de la
+revisión profunda tras la fusión del online (2026-10-04) — siete bugs
+reales de juego (barra de reaparición fuera de pantalla, reintento del
+arcade en la arena 1, bot ciego al piso superior de la torre, armas de
+P3/P4 en 2v2, tecla P dentro de arcade/copa, pips inflados por retroceso,
+sangre en superficies altas) y una limpieza de código muerto. Las ideas
+estructurales de esa misma revisión (dividir `game.gd`, orquestador del
+E2E, CI, online v2) viven en `secundarias.md`.
 
 Las tareas 41–52 portan lo único técnico del proyecto hermano
 (`Nidhogg 2`): visión de conjunto, mapa de valores y orden en
@@ -240,6 +257,12 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
 | `85` y `70`/bots | El foso central queda a cielo abierto en la torre (el salto al puente no se golpea); peñasco y torre de piedra no se dibujan en la arena 4. El bot no necesita cambios. |
 | `85` y `86` | La torre no admite barajado (piso superior fijo): X avisa y no actúa; C hacia la torre con el barajado activo lo apaga. |
 | `86` y harnesses | El barajado está APAGADO por defecto: smoke/suites/sim/arcade corren el layout clásico sin cambios. Al re-barajar NO se resetea el marcador (usa `_reshuffle_level`, no `set_arena`). |
+| `89` y `01`/`02`/`21` | Las cuatro tocan `_bot_think`. La 89 inserta una rama nueva con `return` al inicio: aplícala sobre el bot ya existente y revisa que las ramas de corredor/duelo no se despinten (en arenas 0–2 nada puede cambiar, la rama vive bajo `arena_id == 3`). |
+| `90` y `23` | Las dos tocan `weapon_idx`/`_next_weapon`. La 90 solo redimensiona los resets: el ciclo de la 23 no cambia. |
+| `92` y `25`/`26`/`50` | Las cuatro viven de `sect_conquered`/`section_index`. La 92 cambia el conteo (progreso máximo): las rejas y la cámara de la 25/50 no se tocan; el caso del smoke que asienta `sect_conquered[0] == 1` sigue valiendo. |
+| `93` y `29`/`17` | La 93 reescribe el arranque de `_add_blood` (superficie por `_top_below`): el FIFO de la 29 y el anti-foso de la 17 se conservan a nivel de suelo. |
+| `87` y `78` | La 87 usa `camera.zoom` en la conversión mundo→pantalla: con el zoom dinámico de la 78 la fórmula sigue siendo exacta (es multiplicativa). |
+| `91` y `25`/`36`/`39` | La 91 añade guards de modo (tecla P + apagar pantallas al entrar en arcade/copa): no cambia `set_sections` ni los brackets. |
 
 ## Comando de verificación (común a todas las tareas)
 
