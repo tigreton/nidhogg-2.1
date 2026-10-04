@@ -28,8 +28,18 @@ el partido.
 | Modo arcade (escalera de bots) | Y |
 | Modo copa (semifinales + final) | O |
 | Música / pausa | M / ESC |
+| **Menú ONLINE (1v1 por red)** | O (en el título) |
 
 En el aire, el botón de ataque hace una **patada voladora** que derriba al rival.
+
+## Online (1v1 por red)
+
+Desde el título, **O** abre el menú online: `1` crea la partida (eres P1,
+anfitrión; se muestran tus IPs LAN) y `2` se une a una IP (eres P2). El
+anfitrión es la autoridad: su simulación manda, el cliente predice su propio
+jugador y el marcador, bajas y rondas viajan por ENet (puerto 24565). Detalles
+y decisiones en `docs/online-netcode.md`. En partida online se juega el 1v1
+puro (sin bots ni modos extra, sin pausa ESC).
 
 ## Mecánicas
 

@@ -165,6 +165,7 @@ var crumble_tiles: Array[CrumbleTile] = []
 var camera: Camera2D
 var section_cam_tween: Tween
 var msg_label: Label
+var hint_label: Label
 var run_label: Label
 var dim: ColorRect
 var pause_label: Label
@@ -182,6 +183,17 @@ var music: Music
 var crowd: AudioStreamPlayer
 var crowd_excite := 0.0    # 0..1 (tarea 68)
 var crowd_kill_flash := 0.0
+# --- online: host autoritativo, cliente con predicción del propio jugador ---
+const NET_SNAP_EVERY := 3  # snapshot cada 3 ticks de física (20 Hz a 60 fps)
+var net_tick := 0
+var net_last_snap := {}    # cliente: último snapshot recibido del host
+var net_last_ser := -1     # cliente: serie del último snapshot aceptado (orden)
+var net_applied_ser := -1  # cliente: serie cuyo rebuild de entidades ya se hizo
+var net_last_rl := 0.0     # cliente: round_lock del tick anterior (para el ¡FIGHT!)
+var net_had_sd := false    # cliente: muerte súbita ya anunciada
+var net_dead := [false, false]  # cliente: muertes ya aplicadas localmente
+var net_wait_peer := false      # host: congelado esperando el handshake del cliente
+var rematch_pending := false    # fix bucle de cuenta atrás: expirar el lock ¿reinicia ronda?
 
 
 func _fresh_stats() -> Array[Dictionary]:
@@ -214,7 +226,16 @@ func _ready() -> void:
 	crowd.name = "Crowd"
 	add_child(crowd)
 	crowd.play()
-	_start_round()
+	# online: el host manda (handshake fino con el cliente); el cliente espeja
+	if Net.active():
+		Net.peer_left.connect(_on_net_drop)
+		Net.server_lost.connect(_on_net_drop)
+	if Net.is_client():
+		_client_setup()
+	elif Net.is_host():
+		_host_setup()
+	else:
+		_start_round()
 
 
 func _process(_delta: float) -> void:
@@ -237,6 +258,8 @@ func _process(_delta: float) -> void:
 
 func sfx(pos: Vector2, id: String, db := -10.0, pitch := 1.0) -> void:
 	Sfx.play(self, pos, id, db, pitch)
+	if Net.is_host() and Net.client_ready:
+		ev_sfx.rpc(pos.x, pos.y, id, db, pitch)
 
 
 func in_grass(x: float) -> bool:
@@ -1553,6 +1576,7 @@ func _build_hud() -> void:
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.62, 0.60, 0.72))
 	cl.add_child(hint)
+	hint_label = hint
 
 	run_label = Label.new()
 	run_label.position = Vector2(0, 64)
@@ -1655,6 +1679,9 @@ func _all_labels(node: Node) -> Array[Label]:
 
 
 func _start_round() -> void:
+	rematch_pending = false
+	if Net.is_host() and Net.client_ready:
+		ev_round.rpc()
 	if worm != null:
 		worm.queue_free()
 		worm = null
@@ -1688,19 +1715,17 @@ func _start_round() -> void:
 		p.weapon_id = "florete"
 	respawn_timers.resize(players.size())
 	respawn_timers.fill(0.0)
-	var offs := [-220.0, 220.0, -620.0, 620.0]
-	for i in players.size():
-		var o: float = offs[i]
-		players[i].reset_to(Vector2(LEVEL_W * 0.5 + o, GROUND_Y - 29.0), -1 if o > 0.0 else 1)
+	_position_players_for_round()
 	if skip_countdown:
 		_show_fight()
 	else:
-		# 3·2·1 con los jugadores congelados (tarea 66); round_lock ya congela
+		# 3·2·1 con los jugadores congelados (tarea 66); round_lock ya congela.
+		# El desbloqueo lo da la expiración del lock en _physics_process:
+		# _show_fight() aquí provocaba el dobles-disparo del bucle de cuenta
 		round_lock = COUNTDOWN_STEP * 3.0
 		for n in 3:
 			show_msg("%d" % (3 - n), COUNTDOWN_STEP * 0.8)
 			await get_tree().create_timer(COUNTDOWN_STEP).timeout
-		_show_fight()
 
 
 func show_msg(text: String, dur: float) -> void:
@@ -1711,6 +1736,8 @@ func show_msg(text: String, dur: float) -> void:
 	msg_tween = msg_label.create_tween()
 	msg_tween.tween_interval(dur)
 	msg_tween.tween_property(msg_label, "modulate:a", 0.0, 0.4)
+	if Net.is_host() and Net.client_ready:
+		ev_msg.rpc(text, dur)
 
 
 func _show_fight() -> void:
@@ -1743,6 +1770,8 @@ func _show_step_arrow(p: Player) -> void:
 
 
 func _hitstop(dur: float) -> void:
+	if Net.active():
+		return   # pausar el árbol solo en un lado desincronizaría la predicción
 	if get_tree().paused:
 		return
 	hitstop_active = true
@@ -1753,6 +1782,8 @@ func _hitstop(dur: float) -> void:
 
 
 func _slowmo(scale: float, real_dur: float) -> void:
+	if Net.active():
+		return   # idem hitstop: la escala de tiempo debe ser idéntica en ambos
 	Engine.time_scale = scale
 	get_tree().create_timer(real_dur, true, false, true).timeout.connect(func():
 		Engine.time_scale = 1.0)
@@ -1819,14 +1850,20 @@ func _burst(pos: Vector2, col: Color, amount := 24, speed := 380.0) -> void:
 	cp.color = col
 	add_child(cp)
 	get_tree().create_timer(1.3).timeout.connect(cp.queue_free)
+	if Net.is_host() and Net.client_ready:
+		ev_burst.rpc(pos.x, pos.y, col, amount, speed)
 
 
 func _physics_process(delta: float) -> void:
-	if Input.is_action_just_pressed("pause") and not hitstop_active:
+	if Input.is_action_just_pressed("pause") and not hitstop_active and not Net.active():
 		get_tree().paused = not get_tree().paused
 		dim.visible = get_tree().paused
 		pause_label.visible = get_tree().paused
 	if get_tree().paused:
+		return
+	if Net.is_client():
+		# el cliente no simula: manda input, aplica snapshots y predice su jugador
+		_client_step(delta)
 		return
 	shake_time = maxf(0.0, shake_time - delta)
 	parry_cd = maxf(0.0, parry_cd - delta)
@@ -1859,55 +1896,66 @@ func _physics_process(delta: float) -> void:
 	if round_lock > 0.0:
 		round_lock -= delta
 		if round_lock <= 0.0:
-			_start_round()
-	if match_over and Input.is_action_just_pressed("restart"):
+			round_lock = 0.0
+			# fix del bucle de cuenta atrás (preexistente en main): antes se
+			# re-llamaba _start_round() aquí dentro, que volvía a fijar
+			# round_lock=2.1 → cuenta 3·2·1 infinita con jugadores congelados
+			if rematch_pending:
+				rematch_pending = false
+				_start_round()
+			else:
+				_show_fight()
+	if match_over and Input.is_action_just_pressed("restart") and not Net.is_client():
 		scores = [0, 0]
 		stats = _fresh_stats()
 		stats_label.visible = false
 		match_over = false
 		_update_hud()
 		_start_round()
-	if Input.is_action_just_pressed("toggle_bot"):
-		if not players[1].is_bot:
-			bot_level = 1
-			players[1].is_bot = true
-		elif bot_level < 3:
-			bot_level += 1
-		else:
-			players[1].is_bot = false
-		var names := ["FÁCIL", "NORMAL", "DIFÍCIL"]
-		if players[1].is_bot:
-			show_msg("BOT P2: %s" % names[bot_level - 1], 0.7)
-		else:
-			show_msg("BOT P2: OFF", 0.7)
-	if Input.is_action_just_pressed("toggle_ally") and players.size() > 2:
-		ally_bot_level = (ally_bot_level + 1) % 4
-		players[2].is_bot = ally_bot_level > 0
-		var anames := ["OFF", "FÁCIL", "NORMAL", "DIFÍCIL"]
-		show_msg("ALIADO P3: %s" % anames[ally_bot_level], 0.7)
-	if Input.is_action_just_pressed("bot_vs_bot"):
-		var on := not players[0].is_bot
-		for p in players:
-			p.is_bot = on
-		if not on:
-			# restaurar: P3 según su nivel, P4 siempre bot en 2v2
-			if players.size() > 2:
-				players[2].is_bot = ally_bot_level > 0
-			if players.size() > 3:
-				players[3].is_bot = true
-		show_msg("BOT vs BOT %s" % ("ACTIVADO" if on else "DESACTIVADO"), 0.7)
-	if Input.is_action_just_pressed("toggle_2v2") and not arcade and not cup:
-		set_mode_2v2(not mode_2v2)
-	if Input.is_action_just_pressed("toggle_arena") and not arcade and not cup:
-		set_arena(arena_id + 1)
-	if Input.is_action_just_pressed("toggle_sections"):
-		set_sections(not sections_mode)
-	if Input.is_action_just_pressed("toggle_arcade"):
-		set_arcade(not arcade)
-	if Input.is_action_just_pressed("toggle_cup"):
-		set_cup(not cup)
-	if Input.is_action_just_pressed("toggle_chaos"):
-		set_chaos(not chaos)
+	if not Net.active():
+		# los modos locales (bots, 2v2, caos, arenas, arcade, copa) no se
+		# tocan en partidas online: el 1v1 es la única modalidad sincronizada
+		if Input.is_action_just_pressed("toggle_bot"):
+			if not players[1].is_bot:
+				bot_level = 1
+				players[1].is_bot = true
+			elif bot_level < 3:
+				bot_level += 1
+			else:
+				players[1].is_bot = false
+			var names := ["FÁCIL", "NORMAL", "DIFÍCIL"]
+			if players[1].is_bot:
+				show_msg("BOT P2: %s" % names[bot_level - 1], 0.7)
+			else:
+				show_msg("BOT P2: OFF", 0.7)
+		if Input.is_action_just_pressed("toggle_ally") and players.size() > 2:
+			ally_bot_level = (ally_bot_level + 1) % 4
+			players[2].is_bot = ally_bot_level > 0
+			var anames := ["OFF", "FÁCIL", "NORMAL", "DIFÍCIL"]
+			show_msg("ALIADO P3: %s" % anames[ally_bot_level], 0.7)
+		if Input.is_action_just_pressed("bot_vs_bot"):
+			var on := not players[0].is_bot
+			for p in players:
+				p.is_bot = on
+			if not on:
+				# restaurar: P3 según su nivel, P4 siempre bot en 2v2
+				if players.size() > 2:
+					players[2].is_bot = ally_bot_level > 0
+				if players.size() > 3:
+					players[3].is_bot = true
+			show_msg("BOT vs BOT %s" % ("ACTIVADO" if on else "DESACTIVADO"), 0.7)
+		if Input.is_action_just_pressed("toggle_2v2") and not arcade and not cup:
+			set_mode_2v2(not mode_2v2)
+		if Input.is_action_just_pressed("toggle_arena") and not arcade and not cup:
+			set_arena(arena_id + 1)
+		if Input.is_action_just_pressed("toggle_sections"):
+			set_sections(not sections_mode)
+		if Input.is_action_just_pressed("toggle_arcade"):
+			set_arcade(not arcade)
+		if Input.is_action_just_pressed("toggle_cup"):
+			set_cup(not cup)
+		if Input.is_action_just_pressed("toggle_chaos"):
+			set_chaos(not chaos)
 	if Input.is_action_just_pressed("toggle_music"):
 		var mp := music.get_node_or_null("MusicPlayer") as AudioStreamPlayer
 		if mp != null:
@@ -1937,7 +1985,7 @@ func _physics_process(delta: float) -> void:
 		if p.state != Player.State.DEAD and p.position.y > 820.0:
 			_kill(p, null)
 	for p in players:
-		p.frozen = match_over or round_lock > 0.0
+		p.frozen = match_over or round_lock > 0.0 or net_wait_peer
 		if p.is_bot:
 			_bot_think(p, delta)
 	for i in players.size():
@@ -1959,6 +2007,8 @@ func _physics_process(delta: float) -> void:
 	_update_sections()
 	_check_goals()
 	_update_camera(delta)
+	if Net.is_host():
+		_host_net_step()
 
 
 func _resolve_attacks() -> void:
@@ -2026,6 +2076,7 @@ func _melee_hit(atk: Player, def: Player) -> void:
 		def.has_sword = false
 		_drop_sword(def.position + Vector2(-float(def.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), def.weapon_id)
 		def.knockdown(push)
+		_net_ev_hit(def, 1, float(push) * 260.0)
 		_burst(def.position + Vector2(0, -20), Color(0.95, 0.95, 1.0), 10, 260.0)
 		sfx(def.position, "throw", -12.0)
 		shake_time = maxf(shake_time, 0.12)
@@ -2040,11 +2091,13 @@ func _melee_hit(atk: Player, def: Player) -> void:
 			def.state = Player.State.STUNNED
 			def.stun_time = 0.5
 			def.velocity = Vector2(push * 160.0, -120.0)
+			_net_ev_hit(def, 2, float(push) * 160.0, -120.0, 0.5)
 			_burst(def.position + Vector2(0, -20), Color(0.95, 0.95, 1.0), 8, 240.0)
 			sfx(def.position, "throw", -12.0)
 		else:
 			# patada baja (agachado) o rival ya desarmado: derriba
 			def.knockdown(push)
+			_net_ev_hit(def, 1, float(push) * 260.0)
 			_burst(def.position, Color(1, 1, 1), 8, 200.0)
 			sfx(def.position, "hit", -10.0)
 
@@ -2062,6 +2115,8 @@ func _clash(a: Player, b: Player) -> void:
 	var push_b := 1 if b.position.x >= a.position.x else -1
 	b.take_clash(push_b)
 	a.take_clash(-push_b)
+	_net_ev_hit(b, 0, float(push_b) * 380.0)
+	_net_ev_hit(a, 0, -float(push_b) * 380.0)
 	for p in disarmed:
 		p.has_sword = false
 		_drop_sword(p.position + Vector2(-float(p.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), p.weapon_id)
@@ -2077,6 +2132,8 @@ func _parry(a: Player, b: Player) -> void:
 	var push_b := 1 if b.position.x >= a.position.x else -1
 	a.apply_push(Vector2(-float(push_b) * PARRY_IMPULSE, 0.0), PARRY_PUSH_TIME)
 	b.apply_push(Vector2(float(push_b) * PARRY_IMPULSE, 0.0), PARRY_PUSH_TIME)
+	_net_ev_hit(a, 3, -float(push_b) * PARRY_IMPULSE, 0.0, PARRY_PUSH_TIME)
+	_net_ev_hit(b, 3, float(push_b) * PARRY_IMPULSE, 0.0, PARRY_PUSH_TIME)
 	parry_cd = PARRY_COOLDOWN
 
 
@@ -2094,12 +2151,14 @@ func _resolve_divekicks() -> void:
 		else:
 			var push := 1 if def.position.x >= p.position.x else -1
 			def.knockdown(push)
+			_net_ev_hit(def, 1, float(push) * 260.0)
 			# la patada voladora hace soltar el arma a su víctima (lejos de ella)
 			if def.has_sword:
 				def.has_sword = false
 				_drop_sword(def.position + Vector2(-float(def.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), def.weapon_id)
 			p.state = Player.State.JUMP
 			p.velocity = Vector2(-p.facing * 210.0, -440.0)
+			_net_ev_hit(p, 5, -float(p.facing) * 210.0, -440.0)
 			_burst(def.position, Color(1, 1, 1), 10, 240.0)
 			sfx(def.position, "hit", -10.0)
 			shake_time = maxf(shake_time, 0.12)
@@ -2137,9 +2196,11 @@ func _resolve_dives() -> void:
 			else:
 				var push := 1 if def.position.x >= p.position.x else -1
 				def.knockdown(push)
+				_net_ev_hit(def, 1, float(push) * 260.0)
 			p.state = Player.State.KNOCKDOWN
 			p.knockdown_time = 0.6
 			p.velocity = Vector2(-float(p.facing) * 160.0, -160.0)
+			_net_ev_hit(p, 4, -float(p.facing) * 160.0, -160.0, 0.6)
 			shake_time = maxf(shake_time, 0.14)
 			break
 
@@ -2156,12 +2217,14 @@ func _resolve_sidekicks() -> void:
 			p.sidekick_resolved = true
 			var push := 1 if def.position.x >= p.position.x else -1
 			def.knockdown(push)
+			_net_ev_hit(def, 1, float(push) * 260.0)
 			if def.has_sword:
 				def.has_sword = false
 				# el arma sale despedida lejos: si no, el caído la recogería al instante
 				_drop_sword(def.position + Vector2(-float(def.facing) * 110.0, -30.0), Color(0.87, 0.9, 0.95), def.weapon_id)
 			p.state = Player.State.JUMP
-			p.velocity = Vector2(-float(p.facing) * 210.0, -440.0)
+			p.velocity = Vector2(-p.facing * 210.0, -440.0)
+			_net_ev_hit(p, 5, -float(p.facing) * 210.0, -440.0)
 			_burst(def.position, Color(1, 1, 1), 10, 240.0)
 			sfx(def.position, "hit", -10.0)
 			shake_time = maxf(shake_time, 0.12)
@@ -2183,6 +2246,7 @@ func _resolve_roll_tackles() -> void:
 			p.roll_hit = true
 			var push := 1 if def.position.x >= p.position.x else -1
 			def.knockdown(push)
+			_net_ev_hit(def, 1, float(push) * 260.0)
 			_burst(def.position, Color(1, 1, 1), 8, 200.0)
 			sfx(def.position, "hit", -10.0)
 			shake_time = maxf(shake_time, 0.1)
@@ -2223,6 +2287,8 @@ func _resolve_guard_impale() -> void:
 				# rebote mínimo: ambos se separan sin stun ni desarme
 				f.apply_push(Vector2(-float(f.facing) * CLASH_IMPULSE, 0.0), CLASH_PUSH_TIME)
 				g.apply_push(Vector2(-float(g.facing) * CLASH_IMPULSE, 0.0), CLASH_PUSH_TIME)
+				_net_ev_hit(f, 3, -float(f.facing) * CLASH_IMPULSE, 0.0, CLASH_PUSH_TIME)
+				_net_ev_hit(g, 3, -float(g.facing) * CLASH_IMPULSE, 0.0, CLASH_PUSH_TIME)
 				var mid := Vector2((f.position.x + g.position.x) * 0.5, minf(f.position.y, g.position.y) - 14.0)
 				_burst(mid, Color(1.0, 0.93, 0.55), 6, 200.0)
 				sfx(mid, "clash", -14.0)
@@ -2262,6 +2328,13 @@ func _kill(def: Player, atk: Player) -> void:
 		stats[atk.player_id - 1]["kills"] += 1
 	_hitstop(0.08)
 	respawn_timers[def.player_id - 1] = RESPAWN_DELAY
+	if Net.is_host() and Net.client_ready:
+		var dir := -float(def.facing)
+		if atk != null:
+			var d2 := signf(def.position.x - atk.position.x)
+			if d2 != 0.0:
+				dir = d2
+		ev_kill.rpc(def.player_id, atk.player_id if atk != null else 0, def.position.x, def.position.y, dir)
 	_burst(def.position, def.color, 34, 440.0)
 	_add_blood(def.position, def.color)
 	if def.has_sword:
@@ -2336,6 +2409,8 @@ func _respawn(p: Player) -> void:
 	p.weapon_id = _next_weapon(p)
 	p.revive(pos, face)
 	sfx(pos, "respawn", -12.0)
+	if Net.is_host() and Net.client_ready:
+		ev_respawn.rpc(p.player_id, pos.x, pos.y, face, p.weapon_id)
 
 
 func _next_weapon(p: Player) -> String:
@@ -2370,6 +2445,8 @@ func _respawn_pos(p: Player) -> Vector2:
 
 
 func _on_threw_sword(p: Player) -> void:
+	if Net.is_client():
+		return   # los proyectiles del cliente llegan dentro del snapshot
 	var s := SwordProjectile.new()
 	s.process_mode = Node.PROCESS_MODE_PAUSABLE
 	s.thrower = p
@@ -2385,6 +2462,8 @@ func _on_threw_sword(p: Player) -> void:
 
 
 func _on_fired_arrow(p: Player, height: int, charge: float) -> void:
+	if Net.is_client():
+		return   # idem lanzamientos: las flechas viajan en el snapshot
 	var a := Arrow.new()
 	a.process_mode = Node.PROCESS_MODE_PAUSABLE
 	a.thrower = p
@@ -2466,6 +2545,7 @@ func _update_projectiles(delta: float) -> void:
 						# no mata a esa altura (o nunca mata, como el arco): derriba
 						var push := 1 if p.position.x >= s.position.x else -1
 						p.knockdown(push)
+						_net_ev_hit(p, 1, float(push) * 260.0)
 						_burst(s.position, Color(0.9, 0.9, 1.0), 10, 260.0)
 						sfx(s.position, "clash", -12.0)
 						_drop_sword(s.position, s.color, s.weapon_id)
@@ -2622,6 +2702,8 @@ func _point(p: Player) -> void:
 	_burst(p.position + Vector2(0, -30), p.color, 42, 480.0)
 	_slowmo(0.25, 0.9)
 	right_of_way = null
+	if Net.is_host() and Net.client_ready:
+		ev_point.rpc(_team(p), p.position.x, p.position.y)
 	if scores[_team(p)] >= MatchRules.win_score:
 		if arcade:
 			if _team(p) == 0:
@@ -2652,12 +2734,15 @@ func _point(p: Player) -> void:
 			show_msg("¡GANA EL EQUIPO %s!  ·  R: revancha" % team_name, 12.0)
 		else:
 			show_msg("¡GANA P%d!  ·  R: revancha" % p.player_id, 12.0)
+		if Net.is_host() and Net.client_ready:
+			ev_match_over.rpc(p.player_id)
 		stats_label.text = _stats_text()
 		get_tree().create_timer(1.5).timeout.connect(func():
 			if match_over:
-				stats_label.visible = true)
+				stats_label.visible = not Net.active())  # las stats locales mienten a medias online
 	else:
 		round_lock = 1.4
+		rematch_pending = true   # al expirar el lock se arranca ronda nueva
 		show_msg("¡PUNTO!", 1.0)
 
 
@@ -2838,3 +2923,412 @@ func _bot_think(p: Player, delta: float) -> void:
 	p.bot_held = want
 	if tap != "" and p.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]:
 		p.bot_held[tap] = true
+
+
+# =============================================================================
+# ONLINE (tarea 85): host autoritativo + cliente con predicción del propio P2
+# =============================================================================
+
+func _host_setup() -> void:
+	players[1].net_remote = true
+	players[1].is_bot = false
+	if hint_label != null:
+		hint_label.text = "ONLINE — eres P1 (NACHO): A/D mover · W saltar/arriba · S agachar · F atacar · G lanzar\nGana P1 o P2 a 3 puntos  ·  R: revancha al terminar el partido"
+	# posiciones de ronda ya: sin esto los duelistas nacen en (0,0) y caen
+	# contra el muro izquierdo mientras llega el rival
+	_position_players_for_round()
+	if Net.client_ready:
+		_start_round()
+	else:
+		net_wait_peer = true   # el bucle principal congela con este flag
+		show_msg("ESPERANDO AL RIVAL...", 9999.0)
+		Net.client_became_ready.connect(_on_client_ready, CONNECT_ONE_SHOT)
+
+
+func _on_client_ready() -> void:
+	net_wait_peer = false
+	_start_round()
+
+
+func _client_setup() -> void:
+	players[0].net_puppet = true
+	players[0].is_bot = false
+	players[1].is_bot = false
+	net_wait_peer = true   # hasta el primer ev_round del host
+	_position_players_for_round()
+	if hint_label != null:
+		hint_label.text = "ONLINE — eres P2 (RODRIGO): ←/→ mover · ↑ saltar/arriba · ↓ agachar · K atacar · L lanzar\nLas reglas las fija el anfitrión (P1)"
+	Net.net_ready.rpc_id(1)
+
+
+## Coloca a los duelistas en la línea de inicio (lo usa _start_round y los
+## setups online para que nadie nazca en (0,0) esperando al rival).
+func _position_players_for_round() -> void:
+	var offs := [-220.0, 220.0, -620.0, 620.0]
+	for i in players.size():
+		var o: float = offs[i]
+		players[i].reset_to(Vector2(LEVEL_W * 0.5 + o, GROUND_Y - 29.0), -1 if o > 0.0 else 1)
+
+
+func _on_net_drop() -> void:
+	# se cortó el enlace en plena partida: volver al título sin colgar el árbol
+	get_tree().paused = false
+	Net.shutdown()
+	get_tree().change_scene_to_file("res://scenes/title.tscn")
+
+
+# --- host: aplicar input remoto y emitir snapshots --------------------------
+
+@rpc("any_peer", "unreliable")
+func net_input(h: Dictionary) -> void:
+	if not Net.is_host() or players.size() < 2:
+		return
+	players[1].net_held = h
+
+
+func _net_ev_hit(p: Player, kind: int, sx := 0.0, sy := 0.0, st := 0.0) -> void:
+	if Net.is_host() and Net.client_ready:
+		ev_hit.rpc(p.player_id, kind, sx, sy, st)
+
+
+func _net_pack_player(p: Player) -> Dictionary:
+	return {
+		"x": p.position.x, "y": p.position.y, "vx": p.velocity.x, "vy": p.velocity.y,
+		"st": p.state, "sc": p.stance, "fc": p.facing, "hs": p.has_sword,
+		"wid": p.weapon_id, "rp": p.run_phase, "at": p.attack_time,
+		"ah": p.attack_height, "iv": p.invuln_time, "kd": p.knockdown_time,
+		"rt": p.roll_time, "sd": p.sidekick_time, "dv": p.dive_time,
+		"bw": p.bow_time, "tp": p.throw_pose_time, "am": p.anim_time,
+	}
+
+
+func _host_net_step() -> void:
+	if not Net.client_ready:
+		return
+	net_tick += 1
+	if net_tick % NET_SNAP_EVERY != 0:
+		return
+	var proj := []
+	for s in projectiles:
+		proj.append({
+			"x": s.position.x, "y": s.position.y, "vx": s.vel.x, "sp": s.spin,
+			"wid": s.weapon_id, "t": s.thrower.player_id if s.thrower != null else 0,
+		})
+	var ars := []
+	for a in arrows:
+		if not a.stuck:
+			ars.append({
+				"x": a.position.x, "y": a.position.y, "vx": a.vel.x,
+				"h": a.height, "b": a.bounces,
+				"t": a.thrower.player_id if a.thrower != null else 0,
+			})
+	var piks := []
+	for pk in pickups:
+		piks.append({"x": pk.position.x, "y": pk.position.y, "wid": pk.weapon_id})
+	net_snap.rpc({
+		"ser": net_tick,
+		"scores": scores,
+		"rw": right_of_way.player_id if right_of_way != null else 0,
+		"rl": round_lock,
+		"mo": match_over,
+		"sd": sudden_death,
+		"rsp": [respawn_timers[0], respawn_timers[1]],
+		"p1": _net_pack_player(players[0]),
+		"p2": _net_pack_player(players[1]),
+		"proj": proj,
+		"arrows": ars,
+		"picks": piks,
+	})
+
+
+@rpc("authority", "unreliable")
+func net_snap(s: Dictionary) -> void:
+	if not Net.is_client():
+		return
+	# el canal no fiable no ordena: un snapshot viejo llegando tarde (p.ej.
+	# tras un ev_respawn fiable) "mataría" de nuevo al jugador local
+	var ser := int(s.get("ser", -1))
+	if ser <= net_last_ser:
+		return
+	net_last_ser = ser
+	net_last_snap = s
+
+
+# --- cliente: paso por tick de física ---------------------------------------
+
+func _client_step(delta: float) -> void:
+	# 1) mi input local (P2) → host, cada tick (no fiable: si llega tarde, se ignora)
+	var h := {}
+	for a in ["left", "right", "up", "down", "jump", "attack", "throw"]:
+		h[a] = Input.is_action_pressed("p2_" + a)
+	net_input.rpc_id(1, h)
+	# 2) aplicar el snapshot más reciente y sus efectos derivados
+	if not net_last_snap.is_empty():
+		_client_apply_common()
+		for p in players:
+			p.frozen = match_over or round_lock > 0.0 or net_wait_peer
+		_apply_puppet(delta)
+		_reconcile_own()
+		_client_watch_effects()
+	_update_camera(delta)
+	_update_respawn_bar()
+
+
+func _client_apply_common() -> void:
+	var s := net_last_snap
+	var sc: Array = s.get("scores", [0, 0])
+	if scores[0] != int(sc[0]) or scores[1] != int(sc[1]):
+		scores = [int(sc[0]), int(sc[1])]
+		_update_hud()
+	var rw_pid := int(s.get("rw", 0))
+	var rw: Player = null
+	if rw_pid > 0:
+		rw = players[rw_pid - 1]
+	if rw != right_of_way:
+		right_of_way = rw
+		if rw != null:
+			_show_step_arrow(rw)
+	round_lock = float(s.get("rl", 0.0))
+	match_over = bool(s.get("mo", false))
+	sudden_death = bool(s.get("sd", false))
+	var rsp: Array = s.get("rsp", [0.0, 0.0])
+	respawn_timers = [float(rsp[0]), float(rsp[1])]
+	if net_last_ser != net_applied_ser:
+		net_applied_ser = net_last_ser
+		_sync_net_entities(s)
+
+
+## El rival (P1) es una marioneta: interpola posición y copia el resto.
+func _apply_puppet(delta: float) -> void:
+	var rp: Dictionary = net_last_snap.get("p1", {})
+	if rp.is_empty():
+		return
+	var foe := players[0]
+	var target := Vector2(float(rp.get("x", foe.position.x)), float(rp.get("y", foe.position.y)))
+	if foe.position.distance_to(target) > 200.0:
+		foe.position = target
+	else:
+		foe.position = foe.position.lerp(target, clampf(delta * 14.0, 0.0, 1.0))
+	foe.velocity = Vector2(float(rp.get("vx", 0.0)), float(rp.get("vy", 0.0)))
+	foe.state = int(rp.get("st", 0))
+	foe.stance = int(rp.get("sc", 1))
+	foe.stance_target = foe.stance
+	foe.facing = int(rp.get("fc", 1))
+	foe.scale.x = foe.facing
+	foe.has_sword = bool(rp.get("hs", true))
+	foe.weapon_id = String(rp.get("wid", "florete"))
+	foe.run_phase = float(rp.get("rp", 0.0))
+	foe.attack_time = float(rp.get("at", 0.0))
+	foe.attack_height = int(rp.get("ah", 1))
+	foe.attack_resolved = true   # el cliente nunca resuelve combate
+	foe.invuln_time = float(rp.get("iv", 0.0))
+	foe.knockdown_time = float(rp.get("kd", 0.0))
+	foe.roll_time = float(rp.get("rt", 0.0))
+	foe.sidekick_time = float(rp.get("sd", 0.0))
+	foe.dive_time = float(rp.get("dv", 0.0))
+	foe.bow_time = float(rp.get("bw", 0.0))
+	foe.throw_pose_time = float(rp.get("tp", 0.0))
+	foe.anim_time = float(rp.get("am", 0.0))
+
+
+## Mi jugador (P2) corre en local (predicción); aquí solo se corrige suave.
+func _reconcile_own() -> void:
+	var lp: Dictionary = net_last_snap.get("p2", {})
+	if lp.is_empty():
+		return
+	var me := players[1]
+	var host_st := int(lp.get("st", me.state))
+	if me.state != Player.State.DEAD:
+		var target := Vector2(float(lp.get("x", me.position.x)), float(lp.get("y", me.position.y)))
+		var d := me.position.distance_to(target)
+		if d > 120.0:
+			# divergencia grande (derriba, rebote): confiar ciegamente en el host
+			me.position = target
+			me.velocity = Vector2(float(lp.get("vx", 0.0)), float(lp.get("vy", 0.0)))
+		elif d > 3.0:
+			me.position = me.position.lerp(target, 0.12)
+		if host_st == Player.State.DEAD and not net_dead[1]:
+			# salvavidas: el ev_kill fiable debería haber llegado antes
+			net_dead[1] = true
+			me.die()
+			respawn_timers[1] = RESPAWN_DELAY
+			_burst(me.position, me.color, 34, 440.0)
+			me.has_sword = false
+	elif host_st != Player.State.DEAD and net_dead[1]:
+		# auto-cura: creíamos muertos pero el host ya nos ha reviveído (el
+		# ev_respawn fiable y el snapshot no fiable no comparten orden)
+		net_dead[1] = false
+		me.weapon_id = String(lp.get("wid", me.weapon_id))
+		me.revive(Vector2(float(lp.get("x", 531.0)), float(lp.get("y", 531.0))), 1 if float(lp.get("vx", 0.0)) >= 0.0 else -1)
+	# arma autoritativa (ciclo de reaparición y recogidas del host)
+	me.has_sword = bool(lp.get("hs", me.has_sword))
+	me.weapon_id = String(lp.get("wid", me.weapon_id))
+
+
+func _client_watch_effects() -> void:
+	if not net_had_sd and sudden_death:
+		net_had_sd = true
+		show_msg("¡MUERTE SÚBITA!", 1.4)
+		sfx(camera.position, "alert", -4.0)
+		shake_time = maxf(shake_time, 0.2)
+	if net_last_rl > 0.0 and round_lock <= 0.0 and not match_over:
+		_show_fight()
+	net_last_rl = round_lock
+
+
+## Reconstrucción de proyectiles/flechas/espadas caídas: son pocos nodos, así
+## que se recrean enteros con cada snapshot nuevo y nunca divergen.
+func _sync_net_entities(s: Dictionary) -> void:
+	for a in arrows:
+		a.queue_free()
+	arrows.clear()
+	for x in s.get("arrows", []):
+		var a := Arrow.new()
+		a.process_mode = Node.PROCESS_MODE_PAUSABLE
+		a.position = Vector2(float(x["x"]), float(x["y"]))
+		a.vel = Vector2(float(x["vx"]), 0.0)
+		a.height = int(x["h"])
+		a.bounces = int(x["b"])
+		var at := int(x["t"])
+		a.thrower = players[at - 1] if at > 0 else null
+		add_child(a)
+		arrows.append(a)
+	for spd in projectiles:
+		spd.queue_free()
+	projectiles.clear()
+	for x in s.get("proj", []):
+		var pr := SwordProjectile.new()
+		pr.process_mode = Node.PROCESS_MODE_PAUSABLE
+		pr.position = Vector2(float(x["x"]), float(x["y"]))
+		pr.vel = Vector2(float(x["vx"]), 0.0)
+		pr.spin = float(x["sp"])
+		pr.weapon_id = String(x["wid"])
+		var pt := int(x["t"])
+		pr.thrower = players[pt - 1] if pt > 0 else null
+		add_child(pr)
+		projectiles.append(pr)
+	for pk in pickups:
+		pk.queue_free()
+	pickups.clear()
+	for x in s.get("picks", []):
+		var npk := SwordPickup.new()
+		npk.process_mode = Node.PROCESS_MODE_PAUSABLE
+		npk.weapon_id = String(x["wid"])
+		npk.position = Vector2(float(x["x"]), float(x["y"]))
+		add_child(npk)
+		pickups.append(npk)
+
+
+# --- eventos fiables host → cliente ------------------------------------------
+
+@rpc("authority", "reliable")
+func ev_round() -> void:
+	# espejo local del _start_round del host
+	for k in corpses:
+		corpses[k].queue_free()
+	corpses.clear()
+	for b in blood:
+		b.queue_free()
+	blood.clear()
+	for tile in crumble_tiles:
+		tile.restore(self)
+	right_of_way = null
+	calm_time = 0.0
+	sudden_death = false
+	net_had_sd = false
+	net_dead = [false, false]
+	net_wait_peer = false
+	weapon_idx = [0, 0]
+	for p in players:
+		p.weapon_id = "florete"
+	var offs := [-220.0, 220.0]
+	for i in mini(players.size(), 2):
+		players[i].reset_to(Vector2(LEVEL_W * 0.5 + offs[i], GROUND_Y - 29.0), -1 if offs[i] > 0.0 else 1)
+	round_lock = COUNTDOWN_STEP * 3.0
+	net_last_rl = round_lock
+
+
+@rpc("authority", "reliable")
+func ev_kill(vp: int, kp: int, x: float, y: float, dir: float) -> void:
+	if net_dead[vp - 1]:
+		return
+	net_dead[vp - 1] = true
+	var def := players[vp - 1]
+	var atk := players[kp - 1] if kp > 0 else null
+	def.position = Vector2(x, y)
+	def.die()
+	respawn_timers[vp - 1] = RESPAWN_DELAY
+	_burst(Vector2(x, y), def.color, 34, 440.0)
+	_burst(Vector2(x, y), Color(0.95, 0.95, 1.0), 12, 260.0)
+	_add_blood(Vector2(x, y), def.color)
+	_spawn_corpse(def, atk)
+	if corpses.has(vp):
+		corpses[vp].vel = Vector2(dir * 300.0, -260.0)
+		corpses[vp].spin = dir * randf_range(2.0, 5.0)
+	sfx(Vector2(x, y), "kill", -6.0)
+	crowd_kill_flash = 1.0
+	shake_time = maxf(shake_time, 0.3)
+
+
+@rpc("authority", "reliable")
+func ev_hit(pid: int, kind: int, sx: float, sy: float, st: float) -> void:
+	var p := players[pid - 1]
+	if p.net_puppet:
+		return   # al rival ya lo trae el snapshot
+	match kind:
+		0: p.take_clash(1 if sx >= 0.0 else -1)
+		1: p.knockdown(1 if sx >= 0.0 else -1)
+		2:
+			p.state = Player.State.STUNNED
+			p.stun_time = st
+			p.velocity = Vector2(sx, sy)
+			p.flash_time = 0.15
+		3: p.apply_push(Vector2(sx, 0.0), st)
+		4:
+			p.state = Player.State.KNOCKDOWN
+			p.knockdown_time = st
+			p.velocity = Vector2(sx, sy)
+			p.flash_time = 0.2
+		5:
+			p.state = Player.State.JUMP
+			p.velocity = Vector2(sx, sy)
+
+
+@rpc("authority", "reliable")
+func ev_respawn(pid: int, x: float, y: float, face: int, wid: String) -> void:
+	var p := players[pid - 1]
+	if corpses.has(pid):
+		corpses[pid].queue_free()
+		corpses.erase(pid)
+	net_dead[pid - 1] = false
+	p.weapon_id = wid
+	p.revive(Vector2(x, y), face)
+	sfx(Vector2(x, y), "respawn", -12.0)
+
+
+@rpc("authority", "reliable")
+func ev_point(team_id: int, x: float, y: float) -> void:
+	# el marcador llega por snapshot; aquí solo van el fx y el sonido
+	sfx(Vector2(x, y), "point", -6.0)
+	_burst(Vector2(x, y - 30.0), P1_COLOR if team_id == 0 else P2_COLOR, 42, 480.0)
+
+
+@rpc("authority", "reliable")
+func ev_match_over(pid: int) -> void:
+	match_over = true
+	_spawn_worm(players[pid - 1])
+
+
+@rpc("authority", "reliable")
+func ev_msg(text: String, dur: float) -> void:
+	show_msg(text, dur)
+
+
+@rpc("authority", "reliable")
+func ev_sfx(x: float, y: float, id: String, db: float, pitch: float) -> void:
+	Sfx.play(self, Vector2(x, y), id, db, pitch)
+
+
+@rpc("authority", "reliable")
+func ev_burst(x: float, y: float, col: Color, amount: int, speed: float) -> void:
+	_burst(Vector2(x, y), col, amount, speed)
