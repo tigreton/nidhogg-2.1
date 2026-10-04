@@ -13,6 +13,9 @@ Thumbs.db
 # ZCode local
 .zcode/
 
+# Panel de godot-mcp-enhanced (artefacto de la herramienta, ajeno al juego)
+面板入口.html
+
 # Capturas de desarrollo
 screens/
 
