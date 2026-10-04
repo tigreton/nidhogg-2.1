@@ -72,3 +72,13 @@ fija `facing` por input (y antes del `match state:` de velocidad), añade:
 ```
 
 Última línea esperada: `SMOKE OK - todas las mecánicas funcionan`.
+
+## Nota de corrección (2026-10-04)
+
+La primera versión era un imán continuo: reorientaba CADA frame con un rival
+a <46 px, pisando el input del jugador (huir de espaldas = moonwalk) y
+oscilando al cruzarse a la misma x ("Rodrigo gira solo"). Corregido: el giro
+solo aplica con **input direccional neutro** y con **histéresis de 6 px**
+(muerto en el centro). Verificado con escena de diagnóstico: pegado y
+neutro mira al rival; huyendo con input manda el jugador; en cruce gira
+UNA vez y se estabiliza. `SMOKE OK` y `ALL PASSED (16)`.

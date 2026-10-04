@@ -297,8 +297,10 @@ func _physics_process(delta: float) -> void:
 		if dir != 0.0:
 			facing = 1 if dir > 0.0 else -1
 
-	# giro automático (tarea 72): un rival pegado por la espalda te obliga a mirarlo
-	if state in [State.IDLE, State.RUN]:
+	# giro automático (tarea 72, corregido): SOLO con input neutro y con
+	# histéresis de 6 px. Sin lo primero, el imán pisaba tu input al huir
+	# (moonwalk) y sin lo segundo oscilaba al cruzaros a la misma x.
+	if state in [State.IDLE, State.RUN] and dir == 0.0:
 		var g := get_parent()
 		if g != null and g.get("players") != null:
 			var my_team := (player_id - 1) % 2
@@ -307,8 +309,9 @@ func _physics_process(delta: float) -> void:
 					continue
 				if (q.player_id - 1) % 2 == my_team:
 					continue
-				if absf(q.position.x - position.x) < 46.0 and absf(q.position.y - position.y) < 56.0:
-					facing = 1 if q.position.x >= position.x else -1
+				var dx: float = q.position.x - position.x
+				if absf(dx) > 6.0 and absf(dx) < 46.0 and absf(q.position.y - position.y) < 56.0:
+					facing = 1 if dx > 0.0 else -1
 
 	match state:
 		State.IDLE, State.RUN:
