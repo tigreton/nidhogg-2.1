@@ -97,3 +97,26 @@ compacta con cúpula superior limpia (los ojos amarillos procedurales del juego
 caen ya en su sitio) y anillas limpias sin los triangulos sueltos de la primera
 version (regenerado por indicacion del usuario). Preview:
 `worm/worm_preview_b2.png`. Coste total: 86 generaciones ~ 20-25 CNY (~$3).
+
+## Fase 3 — sistema de packs de arte (código, con aprobación del usuario)
+
+`scripts/art_pack.gd` (nuevo): texturas por NOMBRE con pack activo + fallback a
+`art/sprites/`. Pack activo en `user://settings.cfg` ([art] pack). En el título,
+**tecla A** alterna (default <-> original) y recarga la escena.
+
+Cambios de código exactos (todos `const preload` -> ArtPack.tex):
+
+- `game.gd`: TEX_ARROW/TEX_BLOOD/TEX_FLOOR/TEX_WALL/TEX_PIT_EDGE (vars),
+  `_parallax_layer` por nombre de asset, `VictoryWorm._draw` resuelve worm_body,
+  `Pip` pips, `step_arrow`.
+- `player.gd`: `pose_texture()` vía ArtPack (la caché estática vieja desaparece
+  y el fallback a idle se conserva), chequeo noarme vía ArtPack, `_draw_bow`.
+- `pickup.gd`, `sword_projectile.gd`: dict `WEAPON_TEX` con ArtPack.
+- `arrow.gd`: `ARROW_TEX`.
+- `title.gd`: bg_title, PreviewFigure, tecla A + línea ARTE en reglas.
+
+Pack "original": 68 PNG pictóricos extraídos de `f0faa67` a
+`art/packs/original/sprites/` (~2 MB, versionados).
+
+Validación: import headless Godot 4.3 OK, `--check-only` OK en los 7 scripts,
+arranque headless limpio con default Y con pack original (exit 0, sin errores).

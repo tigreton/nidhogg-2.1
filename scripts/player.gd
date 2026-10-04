@@ -40,18 +40,10 @@ const POSES := ["idle", "run_0", "run_1", "run_2", "run_3", "jump", "fall", "cro
 const POSE_SCALE := 58.0 / 56.0   # el sprite mide 56 px de alto; la colisión 58
 const POSE_FEET_Y := 32.0        # dónde quedan los pies respecto al origen
 
-static var _pose_tex := {}
-
 static func pose_texture(pose: String, side: String) -> Texture2D:
-	# carga perezosa de las 32 poses (p1 azul, p2 rojo) + las desarmadas (61)
-	if _pose_tex.is_empty():
-		for p in POSES:
-			for s in ["p1", "p2"]:
-				_pose_tex["%s_%s" % [p, s]] = load("res://art/sprites/player_%s_%s.png" % [p, s])
-				var u: Texture2D = load("res://art/sprites/player_%s_noarme_%s.png" % [p, s])
-				if u != null:
-					_pose_tex["%s_noarme_%s" % [p, s]] = u
-	return _pose_tex.get("%s_%s" % [pose, side], _pose_tex["idle_p1"])
+	# poses del pack de arte activo (ArtPack cachea y aplica el fallback)
+	var t: Texture2D = ArtPack.tex("player_%s_%s" % [pose, side])
+	return t if t != null else ArtPack.tex("player_idle_p1")
 
 var player_id := 1
 var color := Color("ffb324")
@@ -529,7 +521,7 @@ func _pose_name() -> String:
 	# desarmado (o con el arco, que se dibuja aparte): variante sin arma (61)
 	if not has_sword or weapon_id == "arco":
 		var side := "p1" if (player_id == 1 or player_id == 3) else "p2"
-		if _pose_tex.has("%s_noarme_%s" % [pose, side]):
+		if ArtPack.tex("player_%s_noarme_%s" % [pose, side]) != null:
 			pose += "_noarme"
 	return pose
 
@@ -657,15 +649,13 @@ func _draw() -> void:
 			draw_circle(Vector2(10.0 + pext * 16.0, -6.0), 5.0, c)
 
 
-const TEX_BOW := preload("res://art/sprites/weapon_bow.png")
-
-
 func _draw_bow() -> void:
 	var c := color if flash_time <= 0.0 else Color.WHITE
 	var dark := Color(0.05, 0.04, 0.08)
 	var pull := 0.0 if bow_time <= 0.0 else clampf(bow_time, 0.0, 1.0)
+	var bow: Texture2D = ArtPack.tex("weapon_bow")
 	draw_set_transform(Vector2(8, -8), 0.0, Vector2(0.55, 0.55))
-	draw_texture(TEX_BOW, -TEX_BOW.get_size() * 0.5)
+	draw_texture(bow, -bow.get_size() * 0.5)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var py := -8.0
 	var px := 8.0 - pull * 12.0

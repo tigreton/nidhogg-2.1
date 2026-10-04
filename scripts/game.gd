@@ -104,17 +104,17 @@ const P1_COLOR := Color("4a7bd0")   # azul de la túnica de Nacho (P1)
 const P2_COLOR := Color("d84f35")   # rojo de Rodrigo (P2)
 const P3_COLOR := Color("ff7847")
 const P4_COLOR := Color("4f8dff")
-# sprites de HUD (tarea 55)
-const TEX_ARROW := preload("res://art/sprites/arrow_neutral.png")
-const TEX_BLOOD := [
-	preload("res://art/sprites/blood_0.png"),
-	preload("res://art/sprites/blood_1.png"),
-	preload("res://art/sprites/blood_2.png"),
+# sprites de HUD (tarea 55) — vía ArtPack: packs de arte conmutables (tecla A en el título)
+var TEX_ARROW: Texture2D = ArtPack.tex("arrow_neutral")
+var TEX_BLOOD: Array[Texture2D] = [
+	ArtPack.tex("blood_0"),
+	ArtPack.tex("blood_1"),
+	ArtPack.tex("blood_2"),
 ]
 # tiles de escenario (tarea 57)
-const TEX_FLOOR := preload("res://art/sprites/tile_floor.png")
-const TEX_WALL := preload("res://art/sprites/tile_wall.png")
-const TEX_PIT_EDGE := preload("res://art/sprites/pit_edge.png")
+var TEX_FLOOR: Texture2D = ArtPack.tex("tile_floor")
+var TEX_WALL: Texture2D = ArtPack.tex("tile_wall")
+var TEX_PIT_EDGE: Texture2D = ArtPack.tex("pit_edge")
 
 var players: Array[Player] = []
 var right_of_way: Player = null
@@ -348,12 +348,12 @@ func _setup_input() -> void:
 		InputMap.action_add_event(action, eb)
 
 
-func _parallax_layer(pb: ParallaxBackground, path: String, motion: float, tint: Color) -> ParallaxLayer:
+func _parallax_layer(pb: ParallaxBackground, asset: String, motion: float, tint: Color) -> ParallaxLayer:
 	# capa de fondo repetida: textura 960x540 escalada a viewport y espejada
 	var l := ParallaxLayer.new()
 	l.motion_scale = Vector2(motion, motion)
 	var s := Sprite2D.new()
-	s.texture = load(path)
+	s.texture = ArtPack.tex(asset)
 	s.centered = false
 	s.scale = Vector2(1152.0 / 960.0, 648.0 / 540.0)
 	s.modulate = tint
@@ -367,8 +367,8 @@ func _build_parallax() -> void:
 	parallax_bg = ParallaxBackground.new()
 	parallax_bg.layer = -20
 	add_child(parallax_bg)
-	_parallax_layer(parallax_bg, "res://art/sprites/bg_layer0.png", 0.15, bg_tint_far)
-	_parallax_layer(parallax_bg, "res://art/sprites/bg_layer1.png", 0.4, bg_tint_near)
+	_parallax_layer(parallax_bg, "bg_layer0", 0.15, bg_tint_far)
+	_parallax_layer(parallax_bg, "bg_layer1", 0.4, bg_tint_near)
 
 
 func _build_level() -> void:
@@ -919,7 +919,6 @@ class GlowSpot extends Node2D:
 
 class VictoryWorm extends Node2D:
 	## El gusano del Nidhogg: baja del techo y envuelve al ganador.
-	const WORM_TEX := preload("res://art/sprites/worm_body.png")
 	# la tira de 300x103 se corta en 3 segmentos de 100 px
 	const WORM_SEGS := [
 		Rect2(0.0, 0.0, 100.0, 103.0),
@@ -941,12 +940,13 @@ class VictoryWorm extends Node2D:
 
 	func _draw() -> void:
 		var chomp := 0.35 + 0.65 * t
+		var wt: Texture2D = ArtPack.tex("worm_body")
 		# cuerpo: 6 segmentos con la textura (las 3 regiones, repetidas)
 		for i in 6:
 			var cy := -float(i) * 44.0 - 30.0
-			draw_texture_rect_region(WORM_TEX, Rect2(-32.0, cy - 33.0, 64.0, 66.0), WORM_SEGS[i % 3])
+			draw_texture_rect_region(wt, Rect2(-32.0, cy - 33.0, 64.0, 66.0), WORM_SEGS[i % 3])
 		# cabeza: el segmento 0 un punto más grande
-		draw_texture_rect_region(WORM_TEX, Rect2(-37.0, -66.0, 74.0, 76.0), WORM_SEGS[0])
+		draw_texture_rect_region(wt, Rect2(-37.0, -66.0, 74.0, 76.0), WORM_SEGS[0])
 		# mandíbulas y ojos (procedurales, como antes)
 		var open_ang := 1.2 * (1.0 - chomp)
 		for s in [-1.0, 1.0]:
@@ -1123,8 +1123,8 @@ class CrumbleTile extends Node2D:
 
 class Pip extends Node2D:
 	## Cuadro del HUD de secciones: hueco o relleno del color conquistador.
-	const TEX_FILLED := preload("res://art/sprites/pip_filled.png")
-	const TEX_HOLLOW := preload("res://art/sprites/pip_hollow.png")
+	var TEX_FILLED: Texture2D = ArtPack.tex("pip_filled")
+	var TEX_HOLLOW: Texture2D = ArtPack.tex("pip_hollow")
 	var fill_col := Color(0, 0, 0, 0)
 	var edge_col := Color(0.65, 0.63, 0.72)
 
@@ -1840,7 +1840,7 @@ func _build_hud() -> void:
 
 	# flecha grande del derecho de avance (tarea 65)
 	step_arrow = TextureRect.new()
-	step_arrow.texture = preload("res://art/sprites/arrow_neutral.png")
+	step_arrow.texture = ArtPack.tex("arrow_neutral")
 	step_arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	step_arrow.pivot_offset = Vector2(32.0, 21.0)
 	step_arrow.position = Vector2(VIEW_W * 0.5 - 32.0, 108.0)

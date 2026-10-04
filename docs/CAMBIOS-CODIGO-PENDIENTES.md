@@ -1,5 +1,9 @@
 # Cambios de código que harían falta — rediseño de sprites
 
+> NOTA (2026-10-04): ya NO está a cero — el sistema de packs de arte (art_pack.gd)
+> se implementó con aprobación; ver docs/DISENO-IA.md "Fase 3". Lo demás sigue
+> sin aplicar.
+
 **Estado: NINGUNO aplicado ni necesario.** Los 55 PNG sobrescriben ficheros
 existentes con los mismos nombres y respetan el contrato de `player.gd`
 (pies al borde inferior, eje del cuerpo centrado, canvas de ancho impar).
