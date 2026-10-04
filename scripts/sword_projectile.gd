@@ -10,11 +10,11 @@ var weapon_id := "florete"
 var trail: Line2D
 const TRAIL_POINTS := 10
 
-const WEAPON_TEX := {
-	"florete": preload("res://art/sprites/weapon_rapier.png"),
-	"espada": preload("res://art/sprites/weapon_longsword.png"),
-	"daga": preload("res://art/sprites/weapon_dagger.png"),
-	"arco": preload("res://art/sprites/weapon_bow.png"),
+var WEAPON_TEX := {
+	"florete": ArtPack.tex("weapon_rapier"),
+	"espada": ArtPack.tex("weapon_longsword"),
+	"daga": ArtPack.tex("weapon_dagger"),
+	"arco": ArtPack.tex("weapon_bow"),
 }
 
 

@@ -9,7 +9,7 @@ var bounces := 0
 var thrower: Player = null
 var stuck := false
 
-const ARROW_TEX := preload("res://art/sprites/weapon_arrow.png")
+var ARROW_TEX: Texture2D = ArtPack.tex("weapon_arrow")
 
 
 func _ready() -> void:

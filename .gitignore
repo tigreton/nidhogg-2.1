@@ -37,3 +37,6 @@ trace_motion.csv.import
 # traducciones espurias que Godot genera del CSV de trazas
 trace_motion.*.translation
 !art_raw/report_noarme.json
+
+# bytecode de las herramientas del pipeline
+tools/__pycache__/
