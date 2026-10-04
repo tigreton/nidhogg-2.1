@@ -184,8 +184,6 @@ func _physics_process(delta: float) -> void:
 				state = State.IDLE
 		State.KNOCKDOWN:
 			knockdown_time -= delta
-			if knockdown_time <= 0.0:
-				state = State.IDLE
 		State.ROLL:
 			roll_time += delta
 			if roll_time >= ROLL_DURATION:
@@ -204,6 +202,23 @@ func _physics_process(delta: float) -> void:
 		# gravedad asimétrica: sube frenando suave, cae pesado y con tope
 		velocity.y += (GRAVITY_UP if velocity.y < 0.0 else GRAVITY_FALL) * delta
 		velocity.y = minf(velocity.y, MAX_FALL)
+
+	# levantarse tras el derribo: arriba = in situ; lateral = rodando (tarea 73)
+	if state == State.KNOCKDOWN and knockdown_time <= 0.0:
+		if held("up"):
+			state = State.IDLE
+			stance = H.MID
+			stance_target = H.MID
+			_sfx("swing", -26.0)
+		elif MatchRules.allow_roll and (held("left") or held("right")) and roll_cd <= 0.0:
+			facing = 1 if held("right") else -1
+			state = State.ROLL
+			roll_time = 0.0
+			roll_hit = false
+			roll_cd = ROLL_COOLDOWN
+			stance = H.LOW
+			stance_target = stance
+			_sfx("swing", -22.0)
 
 	if can_act:
 		if hit("jump") and held("down") and state == State.RUN and absf(velocity.x) > 120.0 and roll_cd <= 0.0:

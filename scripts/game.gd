@@ -2835,6 +2835,12 @@ func _bot_think(p: Player, delta: float) -> void:
 			and adx > 100.0 and adx < 620.0:
 		want["attack"] = true
 		tap = ""
+	# derribado: levantarse (arriba; con un poco de aleatorio, lateral)
+	if p.state == Player.State.KNOCKDOWN and p.knockdown_time <= 0.0:
+		want["up"] = true
+		if randf() < 0.3:
+			want["up"] = false
+			want["right" if sd > 0.0 else "left"] = true
 	p.bot_held = want
 	if tap != "" and p.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]:
 		p.bot_held[tap] = true
