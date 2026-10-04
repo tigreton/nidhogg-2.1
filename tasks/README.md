@@ -116,13 +116,18 @@ Reglas de oro para ti (el humano que supervisa):
 | `82-estancias-con-peso.md` | Cambiar de estancia tarda según el arma (`stance_time`) | media | `game_config.gd`, `player.gd`, smoke (contingencia) |
 | `83-sonido-movimiento.md` | Pasos, aterrizaje y whoosh con pitch por arma | baja/media | `sfx.gd`, `game.gd`, `player.gd` |
 | `84-lanza-salto-ataque.md` | Mantener salto + atacar lanza el arma (suelo y aire) | baja | `player.gd`, `test/suite_combate.gd` |
+| `85-torre-dos-pisos.md` | Torre de dos pisos (4ª arena TORRE DEL CENTINELA) | alta | `game.gd` |
+| `86-arena-aleatoria.md` | Arena barajada por puntos (tecla X, tramos del medio) | alta | `game.gd` |
 
 Las tareas 65–80 cierran las brechas contra el juego original detectadas en
 la comparativa con `docs/RESEARCH.md` (presentación del paso, antidesgaste,
 hazards normativos de arena y microdetalles de combate). Las 81–84 (con la
 78 reescrita) cierran las brechas de **feel** medidas contra
 `docs/VIDEO_ANALYSIS.md` (telegrafiado, estancias con peso, sonido de
-movimiento, encuadre teatral y el input de lanzamiento del original).
+movimiento, encuadre teatral y el input de lanzamiento del original). Las
+85–86 promueven las dos ideas grandes que quedaban en `secundarias.md`
+(la sala vertical de dos pisos como cuarta arena y el barajado de tramos
+por punto).
 
 Las tareas 41–52 portan lo único técnico del proyecto hermano
 (`Nidhogg 2`): visión de conjunto, mapa de valores y orden en
@@ -224,6 +229,9 @@ Aunque son independientes, si vas a hacer varias, este orden minimiza fricción:
 | `82` y smoke | La 82 rompe cualquier caso que ataque en el MISMO frame en que pulsa up/down (esperaba estancia instantánea): su paso 4 es la contingencia (añadir ~0,12 s de espera, nunca tocar `stance_time`). Compón con la 20 (tajo aéreo). |
 | `83` y `53` | La 83 añade pitch al wrapper `sfx()` (firma nueva con valor por defecto: compatible) y dos ids sintetizados; no toca la tabla `WAVS` de la 53. |
 | `84` y `75` | La suite de la 75 mantiene ataque pulsado y PRESIONA salto (no al revés): el disparo de la 84 exige `hit("attack")` con salto mantenido, así que no colisionan. Si la 75 fallara tras la 84, revisa el orden de pulsaciones del caso. |
+| `85` y `70`/bots | El foso central queda a cielo abierto en la torre (el salto al puente no se golpea); peñasco y torre de piedra no se dibujan en la arena 4. El bot no necesita cambios. |
+| `85` y `86` | La torre no admite barajado (piso superior fijo): X avisa y no actúa; C hacia la torre con el barajado activo lo apaga. |
+| `86` y harnesses | El barajado está APAGADO por defecto: smoke/suites/sim/arcade corren el layout clásico sin cambios. Al re-barajar NO se resetea el marcador (usa `_reshuffle_level`, no `set_arena`). |
 
 ## Comando de verificación (común a todas las tareas)
 

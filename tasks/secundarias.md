@@ -1,38 +1,10 @@
 # Tareas secundarias (backlog)
 
-> **2026-10-03 (tras la comparativa con el original):** TODAS las ideas de
-> este fichero menos dos ya son tareas formales o están aplicadas:
->
-> - Promocionadas a tareas 65–80: cuenta atrás (`66`), muerte súbita
->   (`67`), murmullo de público (`68`), hielo (`69`), puente que cae
->   (`70`), cinta transportadora (`71`), zoom dinámico (`78`), música
->   dinámica (`79`) y estela del tajo (`80`), más la flecha grande del paso
->   (`65`, nueva) y los microdetalles `72`–`77`.
-> - Ya aplicadas hace tiempo: cadáver con físicas (tarea 30), partido
->   configurable + título (tarea 37) y parallax (tarea 58).
-
-Quedan aquí solo las dos ideas grandes que siguen sin ser tarea. Cuando
-quieras promocionarlas, sigue la guía del final.
-
----
-
-## Arena
-
-### Torre de dos pisos (alta · `game.gd`)
-Sala vertical: suelo superior continuo con dos huecos, y el pasillo inferior
-actual. Hay que crear el suelo superior con `_platform` (o un nuevo
-`_floor_at(y)`), escaleras de acceso en ambos extremos y reapariciones que no
-caigan dentro de muros. La cámara ya limita en Y (`limit_top=0`), así que
-cabe. Interacciona con la `70` (la plataforma caída podría abrir el piso
-superior): decidir la composición al escribir la tarea.
-
-### Arena aleatoria por puntos (alta · `game.gd`)
-Cada punto se juega con un orden distinto de tramos: convertir `_build_level()`
-en una lista de "salas" (funciones que construyen cada tramo y devuelven su
-ancho), barajarlas (excepto metas fijas) y reconstruir el nivel en
-`_start_round()`. Requiere recalcular `PIT_*`, respawn y cámara en función
-de las salas elegidas. Solo tiene sentido con los hazards (69–71) ya
-aplicados, para que el baraje tenga sustancia.
+> **2026-10-04: BACKLOG AGOTADO.** Las dos últimas ideas grandes ya son tareas
+> formales aplicadas: la torre de dos pisos (`85`, cuarta arena TORRE DEL
+> CENTINELA) y la arena aleatoria por puntos (`86`, tecla X). Todo lo que
+> pasó por este fichero está promocionado o aplicado; cuando entre una idea
+> nueva, sigue la guía del final para convertirla en tarea con este formato.
 
 ---
 
