@@ -38,9 +38,9 @@ func _veredicto() -> void:
 	if game.scores[0] != 1:
 		fails += 1
 		print("FAIL: el punto no se anotó, scores=%s" % [game.scores])
-	if game.pending_restart:
+	if game.rematch_pending:
 		fails += 1
-		print("FAIL: pending_restart quedó a true")
+		print("FAIL: rematch_pending quedó a true")
 	if p1.frozen:
 		fails += 1
 		print("FAIL: P1 sigue congelado tras la segunda cuenta atrás")

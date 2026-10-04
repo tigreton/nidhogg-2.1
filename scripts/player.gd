@@ -83,6 +83,11 @@ var is_bot := false
 var bot_held := {}          # acciones que el bot mantiene pulsadas (solo si is_bot)
 var bot_held_prev := {}     # estado del tick anterior, para detectar "recién pulsada"
 var bot_think := 0.0        # cronómetro entre decisiones del bot (lo usa game.gd)
+# --- online (host: P2 controlado por red; cliente: P1 es marioneta) ---
+var net_remote := false     # el host recibe el input de este jugador por red
+var net_held := {}
+var net_held_prev := {}
+var net_puppet := false     # en el cliente: sin física local, lo mueve el snapshot
 var step_phase := 0.0   # acumula PI por zancada para el pie (tarea 83)
 var was_on_floor := true
 var land_squash := 0.0   # squash breve al aterrizar (tarea 81)
@@ -116,12 +121,16 @@ func _a(n: String) -> StringName:
 func held(n: String) -> bool:
 	if is_bot:
 		return bool(bot_held.get(n, false))
+	if net_remote:
+		return bool(net_held.get(n, false))
 	return Input.is_action_pressed(_a(n))
 
 
 func hit(n: String) -> bool:
 	if is_bot:
 		return bool(bot_held.get(n, false)) and not bool(bot_held_prev.get(n, false))
+	if net_remote:
+		return bool(net_held.get(n, false)) and not bool(net_held_prev.get(n, false))
 	return Input.is_action_just_pressed(_a(n))
 
 
@@ -144,6 +153,15 @@ func _swing_sfx(db := -20.0) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if net_puppet:
+		# marioneta del rival (cliente online): sin física; game.gd le copia
+		# los campos del snapshot y aquí solo viven los cosmetismos
+		anim_time += delta
+		invuln_time = maxf(0.0, invuln_time - delta)
+		flash_time = maxf(0.0, flash_time - delta)
+		self_modulate.a = 0.35 if (invuln_time > 0.0 and fmod(anim_time, 0.16) < 0.08) else 1.0
+		queue_redraw()
+		return
 	anim_time += delta
 	invuln_time = maxf(0.0, invuln_time - delta)
 	flash_time = maxf(0.0, flash_time - delta)
@@ -423,6 +441,8 @@ func _physics_process(delta: float) -> void:
 
 	if is_bot:
 		bot_held_prev = bot_held.duplicate()
+	elif net_remote:
+		net_held_prev = net_held.duplicate()
 
 
 func _dust(amount: int, speed: float) -> void:

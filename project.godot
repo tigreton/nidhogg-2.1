@@ -14,6 +14,10 @@ config/name="Nidhogg-like"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 
+[autoload]
+
+Net="*res://scripts/net.gd"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
