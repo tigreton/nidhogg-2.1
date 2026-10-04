@@ -122,6 +122,7 @@ var scores := [0, 0]
 var weapon_idx := [0, 0]
 var match_over := false
 var round_lock := 0.0
+var pending_restart := false  # round_lock por punto: al expirar relanza ronda
 var skip_countdown := false   # los tests headless lo ponen a true (tarea 66)
 const COUNTDOWN_STEP := 0.7
 var respawn_timers := [0.0, 0.0]
@@ -1916,7 +1917,10 @@ func _start_round() -> void:
 	if skip_countdown:
 		_show_fight()
 	else:
-		# 3·2·1 con los jugadores congelados (tarea 66); round_lock ya congela
+		# 3·2·1 con los jugadores congelados (tarea 66); round_lock ya congela.
+		# ESTE round_lock no relanza ronda al expirar: solo el bloqueo por
+		# punto deja pending_restart a true (fix del bucle 3·2·1 eterno).
+		pending_restart = false
 		round_lock = COUNTDOWN_STEP * 3.0
 		for n in 3:
 			show_msg("%d" % (3 - n), COUNTDOWN_STEP * 0.8)
@@ -2080,7 +2084,12 @@ func _physics_process(delta: float) -> void:
 	if round_lock > 0.0:
 		round_lock -= delta
 		if round_lock <= 0.0:
-			_start_round()
+			round_lock = 0.0
+			# solo el bloqueo por punto relanza ronda; la cuenta atrás
+			# gestiona su propia liberación (tarea 66 + fix del bucle)
+			if pending_restart:
+				pending_restart = false
+				_start_round()
 	if match_over and Input.is_action_just_pressed("restart"):
 		scores = [0, 0]
 		stats = _fresh_stats()
@@ -2886,6 +2895,7 @@ func _point(p: Player) -> void:
 				stats_label.visible = true)
 	else:
 		round_lock = 1.4
+		pending_restart = true   # al expirar este bloqueo, arranca la ronda
 		show_msg("¡PUNTO!", 1.0)
 
 
