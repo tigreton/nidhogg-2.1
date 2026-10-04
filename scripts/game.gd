@@ -58,7 +58,7 @@ const ARROW_MAX_BOUNCES := 6   # tras 6 rebotes la flecha se clava
 const ARROW_MIN_SPEED := 100.0 # demasiado lenta: se clava
 const SECTION_PAN_TIME := 0.28       # pan al cruzar reja (sin teleport)
 const SECTION_BOTTOM_MARGIN := 88.0  # margen visible bajo la línea de suelo
-const ARENA_NAMES := ["RUINAS DE MEDIANOCHE", "TEMPLO DEL ALBA", "CRIPTA DEL OCASO"]
+const ARENA_NAMES := ["RUINAS DE MEDIANOCHE", "TEMPLO DEL ALBA", "CRIPTA DEL OCASO", "TORRE DEL CENTINELA"]
 const BOT_CFG := [
 	{"react": 0.26, "atk": 0.12, "err": 0.35},  # FÁCIL
 	{"react": 0.13, "atk": 0.30, "err": 0.10},  # NORMAL
@@ -400,9 +400,13 @@ func _build_level() -> void:
 		_register_top(tile.x0, tile.x1, PLAT_Y)
 		_add_level(tile)
 		crumble_tiles.append(tile)
-	_bridge()
+	if arena_id != 3:
+		# el puente alto de madera pisaría el piso superior de la torre
+		_bridge()
 	_house()
 	_rocks_zone()
+	if arena_id == 3:
+		_tower_floor()
 	# hierba alta: oculta la estancia de quien entra
 	_poly(PackedVector2Array([Vector2(GRASS_X0, GROUND_Y), Vector2(GRASS_X1, GROUND_Y), Vector2(GRASS_X1, GROUND_Y - 34.0), Vector2(GRASS_X0, GROUND_Y - 34.0)]), Color(0.09, 0.18, 0.11), 2)
 	for i in 22:
@@ -530,6 +534,51 @@ func _load_arena(id: int) -> void:
 			cel_detail = Color(0.66, 0.38, 0.26)
 			bg_tint_far = Color(0.68, 0.5, 0.9)
 			bg_tint_near = Color(0.85, 0.68, 0.95)
+		3:
+			# Torre del Centinela (tarea 85): pasillo inferior clásico y piso
+			# superior corrido (y=320) con dos huecos; el foso central queda
+			# a cielo abierto para no pisar el salto al puente
+			PIT_X0 = 2210.0
+			PIT_X1 = 2380.0
+			PIT2_X0 = 1450.0
+			PIT2_X1 = 1630.0
+			PLAT_X0 = 2130.0
+			PLAT_X1 = 2460.0
+			PLAT_Y = 448.0
+			BRIDGE_X0 = 1900.0
+			BRIDGE_X1 = 2690.0
+			BRIDGE_Y = 288.0
+			HOUSE_X = 4150.0
+			STEP_R_X0 = 3760.0
+			STEP_R_X1 = 3852.0
+			STEP_R_Y = 516.0
+			BOULDER_X0 = 380.0
+			BOULDER_X1 = 608.0
+			BOULDER_Y = 440.0
+			TOWER_X0 = 3476.0
+			TOWER_X1 = 3644.0
+			TOWER_Y = 330.0
+			STEP_L_X0 = 340.0
+			STEP_L_X1 = 432.0
+			STEP_L_Y = 516.0
+			FENCE_X0 = 940.0
+			FENCE_X1 = 1030.0
+			col_sky = Color(0.03, 0.06, 0.07)
+			col_hill_far = Color(0.05, 0.10, 0.11)
+			col_hill_near = Color(0.045, 0.085, 0.095)
+			col_pillar = Color(0.07, 0.12, 0.13)
+			col_pillar_cap = Color(0.10, 0.16, 0.17)
+			col_pit = Color(0.07, 0.20, 0.18)
+			col_floor = Color(0.10, 0.17, 0.18)
+			col_floor_top = Color(0.24, 0.38, 0.38)
+			col_plat = Color(0.14, 0.24, 0.25)
+			col_plat_top = Color(0.28, 0.44, 0.44)
+			col_wall = Color(0.08, 0.14, 0.15)
+			cel_pos = Vector2(2400.0, 110.0)
+			cel_col = Color(0.65, 0.85, 0.80)
+			cel_detail = Color(0.50, 0.70, 0.66)
+			bg_tint_far = Color(0.60, 0.85, 0.80)
+			bg_tint_near = Color(0.80, 0.95, 0.90)
 		_:
 			# Ruinas de medianoche: noche azulada con luna (valores por defecto)
 			PIT_X0 = 2210.0
@@ -1009,6 +1058,25 @@ func _bridge() -> void:
 	_poly(PackedVector2Array([Vector2(BRIDGE_X0 + 6.0, BRIDGE_Y - 44.0), Vector2(BRIDGE_X1 - 6.0, BRIDGE_Y - 44.0), Vector2(BRIDGE_X1 - 6.0, BRIDGE_Y - 40.0), Vector2(BRIDGE_X0 + 6.0, BRIDGE_Y - 40.0)]), Color(0.35, 0.28, 0.20), -4)
 
 
+func _tower_floor() -> void:
+	# torre de dos pisos (tarea 85): piso superior a y=320 con dos huecos
+	# (1170-1340 y 3240-3410) y el tramo del foso central a cielo abierto
+	# para no pisar el salto al puente; el pasillo inferior queda libre
+	for span in [[620.0, 1170.0], [1340.0, 2130.0], [2460.0, 3240.0], [3410.0, 4120.0]]:
+		_platform(span[0], span[1], 320.0)
+	# escaleras de acceso en ambos extremos (flotantes: se pasa por debajo)
+	_platform(450.0, 560.0, 448.0)
+	_platform(520.0, 610.0, 384.0)
+	_platform(4230.0, 4340.0, 448.0)
+	_platform(4180.0, 4270.0, 384.0)
+	# antorchas sobre el piso superior, a cada lado de los dos huecos
+	for tx in [1120.0, 1390.0, 3190.0, 3460.0]:
+		var t := Torch.new()
+		t.position = Vector2(tx, 320.0)
+		t.z_index = 1
+		_add_level(t)
+
+
 func _house() -> void:
 	# fachada y tejado de la aldea; el muro es decorativo: se pasa por la puerta
 	var bx := HOUSE_X
@@ -1119,6 +1187,10 @@ func _rocks_zone() -> void:
 	_rock_step(STEP_L_X0, STEP_L_X1, STEP_L_Y)
 	# zona rocosa de la derecha: peldaño, peñasco y torre de piedra
 	_rock_step(STEP_R_X0, STEP_R_X1, STEP_R_Y)
+	if arena_id == 3:
+		# en la torre de dos pisos el peñasco y la torre de piedra estorban
+		# el pasillo inferior (no cabe un jugador de pie sobre ellos)
+		return
 	_static_box(BOULDER_X0, BOULDER_Y, BOULDER_X1, GROUND_Y + 60.0)
 	_register_top(BOULDER_X0, BOULDER_X1, BOULDER_Y)
 	_boulder_shape(BOULDER_X0, BOULDER_X1, BOULDER_Y, GROUND_Y + 8.0, Color(0.26, 0.24, 0.31), -4)
