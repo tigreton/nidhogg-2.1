@@ -5,6 +5,7 @@
 # Exportacion
 export.cfg
 export_credentials.cfg
+build/
 
 # Sistema
 .DS_Store

@@ -46,7 +46,7 @@ func _ready() -> void:
 	rules_label.add_theme_constant_override("outline_size", 8)
 	add_child(rules_label)
 	hint_label = Label.new()
-	hint_label.text = "P1: A/D mover · W/S alturas · F atacar · G lanzar      P2: ←/→ · ↑/↓ · K atacar · L lanzar\nB: bot · V: 2v2 · P: pantallas · Y: arcade · A: pack de arte    ·    O: ONLINE (1v1 por red)"
+	hint_label.text = "P1: A/D mover · W/S alturas · F atacar · G lanzar      P2: ←/→ · ↑/↓ · K atacar · L lanzar\nB: bot · V: 2v2 · P: pantallas · Y: arcade · A: pack de arte    ·    O: ONLINE (1v1 por red)    ·    F11: pantalla completa"
 	hint_label.position = Vector2(0, 560)
 	hint_label.size = Vector2(1152, 60)
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
