@@ -2649,7 +2649,7 @@ func _next_weapon(p: Player) -> String:
 func _respawn_pos(p: Player) -> Vector2:
 	if right_of_way == null:
 		var offs := [220.0, -220.0, 620.0, -620.0]
-		var fx := clampf(_out_of_pit(LEVEL_W * 0.5 + offs[p.player_id - 1]), GOAL_W + 60.0, LEVEL_W - GOAL_W - 60.0)
+		var fx := clampf(_spawn_safe(LEVEL_W * 0.5 + offs[p.player_id - 1]), GOAL_W + 60.0, LEVEL_W - GOAL_W - 60.0)
 		return Vector2(fx, 200.0)
 	if sections_mode:
 		var w := LEVEL_W / float(SECTION_COUNT)
@@ -2659,14 +2659,11 @@ func _respawn_pos(p: Player) -> Vector2:
 		if sec == section_index:
 			# ya no hay sección delante: reaparece al fondo de la actual
 			cx = w * float(sec + 1) - 100.0 if sdir > 0 else w * float(sec) + 100.0
-		return Vector2(_out_of_pit(cx), 200.0)
+		return Vector2(_spawn_safe(cx), 200.0)
 	var dir := float(right_of_way.goal_dir)
 	var x := right_of_way.position.x + dir * 540.0
-	if x > PIT_X0 - 50.0 and x < PIT_X1 + 50.0:
-		x = PIT_X1 + 70.0 if dir > 0.0 else PIT_X0 - 70.0
-	elif x > PIT2_X0 - 50.0 and x < PIT2_X1 + 50.0:
-		x = PIT2_X1 + 70.0 if dir > 0.0 else PIT2_X0 - 70.0
 	x = clampf(x, GOAL_W + 60.0, LEVEL_W - GOAL_W - 60.0)
+	x = _spawn_safe(x)
 	return Vector2(x, 200.0)
 
 
@@ -2791,6 +2788,19 @@ func _out_of_pit(x: float) -> float:
 		return PIT_X0 - 40.0 if x < (PIT_X0 + PIT_X1) * 0.5 else PIT_X1 + 40.0
 	if x > PIT2_X0 - 34.0 and x < PIT2_X1 + 34.0:
 		return PIT2_X0 - 40.0 if x < (PIT2_X0 + PIT2_X1) * 0.5 else PIT2_X1 + 40.0
+	return x
+
+
+func _spawn_safe(x: float) -> float:
+	# x de nacimiento/reaparición a suelo firme: fuera de los fosos (como
+	# _out_of_pit) y de la cinta transportadora — la cinta empuja al que
+	# reaparece encima, así que P2 nacía en 2620 (dentro de la franja
+	# 2500-2650) y se deslizaba solo desde el principio de la ronda.
+	# Dos pasadas: el empujón de una franja puede caer dentro de la otra.
+	for i in 2:
+		x = _out_of_pit(x)
+		if x > BELT_X0 - 24.0 and x < BELT_X1 + 24.0:
+			x = BELT_X0 - 30.0 if x < (BELT_X0 + BELT_X1) * 0.5 else BELT_X1 + 30.0
 	return x
 
 
@@ -3200,7 +3210,7 @@ func _position_players_for_round() -> void:
 	for i in players.size():
 		var o: float = offs[i]
 		# el barajado puede poner un foso bajo el centro: reaparición a suelo firme
-		var sx := clampf(_out_of_pit(LEVEL_W * 0.5 + o), GOAL_W + 60.0, LEVEL_W - GOAL_W - 60.0)
+		var sx := clampf(_spawn_safe(LEVEL_W * 0.5 + o), GOAL_W + 60.0, LEVEL_W - GOAL_W - 60.0)
 		players[i].reset_to(Vector2(sx, GROUND_Y - 29.0), -1 if o > 0.0 else 1)
 
 

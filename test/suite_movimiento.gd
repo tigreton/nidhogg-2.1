@@ -14,6 +14,7 @@ func get_tests() -> Array:
 		["dive_corriendo", _t_dive],
 		["arco_tensado_en_divekick", _t_arco_dive],
 		["arcade_off_devuelve_p2_humano", _t_arcade_off],
+		["spawn_p2_fuera_de_la_cinta", _t_spawn_sin_cinta],
 	]
 
 
@@ -152,3 +153,20 @@ func _t_arcade_off() -> bool:
 	g.set_arcade(false)
 	return runner.check(bot_on, "entrar al arcade pone a P2 como bot") \
 			and runner.check(bot_off, "salir del arcade devuelve el control humano a P2")
+
+
+## Bug "P2 se mueve solo desde el principio": el nacimiento de la ronda
+## (2400+220=2620) caía dentro de la cinta transportadora (2500-2650, fija en
+## todas las arenas) y la cinta empujaba a P2 120 px sin tocar teclas.
+## _spawn_safe saca a los duelistas de fosos Y de la cinta.
+func _t_spawn_sin_cinta() -> bool:
+	var g: Node = runner.game
+	g.random_arena = false
+	g._position_players_for_round()
+	var x2: float = g.players[1].position.x
+	var fuera: bool = x2 <= g.BELT_X0 - 20.0 or x2 >= g.BELT_X1 + 20.0
+	await runner.step_physics(90)
+	var quieto: bool = absf(g.players[1].position.x - x2) < 5.0
+	runner.release_all()
+	return runner.check(fuera, "P2 nace fuera de la cinta (nacía en 2620, dentro de 2500-2650)") \
+			and runner.check(quieto, "sin input P2 no se desliza solo tras 1,5 s")
