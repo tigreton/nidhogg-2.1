@@ -9,6 +9,7 @@ var net_panel: Control        # menú online (se crea al pulsar O)
 var net_status: Label
 var net_edit: LineEdit
 var net_mode := ""            # "", "menu", "host_wait", "join_ip", "connecting"
+var net_sel := 0              # menú online: 0 = crear, 1 = unirse (mando P1)
 
 const SKY := Color(0.055, 0.05, 0.09)
 const CFG_PATH := "user://online.cfg"
@@ -46,9 +47,9 @@ func _ready() -> void:
 	rules_label.add_theme_constant_override("outline_size", 8)
 	add_child(rules_label)
 	hint_label = Label.new()
-	hint_label.text = "P1: A/D mover · W/S alturas · F atacar · G lanzar      P2: ←/→ · ↑/↓ · K atacar · L lanzar\nB: bot · V: 2v2 · P: pantallas · Y: arcade · A: pack de arte    ·    O: ONLINE (1v1 por red)    ·    F11: pantalla completa"
-	hint_label.position = Vector2(0, 560)
-	hint_label.size = Vector2(1152, 60)
+	hint_label.text = "P1: A/D mover · W/S alturas · F atacar · G lanzar      P2: ←/→ · ↑/↓ · K atacar · L lanzar\nB: bot · V: 2v2 · P: pantallas · Y: arcade · A: pack de arte    ·    O: ONLINE (1v1 por red)    ·    F11: pantalla completa\nMando P1: ↑/↓ puntos · X lanzar · Y rodar · B arte · A/START jugar · SELECT online"
+	hint_label.position = Vector2(0, 548)
+	hint_label.size = Vector2(1152, 80)
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_label.add_theme_font_size_override("font_size", 18)
 	hint_label.add_theme_color_override("font_color", Color(0.6, 0.58, 0.7))
@@ -81,7 +82,7 @@ func _all_labels(node: Node) -> Array[Label]:
 
 
 func _update_rules() -> void:
-	rules_label.text = "PUNTOS PARA GANAR: %d    (teclas 1 / 3 / 5)\nLANZAR ARMA: %s (T)      RODAR: %s (R)\nARTE: %s (A)\nP1: NACHO   ·   P2: RODRIGO\n\nENTER o ESPACIO: jugar    ·    O: ONLINE" % [
+	rules_label.text = "PUNTOS PARA GANAR: %d    (teclas 1 / 3 / 5 · mando ↑/↓)\nLANZAR ARMA: %s (T · mando X)      RODAR: %s (R · mando Y)\nARTE: %s (A · mando B)\nP1: NACHO   ·   P2: RODRIGO\n\nENTER o ESPACIO: jugar    ·    O: ONLINE (o SELECT del mando)" % [
 		MatchRules.win_score,
 		"SÍ" if MatchRules.allow_throw else "NO",
 		"SÍ" if MatchRules.allow_roll else "NO",
@@ -126,6 +127,65 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_:
 			return
 	_update_rules()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# la configuración del título se maneja también con el mando de P1
+	# (device 0): P1 es quien configura y arranca, P2 solo juega
+	var jb := event as InputEventJoypadButton
+	if jb == null or not jb.pressed or jb.device != 0:
+		return
+	if net_mode != "":
+		_net_pad(jb)
+		return
+	match jb.button_index:
+		JOY_BUTTON_A, JOY_BUTTON_START:
+			get_tree().change_scene_to_file("res://scenes/main.tscn")
+		JOY_BUTTON_X:
+			MatchRules.allow_throw = not MatchRules.allow_throw
+		JOY_BUTTON_Y:
+			MatchRules.allow_roll = not MatchRules.allow_roll
+		JOY_BUTTON_B:
+			ArtPack.cycle_pack()
+			get_tree().reload_current_scene()
+			return
+		JOY_BUTTON_DPAD_UP, JOY_BUTTON_DPAD_DOWN:
+			var opts := [1, 3, 5]
+			var step := 1 if jb.button_index == JOY_BUTTON_DPAD_UP else -1
+			MatchRules.win_score = opts[wrapi(opts.find(MatchRules.win_score) + step, 0, opts.size())]
+		JOY_BUTTON_BACK:
+			_open_net_menu()
+			return
+		_:
+			return
+	_update_rules()
+
+
+func _net_pad(jb: InputEventJoypadButton) -> void:
+	# menú online con mando: ↑/↓ elige, A confirma, B vuelve (la IP se teclea)
+	match net_mode:
+		"menu":
+			match jb.button_index:
+				JOY_BUTTON_DPAD_UP, JOY_BUTTON_DPAD_DOWN:
+					net_sel = 1 - net_sel
+					_net_show_menu()
+				JOY_BUTTON_A:
+					if net_sel == 0:
+						_do_host()
+					else:
+						_show_join_ip()
+				JOY_BUTTON_B, JOY_BUTTON_BACK:
+					_close_net_menu()
+		"join_ip":
+			match jb.button_index:
+				JOY_BUTTON_A:
+					var ip := net_edit.text.strip_edges() if net_edit != null else ""
+					_do_join(ip if not ip.is_empty() else "127.0.0.1")
+				JOY_BUTTON_B, JOY_BUTTON_BACK:
+					_net_show_menu()
+		"host_wait":
+			if jb.button_index == JOY_BUTTON_B or jb.button_index == JOY_BUTTON_BACK:
+				_close_net_menu()
 
 
 # =============================================================================
@@ -189,7 +249,10 @@ func _open_net_menu() -> void:
 
 func _net_show_menu() -> void:
 	net_mode = "menu"
-	net_status.text = "1 — CREAR PARTIDA (eres P1, anfitrión)\n2 — UNIRSE A UNA PARTIDA (eres P2)\n\nLas reglas del partido las fija el anfitrión.\nESC: volver"
+	net_status.text = "%s 1 — CREAR PARTIDA (eres P1, anfitrión)\n%s 2 — UNIRSE A UNA PARTIDA (eres P2)\n\nLas reglas del partido las fija el anfitrión.\nMando: ↑/↓ elegir · A aceptar · B volver      ESC: volver" % [
+		"▶" if net_sel == 0 else " ",
+		"▶" if net_sel == 1 else " ",
+	]
 	if net_edit != null:
 		net_edit.visible = false
 

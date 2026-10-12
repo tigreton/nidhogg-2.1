@@ -342,33 +342,70 @@ func _setup_input() -> void:
 			var e := InputEventKey.new()
 			e.physical_keycode = k
 			InputMap.action_add_event(action, e)
-	# mandos: P1 = gamepad 0, P2 = gamepad 1
-	var pad_axes := {
-		"p1_left": [0, JOY_AXIS_LEFT_X, -1.0], "p1_right": [0, JOY_AXIS_LEFT_X, 1.0],
-		"p1_up": [0, JOY_AXIS_LEFT_Y, -1.0], "p1_down": [0, JOY_AXIS_LEFT_Y, 1.0],
-		"p2_left": [1, JOY_AXIS_LEFT_X, -1.0], "p2_right": [1, JOY_AXIS_LEFT_X, 1.0],
-		"p2_up": [1, JOY_AXIS_LEFT_Y, -1.0], "p2_down": [1, JOY_AXIS_LEFT_Y, 1.0],
-	}
-	var pad_buttons := {
-		"p1_jump": [0, JOY_BUTTON_A], "p1_attack": [0, JOY_BUTTON_X], "p1_throw": [0, JOY_BUTTON_B],
-		"p2_jump": [1, JOY_BUTTON_A], "p2_attack": [1, JOY_BUTTON_X], "p2_throw": [1, JOY_BUTTON_B],
-		"restart": [-1, JOY_BUTTON_START],
-	}
-	for action in pad_axes.keys():
-		if not InputMap.has_action(action):
-			InputMap.add_action(action)
-		var ev := InputEventJoypadMotion.new()
-		ev.device = pad_axes[action][0]
-		ev.axis = pad_axes[action][1]
-		ev.axis_value = pad_axes[action][2]
-		InputMap.action_add_event(action, ev)
-	for action in pad_buttons.keys():
-		if not InputMap.has_action(action):
-			InputMap.add_action(action)
-		var eb := InputEventJoypadButton.new()
-		eb.device = pad_buttons[action][0]
-		eb.button_index = pad_buttons[action][1]
-		InputMap.action_add_event(action, eb)
+	# mandos: P1 = gamepad 0, P2 = gamepad 1. Stick izquierdo y cruceta son
+	# equivalentes; A salta, X ataca, B lanza. La gestión del juego (revancha,
+	# pausa, arena, música) vive SOLO en el mando de P1: el rival no administra
+	for dev in 2:
+		var p := "p%d_" % (dev + 1)
+		_pad_motion(p + "left", dev, JOY_AXIS_LEFT_X, -1.0)
+		_pad_motion(p + "right", dev, JOY_AXIS_LEFT_X, 1.0)
+		_pad_motion(p + "up", dev, JOY_AXIS_LEFT_Y, -1.0)
+		_pad_motion(p + "down", dev, JOY_AXIS_LEFT_Y, 1.0)
+		_pad_button(p + "left", dev, JOY_BUTTON_DPAD_LEFT)
+		_pad_button(p + "right", dev, JOY_BUTTON_DPAD_RIGHT)
+		_pad_button(p + "up", dev, JOY_BUTTON_DPAD_UP)
+		_pad_button(p + "down", dev, JOY_BUTTON_DPAD_DOWN)
+		_pad_button(p + "jump", dev, JOY_BUTTON_A)
+		_pad_button(p + "attack", dev, JOY_BUTTON_X)
+		_pad_button(p + "throw", dev, JOY_BUTTON_B)
+	_pad_button("restart", 0, JOY_BUTTON_START)
+	_pad_button("pause", 0, JOY_BUTTON_BACK)
+	_pad_button("toggle_arena", 0, JOY_BUTTON_LEFT_SHOULDER)
+	_pad_button("toggle_music", 0, JOY_BUTTON_RIGHT_SHOULDER)
+	if Net.is_client():
+		# cliente online: aquí el humano es P2 y suele tener un solo mando,
+		# que Godot numera como device 0 — se le añaden las acciones de P2
+		# (las de P1 no las lee nadie: P1 es marioneta del snapshot del host)
+		for n in ["left", "right", "up", "down", "jump", "attack", "throw"]:
+			for ev in InputMap.action_get_events("p1_" + n):
+				if ev is InputEventJoypadMotion or ev is InputEventJoypadButton:
+					InputMap.action_add_event("p2_" + n, ev.duplicate())
+
+
+func _pad_motion(action: String, dev: int, axis: int, val: float) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
+	var ev := InputEventJoypadMotion.new()
+	ev.device = dev
+	ev.axis = axis
+	ev.axis_value = val
+	InputMap.action_add_event(action, ev)
+
+
+func _pad_button(action: String, dev: int, btn: int) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
+	var eb := InputEventJoypadButton.new()
+	eb.device = dev
+	eb.button_index = btn
+	InputMap.action_add_event(action, eb)
+
+
+## Mando que vibra con este jugador (-1 = ninguno): bots, marionetas y el rival
+## por red no tienen mando en esta máquina. En el cliente online el humano es
+## P2 y su mando es el device 0 (igual que el remapeo de _setup_input).
+func pad_of(p: Player) -> int:
+	if p.is_bot or p.net_remote or p.net_puppet:
+		return -1
+	var dev := 0 if Net.is_client() else p.player_id - 1
+	return dev if Input.get_connected_joypads().has(dev) else -1
+
+
+func _on_died_pad(p: Player) -> void:
+	# la muerte sacude el mando del jugador humano local
+	var dev := pad_of(p)
+	if dev >= 0:
+		Input.start_joy_vibration(dev, 0.45, 0.8, 0.4)
 
 
 func _parallax_layer(pb: ParallaxBackground, asset: String, motion: float, tint: Color) -> ParallaxLayer:
@@ -1484,6 +1521,7 @@ func _build_players() -> void:
 	for p in players:
 		p.threw_sword.connect(_on_threw_sword)
 		p.fired_arrow.connect(_on_fired_arrow)
+		p.died.connect(_on_died_pad)
 		# con el nodo game en PROCESS_MODE_ALWAYS, los hijos heredarían ALWAYS:
 		# los jugadores deben pausarse de verdad con el hit-stop y la pausa (ESC)
 		p.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -1512,6 +1550,7 @@ func set_mode_2v2(on: bool) -> void:
 		for p in [p3, p4]:
 			p.threw_sword.connect(_on_threw_sword)
 			p.fired_arrow.connect(_on_fired_arrow)
+			p.died.connect(_on_died_pad)
 			p.process_mode = Node.PROCESS_MODE_PAUSABLE
 		ally_bot_level = 2
 	else:
@@ -1787,8 +1826,8 @@ func _build_hud() -> void:
 	cl.add_child(msg_label)
 
 	var hint := Label.new()
-	hint.text = "P1: A/D mover · W saltar/arriba · S agachar · F atacar · G lanzar    P2: ←/→ · ↑ · ↓ · K atacar · L lanzar    R: revancha\nB: bot P2 · H: aliado P3 · N: bot vs bot · V: 2v2 · T: lluvia de rocas · C: cambiar arena · X: arena barajada · M: música · Mando: stick · A saltar · X atacar · B lanzar"
-	hint.position = Vector2(22, VIEW_H - 64)
+	hint.text = "P1: A/D mover · W saltar/arriba · S agachar · F atacar · G lanzar    P2: ←/→ · ↑ · ↓ · K atacar · L lanzar    R: revancha\nB: bot P2 · H: aliado P3 · N: bot vs bot · V: 2v2 · T: lluvia de rocas · C: cambiar arena · X: arena barajada · M: música\nMando P1 (0) / P2 (1): stick o cruceta · A saltar · X atacar · B lanzar    solo P1: START revancha · SELECT pausa · L1 arena · R1 música"
+	hint.position = Vector2(22, VIEW_H - 80)
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.62, 0.60, 0.72))
 	cl.add_child(hint)
