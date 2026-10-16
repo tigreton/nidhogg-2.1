@@ -47,11 +47,11 @@ func _ready() -> void:
 	rules_label.add_theme_constant_override("outline_size", 8)
 	add_child(rules_label)
 	hint_label = Label.new()
-	hint_label.text = "P1: A/D mover · W/S alturas · F atacar · G lanzar      P2: ←/→ · ↑/↓ · K atacar · L lanzar\nB: bot · V: 2v2 · P: pantallas · Y: arcade · A: pack de arte    ·    O: ONLINE (1v1 por red)    ·    F11: pantalla completa\nMando P1: ↑/↓ puntos · X lanzar · Y rodar · B arte · A/START jugar · SELECT online"
-	hint_label.position = Vector2(0, 548)
-	hint_label.size = Vector2(1152, 80)
+	hint_label.text = "P1: A/D mover · W/S alturas · F atacar · G lanzar      P2: ←/→ · ↑/↓ · K atacar · L lanzar\nB: bot · V: 2v2 · P: pantallas · Y: arcade · A: pack de arte    ·    O: ONLINE (1v1 por red)    ·    F11: pantalla completa\nMando P1: ↑/↓ puntos · X lanzar · Y rodar · B arte · A/START jugar · SELECT online\nESPECIALES — SALTO+↓: dive corriendo · rodada parado (ATAQUE durante: tackle) · sobre el caído mantén ↓: pisotón\nATAQUE corriendo: estocada · ATAQUE+↓ corriendo: patada lateral · ATAQUE en el aire: patada voladora (con ↑/↓: tajo alto/bajo)"
+	hint_label.position = Vector2(0, 528)
+	hint_label.size = Vector2(1152, 116)
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_label.add_theme_font_size_override("font_size", 18)
+	hint_label.add_theme_font_size_override("font_size", 15)
 	hint_label.add_theme_color_override("font_color", Color(0.6, 0.58, 0.7))
 	add_child(hint_label)
 	_update_rules()

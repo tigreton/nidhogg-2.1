@@ -709,13 +709,19 @@ func _ready() -> void:
 	_check(p2.state == 6 and p2.state != 7, "Slide tackle: atacar rodando derriba al rival")
 	await get_tree().create_timer(1.2).timeout
 
-	# 34. Sidekick desde agachado: rodada y, con el cooldown activo, abajo+salto
+	# 34. Sidekick: disparador único ataque+abajo corriendo (antes salía con
+	# salto+abajo parado SOLO durante el cooldown de la rodada: imposible de
+	# recordar en partida)
 	p1.has_sword = true
 	p1.weapon_id = "florete"
 	p2.has_sword = true
 	p2.weapon_id = "florete"
-	p1.position = Vector2(1600.0, 531.0)
-	p2.position = Vector2(1655.0, 531.0)
+	# 60 px de separación: fuera del imán de giro (6-46 px) y del alcance de
+	# la guardia (73 px); el sidekick recorre la distancia a 440 px/s y
+	# resuelve al entrar en los 42 px de la resolución
+	p1.position = Vector2(1590.0, 531.0)
+	p2.position = Vector2(1650.0, 531.0)
+	p2.facing = 1
 	p1.velocity = Vector2.ZERO
 	p2.velocity = Vector2.ZERO
 	p1.state = 0
@@ -723,29 +729,17 @@ func _ready() -> void:
 	p1.invuln_time = 0.0
 	p2.invuln_time = 0.0
 	p1.facing = 1
-	p1.roll_cd = 0.0
 	await get_tree().physics_frame
+	Input.action_press("p1_right")
 	Input.action_press("p1_down")
-	Input.action_press("p1_jump")
-	await get_tree().create_timer(0.08).timeout
-	Input.action_release("p1_jump")
-	Input.action_release("p1_down")
-	# la rodada acaba a los ~0,39 s pero su cooldown (0,55 s) sigue activo y la
-	# fricción (tarea 44) tarda ~0,1 s en frenar los 520 px/s de la rodada:
-	# el segundo abajo+salto se pulsa a los ~0,48 s del primero. La rodada
-	# cruza a P2 de largo (no hay colisión entre jugadores): reponer a P1 a su
-	# lado para que el sidekick tenga alcance (42 px de la resolución)
-	await get_tree().create_timer(0.40).timeout
-	p1.position = Vector2(1600.0, 531.0)
-	p1.velocity = Vector2.ZERO
-	Input.action_press("p1_down")
-	Input.action_press("p1_jump")
-	await get_tree().create_timer(0.12).timeout
-	Input.action_release("p1_jump")
-	Input.action_release("p1_down")
-	_check(p1.state == 10 or p1.sidekick_resolved, "Sidekick desde agachado con la rodada en cooldown")
-	_check(p2.state == 6 and not p2.has_sword, "El sidekick desde agachado derriba y desarma")
+	await get_tree().create_timer(0.05).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.15).timeout
 	Input.action_release("p1_attack")
+	Input.action_release("p1_right")
+	Input.action_release("p1_down")
+	_check(p1.state == 10 or p1.sidekick_resolved, "Sidekick: ataque+abajo corriendo lo dispara")
+	_check(p2.state == 6 and not p2.has_sword, "El sidekick derriba y desarma")
 	await get_tree().create_timer(1.2).timeout
 
 	# 35. Rebote contra guardia a la misma estancia: nadie muere
