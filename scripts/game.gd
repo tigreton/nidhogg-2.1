@@ -1040,12 +1040,13 @@ class Corpse extends Node2D:
 			if impaler.state == Player.State.DEAD or not impaler.has_sword or impaler.attack_is_active():
 				impaler = null
 			else:
-				# el cadáver sigue la línea de la hoja según la estancia (tarea 77)
+				# el cadáver sigue la línea de la hoja según la estancia (tarea 77);
+				# los puntos caen sobre el arma del overlay de guardia (tarea 87)
 				match impaler.stance:
 					Player.H.HIGH:
 						position = impaler.position + Vector2(impaler.facing * 26.0, -34.0)
 					Player.H.LOW:
-						position = impaler.position + Vector2(impaler.facing * 40.0, 14.0)
+						position = impaler.position + Vector2(impaler.facing * 38.0, 22.0)
 					_:
 						position = impaler.position + Vector2(impaler.facing * 44.0, -6.0)
 				queue_redraw()

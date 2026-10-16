@@ -40,6 +40,19 @@ const POSES := ["idle", "run_0", "run_1", "run_2", "run_3", "jump", "fall", "cro
 const POSE_SCALE := 58.0 / 56.0   # el sprite mide 56 px de alto; la colisión 58
 const POSE_FEET_Y := 32.0        # dónde quedan los pies respecto al origen
 
+# hoja en guardia legible (tarea 87): el arma del overlay apunta según la
+# estancia — los ángulos pasan por donde el cadáver empalado se apoya
+# (game.gd Corpse: HIGH y-34, MID y-6, LOW y+22), así el arma dibujada y el
+# efecto coinciden. LOW apunta al suelo, HIGH por encima de la cabeza.
+const GUARD_BLADE_ANGLES := [0.42, -0.05, -0.85]   # rad: LOW / MID / HIGH (y+ es abajo)
+const GUARD_HAND := [Vector2(5, 7), Vector2(6, -5), Vector2(7, -13)]   # ancla de la mano por estancia
+const WEAPON_TEX_NAME := {
+	"florete": "weapon_rapier",
+	"espada": "weapon_longsword",
+	"daga": "weapon_dagger",
+	"arco": "weapon_bow",
+}
+
 static func pose_texture(pose: String, side: String) -> Texture2D:
 	# poses del pack de arte activo (ArtPack cachea y aplica el fallback);
 	# las variantes noarme que no existen (slide, attack_*, divekick, dead,
@@ -94,6 +107,7 @@ var sidekick_resolved := false
 var attack_dash_time := 0.0   # > 0 mientras la estocada empuja hacia delante
 var bow_time := 0.0
 var throw_pose_time := 0.0   # > 0 mientras se ve la pose de suelta del lanzamiento
+var blade_h := 1.0   # estancia VISUAL de la hoja (0 LOW..1 MID..2 HIGH), interpolada (tarea 87)
 
 
 func _ready() -> void:
@@ -152,6 +166,7 @@ func _physics_process(delta: float) -> void:
 		invuln_time = maxf(0.0, invuln_time - delta)
 		flash_time = maxf(0.0, flash_time - delta)
 		self_modulate.a = 0.35 if (invuln_time > 0.0 and fmod(anim_time, 0.16) < 0.08) else 1.0
+		blade_h = move_toward(blade_h, float(stance), delta * 16.0)
 		queue_redraw()
 		return
 	anim_time += delta
@@ -437,6 +452,16 @@ func _physics_process(delta: float) -> void:
 	elif net_remote:
 		net_held_prev = net_held.duplicate()
 
+	# hoja legible (tarea 87): la estancia visual viaja con la del gameplay —
+	# llega al destino exactamente cuando expira el stance_shift, ni antes
+	# (adivinarías la guardia antes de que valga) ni después
+	if state == State.ATTACK:
+		blade_h = move_toward(blade_h, float(attack_height), delta * 30.0)
+	elif stance_shift > 0.0 and can_act:
+		blade_h = lerpf(blade_h, float(stance_target), clampf(delta / maxf(stance_shift, delta), 0.0, 1.0))
+	else:
+		blade_h = float(stance)
+
 
 func _dust(amount: int, speed: float) -> void:
 	var cp := CPUParticles2D.new()
@@ -541,8 +566,10 @@ func reset_to(pos: Vector2, face: int) -> void:
 
 func _pose_name() -> String:
 	var pose := _pose_name_armed()
-	# desarmado (o con el arco, que se dibuja aparte): variante sin arma (61)
-	if not has_sword or weapon_id == "arco":
+	# desarmado (o con el arco, que se dibuja aparte): variante sin arma (61);
+	# también con la hoja en guardia legible (tarea 87): el arma la dibuja el
+	# overlay según la estancia, el sprite no debe añadir otra encima
+	if not has_sword or weapon_id == "arco" or _guard_blade_visible():
 		var side := "p1" if (player_id == 1 or player_id == 3) else "p2"
 		if ArtPack.tex("player_%s_noarme_%s" % [pose, side]) != null:
 			pose += "_noarme"
@@ -638,6 +665,11 @@ func _draw() -> void:
 	draw_texture_rect(tex, Rect2(-w * 0.5, POSE_FEET_Y - h, w, h), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+	# hoja en guardia legible (tarea 87): el arma apunta según la estancia,
+	# independiente del sprite — MID y HIGH dejaban de ser distinguibles
+	if _guard_blade_visible():
+		_draw_guard_blade(flash_time > 0.0)
+
 	# estela del tajo (tarea 80): arco desvaneciéndose mientras dura el golpe
 	if state == State.ATTACK and has_sword and weapon_id != "arco":
 		var ext := attack_ext()
@@ -672,18 +704,56 @@ func _draw() -> void:
 			draw_circle(Vector2(10.0 + pext * 16.0, -6.0), 5.0, c)
 
 
+## La hoja en guardia se dibuja cuando la estancia decide duelos: quieto,
+## corriendo, en el aire y el windup del tajo. El golpe activo ya se lee con
+## su pose (attack_high/mid/low) y la estela; rodada/dive/sidekick tienen
+## resolución propia y no guardan con la hoja.
+func _guard_blade_visible() -> bool:
+	if not has_sword or weapon_id == "arco":
+		return false
+	if state == State.ATTACK:
+		return attack_time < attack_from()
+	return state in [State.IDLE, State.RUN, State.JUMP]
+
+
+## Interpola un valor por la estancia visual (LOW/MID/HIGH como 0/1/2).
+func _blade_kf(lo: Variant, mid: Variant, hi: Variant) -> Variant:
+	if blade_h <= 1.0:
+		return lerp(lo, mid, clampf(blade_h, 0.0, 1.0))
+	return lerp(mid, hi, clampf(blade_h - 1.0, 0.0, 1.0))
+
+
+func _draw_guard_blade(flash: bool) -> void:
+	var ang: float = _blade_kf(GUARD_BLADE_ANGLES[0], GUARD_BLADE_ANGLES[1], GUARD_BLADE_ANGLES[2])
+	var hand: Vector2 = _blade_kf(GUARD_HAND[0], GUARD_HAND[1], GUARD_HAND[2])
+	var tex: Texture2D = ArtPack.tex(String(WEAPON_TEX_NAME.get(weapon_id, "weapon_rapier")))
+	if tex == null:
+		return
+	var tint: Color = color.lerp(Color.WHITE, 0.25)
+	if flash:
+		tint = Color(2.5, 2.5, 2.5)
+	# la textura del arma es horizontal con la empuñadura a la izquierda:
+	# se rota desde el puño (16% del ancho) para que la hoja apunte a la estancia
+	var s := 0.85
+	draw_set_transform(hand, ang, Vector2(s, s))
+	draw_texture(tex, Vector2(-tex.get_width() * 0.16, -tex.get_height() * 0.5), tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _draw_bow() -> void:
 	var c := color if flash_time <= 0.0 else Color.WHITE
 	var dark := Color(0.05, 0.04, 0.08)
 	var pull := 0.0 if bow_time <= 0.0 else clampf(bow_time, 0.0, 1.0)
 	var bow: Texture2D = ArtPack.tex("weapon_bow")
-	draw_set_transform(Vector2(8, -8), 0.0, Vector2(0.55, 0.55))
+	# el arco también marca la estancia (la flecha vuela a esa altura, tarea 87)
+	var hand: Vector2 = _blade_kf(GUARD_HAND[0], GUARD_HAND[1], GUARD_HAND[2])
+	draw_set_transform(hand, 0.0, Vector2(0.55, 0.55))
 	draw_texture(bow, -bow.get_size() * 0.5)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	var py := -8.0
-	var px := 8.0 - pull * 12.0
-	draw_line(Vector2(8.0 - 14.0, -8.0 - 14.0), Vector2(px, py), Color(0.85, 0.85, 0.8), 1.5)
-	draw_line(Vector2(8.0 - 14.0, -8.0 + 14.0), Vector2(px, py), Color(0.85, 0.85, 0.8), 1.5)
+	var py: float = hand.y
+	var px: float = hand.x - pull * 12.0
+	draw_line(Vector2(hand.x - 14.0, py - 14.0), Vector2(px, py), Color(0.85, 0.85, 0.8), 1.5)
+	draw_line(Vector2(hand.x - 14.0, py + 14.0), Vector2(px, py), Color(0.85, 0.85, 0.8), 1.5)
 	if pull > 0.0:
 		draw_line(Vector2(px, py), Vector2(px + 26.0, py), dark, 2.5)
 		draw_line(Vector2(px + 26.0, py), Vector2(px + 26.0 + 6.0, py), c, 2.0)

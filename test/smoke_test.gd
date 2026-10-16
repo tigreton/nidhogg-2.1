@@ -822,6 +822,35 @@ func _ready() -> void:
 	game.set_sections(false)
 	_check(game.camera.zoom == Vector2.ONE, "Al salir del modo pantallas se restaura la cámara normal")
 
+	# 39. Hoja legible (tarea 87): la estancia se VE — el arma del overlay
+	# apunta según la estancia y el sprite no añade una segunda espada
+	game.round_lock = 0.0
+	p1.weapon_id = "florete"
+	p1.has_sword = true
+	p1.position = Vector2(1600.0, 531.0)
+	p1.velocity = Vector2.ZERO
+	p1.state = 0
+	p2.position = Vector2(2600.0, 531.0)
+	await get_tree().create_timer(0.1).timeout
+	_check(p1._pose_name().ends_with("_noarme"), "Hoja legible: idle armado usa sprite sin arma (la hoja es el overlay)")
+	_check(p1._guard_blade_visible(), "Hoja legible: la guardia se dibuja en idle")
+	Input.action_press("p1_up")
+	await get_tree().create_timer(0.2).timeout
+	_check(p1.stance == 2 and absf(p1.blade_h - 2.0) < 0.05, "Hoja legible: arriba lleva la hoja a HIGH")
+	Input.action_release("p1_up")
+	Input.action_press("p1_down")
+	await get_tree().create_timer(0.2).timeout
+	_check(p1.stance == 0 and absf(p1.blade_h) < 0.05, "Hoja legible: abajo lleva la hoja a LOW")
+	Input.action_release("p1_down")
+	await get_tree().create_timer(0.2).timeout
+	Input.action_press("p1_attack")
+	await get_tree().create_timer(0.02).timeout
+	_check(p1.state == 4 and p1._guard_blade_visible(), "Hoja legible: el windup del tajo telegrafa la hoja")
+	await get_tree().create_timer(0.12).timeout
+	_check(not p1._guard_blade_visible(), "Hoja legible: el tajo activo queda para pose+estela")
+	Input.action_release("p1_attack")
+	await get_tree().create_timer(0.4).timeout
+
 	print("")
 	if fails.is_empty():
 		print("SMOKE OK - todas las mecánicas funcionan")
