@@ -123,7 +123,13 @@ var weapon_idx := [0, 0]
 var match_over := false
 var round_lock := 0.0
 var skip_countdown := false   # los tests headless lo ponen a true (tarea 66)
-const COUNTDOWN_STEP := 0.7
+const COUNTDOWN_STEP := 0.45
+# hitstop de contacto (solo offline, como el de la muerte): 40-60 ms congelan
+# el golpe sin robar ritmo; más grado = más metal
+const HITSTOP_CLASH := 0.055   # hoja contra hoja a fondo
+const HITSTOP_DISARM := 0.05   # el arma sale despedida
+const HITSTOP_PARRY := 0.045   # parada blanda
+const HITSTOP_KNOCK := 0.04    # derribo (carne, no metal)
 var respawn_timers := [0.0, 0.0]
 var shake_time := 0.0
 var parry_cd := 0.0
@@ -2344,6 +2350,7 @@ func _melee_hit(atk: Player, def: Player) -> void:
 		_burst(def.position + Vector2(0, -20), Color(0.95, 0.95, 1.0), 10, 260.0)
 		sfx(def.position, "throw", -12.0)
 		shake_time = maxf(shake_time, 0.12)
+		_hitstop(HITSTOP_DISARM)
 	elif atk.has_sword:
 		_kill(def, atk)
 	else:
@@ -2358,18 +2365,21 @@ func _melee_hit(atk: Player, def: Player) -> void:
 			_net_ev_hit(def, 2, float(push) * 160.0, -120.0, 0.5)
 			_burst(def.position + Vector2(0, -20), Color(0.95, 0.95, 1.0), 8, 240.0)
 			sfx(def.position, "throw", -12.0)
+			_hitstop(HITSTOP_DISARM)
 		else:
 			# patada baja (agachado) o rival ya desarmado: derriba
 			def.knockdown(push)
 			_net_ev_hit(def, 1, float(push) * 260.0)
 			_burst(def.position, Color(1, 1, 1), 8, 200.0)
 			sfx(def.position, "hit", -10.0)
+			_hitstop(HITSTOP_KNOCK)
 
 
 func _clash(a: Player, b: Player) -> void:
 	var mid := Vector2((a.position.x + b.position.x) * 0.5, minf(a.position.y, b.position.y) - 14.0)
 	_burst(mid, Color(1.0, 0.93, 0.55), 14, 320.0)
 	sfx(mid, "clash", -8.0)
+	_hitstop(HITSTOP_CLASH)
 	shake_time = maxf(shake_time, 0.14)
 	# el choque desarma a quien atacaba con la espada en alto
 	var disarmed: Array[Player] = []
@@ -2393,6 +2403,7 @@ func _parry(a: Player, b: Player) -> void:
 	var mid := Vector2((a.position.x + b.position.x) * 0.5, minf(a.position.y, b.position.y) - 14.0)
 	_burst(mid, Color(1.0, 0.93, 0.55), 8, 240.0)
 	sfx(mid, "clash", -12.0)
+	_hitstop(HITSTOP_PARRY)
 	var push_b := 1 if b.position.x >= a.position.x else -1
 	a.apply_push(Vector2(-float(push_b) * PARRY_IMPULSE, 0.0), PARRY_PUSH_TIME)
 	b.apply_push(Vector2(float(push_b) * PARRY_IMPULSE, 0.0), PARRY_PUSH_TIME)
@@ -2426,6 +2437,7 @@ func _resolve_divekicks() -> void:
 			_burst(def.position, Color(1, 1, 1), 10, 240.0)
 			sfx(def.position, "hit", -10.0)
 			shake_time = maxf(shake_time, 0.12)
+			_hitstop(HITSTOP_KNOCK)
 
 
 func _nearest_divekick_target(p: Player) -> Player:
@@ -2461,6 +2473,7 @@ func _resolve_dives() -> void:
 				var push := 1 if def.position.x >= p.position.x else -1
 				def.knockdown(push)
 				_net_ev_hit(def, 1, float(push) * 260.0)
+				_hitstop(HITSTOP_KNOCK)
 			p.state = Player.State.KNOCKDOWN
 			p.knockdown_time = 0.6
 			p.velocity = Vector2(-float(p.facing) * 160.0, -160.0)
@@ -2492,6 +2505,7 @@ func _resolve_sidekicks() -> void:
 			_burst(def.position, Color(1, 1, 1), 10, 240.0)
 			sfx(def.position, "hit", -10.0)
 			shake_time = maxf(shake_time, 0.12)
+			_hitstop(HITSTOP_KNOCK)
 			break
 
 
@@ -2514,6 +2528,7 @@ func _resolve_roll_tackles() -> void:
 			_burst(def.position, Color(1, 1, 1), 8, 200.0)
 			sfx(def.position, "hit", -10.0)
 			shake_time = maxf(shake_time, 0.1)
+			_hitstop(HITSTOP_KNOCK)
 			break
 
 
@@ -2556,6 +2571,7 @@ func _resolve_guard_impale() -> void:
 				var mid := Vector2((f.position.x + g.position.x) * 0.5, minf(f.position.y, g.position.y) - 14.0)
 				_burst(mid, Color(1.0, 0.93, 0.55), 6, 200.0)
 				sfx(mid, "clash", -14.0)
+				_hitstop(HITSTOP_PARRY)
 				parry_cd = PARRY_COOLDOWN
 			else:
 				_kill(f, g)
@@ -2584,6 +2600,7 @@ func _resolve_stomps() -> void:
 func _kill(def: Player, atk: Player) -> void:
 	if def.state == Player.State.DEAD:
 		return
+	var was_sudden := sudden_death
 	calm_time = 0.0        # cualquier muerte apaga la muerte súbita (tarea 67)
 	sudden_death = false
 	def.die()
@@ -2604,7 +2621,10 @@ func _kill(def: Player, atk: Player) -> void:
 	if def.has_sword:
 		def.has_sword = false
 		_drop_sword(def.position + Vector2(0.0, -20.0), Color(0.87, 0.9, 0.95), def.weapon_id)
-	_slowmo(0.35, 0.5)
+	# la cámara lenta ya no acompaña cada muerte: solo cuando esa baja decide
+	# (muerte súbita). El hitstop del contacto la sustituye en el día a día.
+	if was_sudden:
+		_slowmo(0.35, 0.5)
 	_burst(def.position, Color(0.95, 0.95, 1.0), 12, 260.0)
 	_spawn_corpse(def, atk)
 	sfx(def.position, "kill", -6.0)
@@ -2678,6 +2698,10 @@ func _respawn(p: Player) -> void:
 
 
 func _next_weapon(p: Player) -> String:
+	# por defecto el arma es siempre la misma: los timing aprendidos valen
+	# de por vida. El ciclo (espadón/daga/arco) queda como modo alternativo.
+	if not MatchRules.weapon_variety:
+		return "florete"
 	var i := p.player_id - 1
 	if i < 0 or i >= weapon_idx.size():
 		return "florete"
@@ -2975,7 +2999,10 @@ func _point(p: Player) -> void:
 	_update_hud()
 	sfx(p.position, "point", -6.0)
 	_burst(p.position + Vector2(0, -30), p.color, 42, 480.0)
-	_slowmo(0.25, 0.9)
+	# cámara lenta reservada: gol decisivo o el que instala el match point;
+	# el resto de puntos entran limpios para no desensibilizar
+	if scores[_team(p)] >= MatchRules.win_score - 1:
+		_slowmo(0.25, 0.9)
 	right_of_way = null
 	if Net.is_host() and Net.client_ready:
 		ev_point.rpc(_team(p), p.position.x, p.position.y)
@@ -3016,7 +3043,7 @@ func _point(p: Player) -> void:
 			if match_over:
 				stats_label.visible = not Net.active())  # las stats locales mienten a medias online
 	else:
-		round_lock = 1.4
+		round_lock = 1.0   # antes 1.4: el mensaje ¡PUNTO! dura 1.0 y sobra
 		rematch_pending = true   # al expirar el lock se arranca ronda nueva
 		show_msg("¡PUNTO!", 1.0)
 
@@ -3186,8 +3213,11 @@ func _bot_think(p: Player, delta: float) -> void:
 	# saltar cualquier muro bajo (peldaños de roca, etc.) al chocar de frente
 	if tap == "" and on_floor and p.is_on_wall() and (want.get("right", false) or want.get("left", false)):
 		tap = "jump"
-	# patada voladora si el rival está abajo y cerca
-	if not on_floor and foe != null and adx < 100.0 and foe.position.y > p.position.y + 40.0:
+	# patada voladora si el rival está abajo y cerca — pero no contra un
+	# derribado: re-derribarlo refresca su caída y el bucle saltador/pisoteador
+	# no termina nunca (el remate del caído es el pisotón, no la patada)
+	if not on_floor and foe != null and adx < 100.0 and foe.position.y > p.position.y + 40.0 \
+			and foe.state != Player.State.KNOCKDOWN:
 		tap = "attack"
 	# con el arco: tensar mientras el rival está a distancia de flecha
 	# (soltará al acercarse o alejarse → dispara con el tensado completo)
