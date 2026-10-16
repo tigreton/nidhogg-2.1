@@ -82,10 +82,11 @@ func _all_labels(node: Node) -> Array[Label]:
 
 
 func _update_rules() -> void:
-	rules_label.text = "PUNTOS PARA GANAR: %d    (teclas 1 / 3 / 5 · mando ↑/↓)\nLANZAR ARMA: %s (T · mando X)      RODAR: %s (R · mando Y)\nARTE: %s (A · mando B)\nP1: NACHO   ·   P2: RODRIGO\n\nENTER o ESPACIO: jugar    ·    O: ONLINE (o SELECT del mando)" % [
+	rules_label.text = "PUNTOS PARA GANAR: %d    (teclas 1 / 3 / 5 · mando ↑/↓)\nLANZAR ARMA: %s (T · mando X)      RODAR: %s (R · mando Y)\nARMA AL REAPARECER: %s (W · mando LB)\nARTE: %s (A · mando B)\nP1: NACHO   ·   P2: RODRIGO\n\nENTER o ESPACIO: jugar    ·    O: ONLINE (o SELECT del mando)" % [
 		MatchRules.win_score,
 		"SÍ" if MatchRules.allow_throw else "NO",
 		"SÍ" if MatchRules.allow_roll else "NO",
+		"CICLO (ESPADÓN/DAGA/ARCO)" if MatchRules.weapon_variety else "FLORETE FIJO",
 		ArtPack.active_pack() if ArtPack.active_pack() != "" else "default",
 	]
 
@@ -114,6 +115,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			MatchRules.allow_throw = not MatchRules.allow_throw
 		KEY_R:
 			MatchRules.allow_roll = not MatchRules.allow_roll
+		KEY_W:
+			MatchRules.weapon_variety = not MatchRules.weapon_variety
 		KEY_O:
 			_open_net_menu()
 			return
@@ -145,6 +148,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			MatchRules.allow_throw = not MatchRules.allow_throw
 		JOY_BUTTON_Y:
 			MatchRules.allow_roll = not MatchRules.allow_roll
+		JOY_BUTTON_LEFT_SHOULDER:
+			MatchRules.weapon_variety = not MatchRules.weapon_variety
 		JOY_BUTTON_B:
 			ArtPack.cycle_pack()
 			get_tree().reload_current_scene()

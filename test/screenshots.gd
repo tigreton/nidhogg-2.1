@@ -85,6 +85,7 @@ func _ready() -> void:
 	game.players[0].facing = 1
 	game.players[1].position = game.players[0].position + Vector2(70.0, 0.0)
 	await get_tree().create_timer(0.1).timeout
+	game.sudden_death = true   # la cámara lenta de muerte hoy solo acompaña la muerte súbita
 	game._kill(game.players[1], game.players[0])
 	# 0.25 s escalados: tras el hitstop (0.08) pero dentro de la cámara lenta
 	# (0.5), con el estallido a medias — a 0.05 las partículas aún no simulan
