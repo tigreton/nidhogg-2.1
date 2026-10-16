@@ -25,7 +25,7 @@ const ATTACK_DURATION := 0.30
 const ATTACK_FROM := 0.07
 const ATTACK_TO := 0.20
 const ATTACK_RANGE := 86.0
-const KNOCKDOWN_TIME := 1.0
+const KNOCKDOWN_TIME := 0.6   # derribo corto: tiempo sin control, no castigo eterno
 const PUNCH_RANGE := 50.0
 const ROLL_DURATION := 0.34
 const ROLL_SPEED := 520.0
@@ -39,7 +39,6 @@ const BOW_DRAW_TIME := 1.0     # tensado mínimo: antes de esto no dispara
 const POSES := ["idle", "run_0", "run_1", "run_2", "run_3", "jump", "fall", "crouch", "slide", "attack_high", "attack_mid", "attack_low", "throw", "divekick", "dead", "downed"]
 const POSE_SCALE := 58.0 / 56.0   # el sprite mide 56 px de alto; la colisión 58
 const POSE_FEET_Y := 32.0        # dónde quedan los pies respecto al origen
-
 # hoja en guardia legible (tarea 87): el arma del overlay apunta según la
 # estancia — los ángulos pasan por donde el cadáver empalado se apoya
 # (game.gd Corpse: HIGH y-34, MID y-6, LOW y+22), así el arma dibujada y el
@@ -215,6 +214,9 @@ func _physics_process(delta: float) -> void:
 			roll_time += delta
 			if roll_time >= ROLL_DURATION:
 				state = State.IDLE
+				# la rodada planta: sin inercia residual hacia hojas ajenas
+				# (con el pushbox puedes quedar parado junto a una guardia)
+				velocity.x = 0.0
 		State.DIVE:
 			dive_time += delta
 			if dive_time >= DIVE_TIME:
@@ -479,6 +481,13 @@ func attack_is_active() -> bool:
 	return state == State.ATTACK and attack_time >= attack_from() and attack_time <= attack_to() and not attack_resolved
 
 
+## Fase de armado del ataque (windup): la hoja aún no ha salido y el cuerpo
+## telegrafía el golpe venidero. Sirve también para que la marioneta online
+## dibuje la anticipación (attack_time/attack_height viajan en el snapshot).
+func attack_windup() -> bool:
+	return state == State.ATTACK and has_sword and weapon_id != "arco" and attack_time < attack_from()
+
+
 func attack_ext() -> float:
 	if state != State.ATTACK:
 		return 0.0
@@ -517,9 +526,11 @@ func apply_push(v: Vector2, t: float) -> void:
 
 
 func take_clash(push: int) -> void:
+	# choque de hojas = rebote seco por el suelo: sin vuelo ni salto circense.
+	# Se mata también la velocidad vertical (un choque aéreo corta el impulso).
 	state = State.STUNNED
-	stun_time = 0.34
-	velocity = Vector2(push * 380.0, -240.0)
+	stun_time = 0.26
+	velocity = Vector2(push * 380.0, 0.0)
 	flash_time = 0.15
 
 
@@ -557,9 +568,10 @@ func reset_to(pos: Vector2, face: int) -> void:
 
 func _pose_name() -> String:
 	var pose := _pose_name_armed()
-	# desarmado (o con el arco, que se dibuja aparte): variante sin arma (61);
-	# también con la hoja en guardia legible (tarea 87): el arma la dibuja el
-	# overlay según la estancia, el sprite no debe añadir otra encima
+	# desarmado (o con el arco, que se dibuja aparte): variante sin arma (61).
+	# También con la hoja legible: en guardia (tarea 87) y en el windup
+	# (telegrafiado de feel) el arma la dibuja el overlay — el sprite no
+	# debe añadir otra encima.
 	if not has_sword or weapon_id == "arco" or _guard_blade_visible():
 		var side := "p1" if (player_id == 1 or player_id == 3) else "p2"
 		if ArtPack.tex("player_%s_noarme_%s" % [pose, side]) != null:
@@ -581,8 +593,9 @@ func _pose_name_armed() -> String:
 		State.DIVEKICK, State.DIVE:
 			return "divekick"
 		State.ATTACK:
-			# telegrafiado (tarea 81): hasta attack_from() se mantiene la
-			# pose neutra — el windup dura lo que el arma tarda en golpear
+			# telegrafiado (tarea 81 + armar del brazo): hasta attack_from()
+			# el cuerpo se echa atrás y la hoja retranca a la altura entrante
+			# (se dibuja aparte en _draw); el tajo llega con la pose de golpe
 			if attack_time < attack_from():
 				if not is_on_floor():
 					return "jump" if velocity.y < 0.0 else "fall"
@@ -635,6 +648,11 @@ func _draw() -> void:
 		State.ATTACK:
 			if attack_dash_time > 0.0:
 				t_rot = 0.15
+			elif attack_windup():
+				# armar el brazo: el cuerpo se echa atrás según carga el golpe
+				var wk := clampf(attack_time / attack_from(), 0.0, 1.0)
+				t_rot = -0.14 * wk
+				t_pos = Vector2(-3.0 * wk, 0.0)
 
 	if land_squash > 0.0:
 		# squash de aterrizaje (tarea 81): se recupera en 0,12 s
@@ -656,9 +674,28 @@ func _draw() -> void:
 	draw_texture_rect(tex, Rect2(-w * 0.5, POSE_FEET_Y - h, w, h), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	# hoja en guardia legible (tarea 87): el arma apunta según la estancia,
-	# independiente del sprite — MID y HIGH dejaban de ser distinguibles
-	if _guard_blade_visible():
+	# hoja legible: en guardia (tarea 87) el arma apunta según la estancia —
+	# MID y HIGH dejaban de ser distinguibles; en el windup (feel) la hoja
+	# retranca atrás a la altura del tajo venidero, así el rival lee la
+	# altura entrante antes de que el golpe salga. El cuerpo va sin arma.
+	if attack_windup():
+		var wk := clampf(attack_time / attack_from(), 0.0, 1.0)
+		var grip := Vector2(-(7.0 + 6.0 * wk), -4.0)
+		var wrot := PI
+		match attack_height:
+			H.HIGH:
+				grip.y = -18.0
+				wrot = PI + 0.55   # hoja hacia atrás y arriba
+			H.LOW:
+				grip.y = 10.0
+				wrot = PI - 0.40   # hoja hacia atrás y abajo
+		var wtex: Texture2D = ArtPack.tex(String(WEAPON_TEX_NAME.get(weapon_id, "weapon_rapier")))
+		if wtex != null:
+			var wsc: float = clampf(34.0 * float(weapon()["blade_len"]) / float(wtex.get_width()), 0.22, 0.6)
+			draw_set_transform(grip, wrot, Vector2(wsc, wsc))
+			draw_texture_rect(wtex, Rect2(0.0, -wtex.get_height() * 0.5, wtex.get_width(), wtex.get_height()), false, tint)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	elif _guard_blade_visible():
 		_draw_guard_blade(flash_time > 0.0)
 
 	# estela del tajo (tarea 80): arco desvaneciéndose mientras dura el golpe
@@ -693,6 +730,10 @@ func _draw() -> void:
 		var pext := attack_ext()
 		if pext > 0.05:
 			draw_circle(Vector2(10.0 + pext * 16.0, -6.0), 5.0, c)
+		elif attack_time < attack_from():
+			# puño cargado atrás (telegrafiado del puñetazo desarmado)
+			var k := clampf(attack_time / attack_from(), 0.0, 1.0)
+			draw_circle(Vector2(-4.0 - 5.0 * k, -6.0), 4.0, c)
 
 
 ## La hoja en guardia se dibuja cuando la estancia decide duelos: quieto,

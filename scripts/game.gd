@@ -58,6 +58,9 @@ const PARRY_PUSH_TIME := 0.15   # duración del empuje de parada
 const CLASH_IMPULSE := 130.0    # rebote mínimo contra guardia
 const CLASH_PUSH_TIME := 0.12
 const PARRY_COOLDOWN := 0.3     # anti re-trigger del rebote sostenido
+const PUSHBOX_W := 34.0        # pushbox: separación mínima entre cuerpos (eje x)
+const PUSHBOX_STEP := 8.0      # corrección tope por frame y duelista: suave, sin tirones
+const PUSHBOX_Y := 52.0        # solape vertical para contar como cuerpo a cuerpo
 const ARROW_MAX_BOUNCES := 6   # tras 6 rebotes la flecha se clava
 const ARROW_MIN_SPEED := 100.0 # demasiado lenta: se clava
 const SECTION_PAN_TIME := 0.28       # pan al cruzar reja (sin teleport)
@@ -2264,6 +2267,7 @@ func _physics_process(delta: float) -> void:
 		if players[i].state != Player.State.DEAD and step < 60.0:
 			stats[i]["dist"] += step
 		last_x[i] = players[i].position.x
+	_resolve_pushbox()
 	_resolve_attacks()
 	_resolve_guard_impale()
 	_resolve_divekicks()
@@ -2280,6 +2284,46 @@ func _physics_process(delta: float) -> void:
 	_update_camera(delta)
 	if Net.is_host():
 		_host_net_step()
+
+
+func _resolve_pushbox() -> void:
+	# cuerpo contra cuerpo (pushbox suave): los duelistas no se atraviesan.
+	# Cada par solapado se separa medio solape por cabeza, con tope por frame
+	# para que empujar se sienta como una pulsación constante, no un teletransporte.
+	# Quien embiste (rodada/dive/patadas) cede él: no arrea al rival por delante.
+	# Los muertos no ocupan sitio; la marioneta de red no se toca (la coloca el
+	# snapshot del host), aunque sí ocupa sitio para el jugador local.
+	for i in players.size():
+		var p := players[i]
+		if p.state == Player.State.DEAD:
+			continue
+		for j in range(i + 1, players.size()):
+			var q := players[j]
+			if q.state == Player.State.DEAD or _team(p) == _team(q):
+				continue
+			if absf(p.position.y - q.position.y) > PUSHBOX_Y:
+				continue
+			var dx := q.position.x - p.position.x
+			var overlap := PUSHBOX_W - absf(dx)
+			if overlap <= 0.0:
+				continue
+			var sgn := 1.0 if dx >= 0.0 else -1.0
+			if absf(dx) < 0.5:
+				sgn = 1.0 if p.player_id < q.player_id else -1.0
+			var step := minf(overlap * 0.5, PUSHBOX_STEP)
+			var dash := [Player.State.ROLL, Player.State.DIVE, Player.State.DIVEKICK, Player.State.SIDEKICK]
+			var p_yields: bool = p.net_puppet or (p.state in dash and not q.state in dash)
+			var q_yields: bool = q.net_puppet or (q.state in dash and not p.state in dash)
+			if p_yields and q_yields:
+				# caso degenerado (ambas marionetas): nadie corrige
+				continue
+			elif p_yields:
+				p.position.x -= sgn * step * 2.0
+			elif q_yields:
+				q.position.x += sgn * step * 2.0
+			else:
+				p.position.x -= sgn * step
+				q.position.x += sgn * step
 
 
 func _resolve_attacks() -> void:
