@@ -13,11 +13,13 @@ enum H { LOW, MID, HIGH }
 const SPEED := 330.0
 const DUCK_SPEED := 150.0
 const UNARMED_SPEED_MULT := 1.15
-const JUMP_VY_STAND := -460.0   # ápice ≈ 66 px ≈ 1,1 · altura del jugador (58)
-const JUMP_VY_RUN := -680.0     # ápice ≈ 144 px (el actual: no rompe la arena)
-const GRAVITY_UP := 1600.0      # subida suave (el salto "flota" arriba)
-const GRAVITY_FALL := 1900.0    # bajada pesada (pegada arcade)
-const MAX_FALL := 980.0         # tope de velocidad de caída
+const JUMP_VY_STAND := -565.0   # ápice ≈ 66 px ≈ 1,1 · altura del jugador (58)
+const JUMP_VY_RUN := -833.0     # ápice ≈ 145 px: la arena se cruza igual que antes
+const GRAVITY_UP := 2400.0      # subida firme (feel): misma altura, sin flotar arriba
+const GRAVITY_FALL := 2300.0    # bajada pesada (pegada arcade)
+const MAX_FALL := 1150.0        # tope de velocidad de caída
+const COYOTE_TIME := 0.08   # gracia para saltar tras dejar el borde (feel)
+const BUFFER_TIME := 0.12   # memoria de los taps hechos mientras no puedes actuar
 const GROUND_ACCEL := 2800.0    # 0 → 330 px/s en ~6 frames
 const GROUND_FRICTION := 5200.0 # frenado en ~4 frames
 const AIR_ACCEL := 1500.0       # control aéreo parcial hacia la carrera
@@ -33,6 +35,8 @@ const ROLL_COOLDOWN := 0.55
 const DIVE_SPEED := 546.0
 const DIVE_TIME := 0.55
 const LUNGE_SPEED := 620.0
+const LUNGE_BURST := 0.14    # ventana del impulso de la estocada (feel)
+const LUNGE_DECAY := 2400.0  # frenado de la estocada: embiste y se planta, no patina
 const SIDEKICK_TIME := 0.42
 const BOW_DRAW_TIME := 1.0     # tensado mínimo: antes de esto no dispara
 
@@ -107,6 +111,10 @@ var attack_dash_time := 0.0   # > 0 mientras la estocada empuja hacia delante
 var bow_time := 0.0
 var throw_pose_time := 0.0   # > 0 mientras se ve la pose de suelta del lanzamiento
 var blade_h := 1.0   # estancia VISUAL de la hoja (0 LOW..1 MID..2 HIGH), interpolada (tarea 87)
+var coyote := 0.0    # gracia de salto tras dejar el borde (feel)
+var tap_buf := {}    # "jump"/"attack"/"throw" -> segundos de buffer restantes (feel)
+
+const TAPS := ["jump", "attack", "throw"]
 
 
 func _ready() -> void:
@@ -132,11 +140,24 @@ func held(n: String) -> bool:
 
 
 func hit(n: String) -> bool:
+	# tap recién pulsado O recordado por el buffer (feel): los toques dados
+	# durante ATTACK/ROLL/STUN/KNOCKDOWN no se pierden — se consumen cuando
+	# vuelve el control. El buffer se gasta en la rama que lo dispara.
+	if _tap_edge(n):
+		return true
+	return float(tap_buf.get(n, 0.0)) > 0.0
+
+
+func _tap_edge(n: String) -> bool:
 	if is_bot:
 		return bool(bot_held.get(n, false)) and not bool(bot_held_prev.get(n, false))
 	if net_remote:
 		return bool(net_held.get(n, false)) and not bool(net_held_prev.get(n, false))
 	return Input.is_action_just_pressed(_a(n))
+
+
+func _use_tap(n: String) -> void:
+	tap_buf[n] = 0.0
 
 
 func _sfx(id: String, db := -12.0) -> void:
@@ -176,6 +197,14 @@ func _physics_process(delta: float) -> void:
 	push_time = maxf(0.0, push_time - delta)
 	throw_pose_time = maxf(0.0, throw_pose_time - delta)
 	attack_dash_time = maxf(0.0, attack_dash_time - delta)
+
+	# buffer de taps (feel): se graba al pulsar y se descuenta SIEMPRE, también
+	# muerto o congelado — así nada caduca de una vida a la siguiente
+	for n in TAPS:
+		if _tap_edge(n):
+			tap_buf[n] = BUFFER_TIME
+		elif tap_buf.has(n):
+			tap_buf[n] = maxf(0.0, float(tap_buf[n]) - delta)
 
 	if state == State.DEAD:
 		return
@@ -235,9 +264,13 @@ func _physics_process(delta: float) -> void:
 	# levantarse tras el derribo: arriba = in situ; lateral = rodando (tarea 73)
 	if state == State.KNOCKDOWN and knockdown_time <= 0.0:
 		if held("up"):
+			# levantarse otorga un instante de gracia (0,3 s): sin esto, un
+			# rival en ciclo de patada voladora te derriba al despertar para
+			# siempre (el sim quedaba 4 minutos clavado en ese bucle)
 			state = State.IDLE
 			stance = H.MID
 			stance_target = H.MID
+			invuln_time = maxf(invuln_time, 0.3)
 			_sfx("swing", -26.0)
 		elif MatchRules.allow_roll and (held("left") or held("right")) and roll_cd <= 0.0:
 			facing = 1 if held("right") else -1
@@ -247,6 +280,7 @@ func _physics_process(delta: float) -> void:
 			roll_cd = ROLL_COOLDOWN
 			stance = H.LOW
 			stance_target = stance
+			invuln_time = maxf(invuln_time, 0.3)
 			_sfx("swing", -22.0)
 
 	if can_act:
@@ -261,6 +295,7 @@ func _physics_process(delta: float) -> void:
 			stance_target = stance
 			velocity = Vector2(facing * DIVE_SPEED, 0.0)
 			_swing_sfx(-18.0)
+			_use_tap("jump")
 		elif hit("jump") and held("down") and is_on_floor() and roll_cd <= 0.0 and MatchRules.allow_roll:
 			# rodar: esquiva rápida agachada (cuenta como estancia baja)
 			state = State.ROLL
@@ -270,21 +305,27 @@ func _physics_process(delta: float) -> void:
 			stance = H.LOW
 			stance_target = stance
 			_swing_sfx(-22.0)
-		elif hit("jump") and is_on_floor():
-			# salto doble: parado ~1 personaje, con carrerilla el ápice completo
+			_use_tap("jump")
+		elif hit("jump") and (is_on_floor() or coyote > 0.0):
+			# salto doble: parado ~1 personaje, con carrerilla el ápice completo.
+			# Coyote time (feel): también vale en los ~80 ms tras dejar el borde
 			velocity.y = JUMP_VY_RUN if state == State.RUN else JUMP_VY_STAND
 			state = State.JUMP
+			coyote = 0.0
 			_sfx("jump", -16.0)
+			_use_tap("jump")
 		elif hit("attack"):
 			if held("jump") and has_sword and MatchRules.allow_throw:
 				# lanzamiento del original (tarea 84): salto+ataque, suelo o aire
 				has_sword = false
 				throw_pose_time = 0.22
 				threw_sword.emit(self)
+				_use_tap("attack")
 			elif weapon_id == "arco":
 				# tensar el arco: el disparo sale al soltar
 				bow_time = 0.0001
 				_sfx("swing", -26.0)
+				_use_tap("attack")
 			elif is_on_floor() and has_sword and state == State.RUN and held("down"):
 				# patada lateral (sidekick): derriba y desarma. Disparador
 				# único (ataque+abajo corriendo): antes también salía con
@@ -295,6 +336,7 @@ func _physics_process(delta: float) -> void:
 				sidekick_resolved = false
 				velocity = Vector2(facing * 440.0, -160.0)
 				_swing_sfx(-18.0)
+				_use_tap("attack")
 			elif is_on_floor():
 				# ataque de espada o puñetazo (sin espada): reutiliza ATTACK
 				state = State.ATTACK
@@ -302,10 +344,12 @@ func _physics_process(delta: float) -> void:
 				attack_resolved = false
 				attack_height = stance
 				if has_sword and (held("right") or held("left")):
-					# estocada: embestida al atacar corriendo
-					attack_dash_time = attack_dur()
+					# estocada: embestida corta que frena (feel) — antes
+					# patinaba a 620 durante TODO el ataque
+					attack_dash_time = LUNGE_BURST
 					velocity.x = facing * LUNGE_SPEED
 				_swing_sfx(-20.0)
+				_use_tap("attack")
 			elif has_sword and (held("up") or held("down")):
 				# tajo aéreo: elegir altura manteniendo arriba/abajo
 				state = State.ATTACK
@@ -314,6 +358,7 @@ func _physics_process(delta: float) -> void:
 				attack_height = stance
 				velocity.y = maxf(velocity.y, -80.0)
 				_swing_sfx(-20.0)
+				_use_tap("attack")
 			else:
 				state = State.DIVEKICK
 				divekick_resolved = false
@@ -321,10 +366,12 @@ func _physics_process(delta: float) -> void:
 				stance_target = stance
 				velocity = Vector2(facing * 430.0, 440.0)
 				_swing_sfx(-20.0)
+				_use_tap("attack")
 		elif hit("throw") and has_sword and MatchRules.allow_throw:
 			has_sword = false
 			throw_pose_time = 0.22   # pose de suelta breve tras lanzar el arma
 			threw_sword.emit(self)
+			_use_tap("throw")
 
 	var dir := 0.0
 	if can_act:
@@ -377,7 +424,9 @@ func _physics_process(delta: float) -> void:
 				# sin esto el atacante sigue acercándose durante su animación
 				velocity.x = push_vel.x
 			elif attack_dash_time > 0.0:
-				velocity.x = facing * LUNGE_SPEED
+				# estocada que frena (feel): el impulso de 620 se apaga durante
+				# el burst — un paso de esgrima, no un patinaje de 0,3 s
+				velocity.x = move_toward(velocity.x, facing * 110.0, LUNGE_DECAY * delta)
 			else:
 				velocity.x = move_toward(velocity.x, facing * 110.0, 900.0 * delta)
 		State.STUNNED, State.KNOCKDOWN:
@@ -412,6 +461,9 @@ func _physics_process(delta: float) -> void:
 			velocity.x *= 0.3
 
 	dust_cd = maxf(0.0, dust_cd - delta)
+	# coyote time (feel): la gracia se recarga en el suelo y se consume en el
+	# aire — el salto tolera los primeros frames tras pisar el vacío
+	coyote = COYOTE_TIME if is_on_floor() else maxf(0.0, coyote - delta)
 	if is_on_floor() and not was_on_floor:
 		land_squash = 0.12
 		_sfx("land", -18.0)
@@ -558,6 +610,8 @@ func revive(pos: Vector2, face: int) -> void:
 	flash_time = 0.0
 	visible = true
 	scale.x = face
+	coyote = 0.0
+	tap_buf.clear()   # vida nueva: nada heredado de la anterior
 
 
 func reset_to(pos: Vector2, face: int) -> void:

@@ -2262,6 +2262,7 @@ func _physics_process(delta: float) -> void:
 		p.frozen = match_over or round_lock > 0.0 or net_wait_peer
 		if p.is_bot:
 			_bot_think(p, delta)
+			_bot_pit_jump(p)
 	for i in players.size():
 		var step := absf(players[i].position.x - last_x[i])
 		if players[i].state != Player.State.DEAD and step < 60.0:
@@ -3250,19 +3251,19 @@ func _bot_think(p: Player, delta: float) -> void:
 				tap = "attack"
 			if p.has_sword and randf() < 0.03:
 				tap = "throw"
-	# saltar el foso pequeño (sin plataforma) acercándose al borde
-	if on_floor and want.get("right", false) and p.position.x > PIT2_X0 - 110.0 and p.position.x < PIT2_X0 + 30.0:
-		tap = "jump"
-	elif on_floor and want.get("left", false) and p.position.x > PIT2_X1 - 30.0 and p.position.x < PIT2_X1 + 110.0:
-		tap = "jump"
+	# (el foso pequeño se salta por frame en _bot_pit_jump: la ventana segura
+	# son ~4 frames y un tick de reacción del bot FÁCIL —0,26 s— la saltaría)
 	# saltar cualquier muro bajo (peldaños de roca, etc.) al chocar de frente
 	if tap == "" and on_floor and p.is_on_wall() and (want.get("right", false) or want.get("left", false)):
 		tap = "jump"
 	# patada voladora si el rival está abajo y cerca — pero no contra un
-	# derribado: re-derribarlo refresca su caída y el bucle saltador/pisoteador
-	# no termina nunca (el remate del caído es el pisotón, no la patada)
+	# derribado: re-derribarlo refresca su caída y el bucle no termina nunca; ni
+	# rodando ni recién levantado (gracia de 0,3 s): el bot saltaba el peñasco
+	# en bucle divekickeando a un rival perpetuamente en el suelo y el partido
+	# quedaba clavado (el sim moría a 0 puntos exactamente así)
 	if not on_floor and foe != null and adx < 100.0 and foe.position.y > p.position.y + 40.0 \
-			and foe.state != Player.State.KNOCKDOWN:
+			and foe.state != Player.State.KNOCKDOWN and foe.state != Player.State.ROLL \
+			and foe.invuln_time <= 0.0:
 		tap = "attack"
 	# con el arco: tensar mientras el rival está a distancia de flecha
 	# (soltará al acercarse o alejarse → dispara con el tensado completo)
@@ -3275,10 +3276,27 @@ func _bot_think(p: Player, delta: float) -> void:
 		want["up"] = true
 		if randf() < 0.3:
 			want["up"] = false
-			want["right" if sd > 0.0 else "left"] = true
+			# rodar ALEJÁNDOSE del rival: hacia él solo re-alimenta la patada voladora
+			want["left" if sd > 0.0 else "right"] = true
 	p.bot_held = want
 	if tap != "" and p.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]:
 		p.bot_held[tap] = true
+
+
+## Salto del foso pequeño (sin plataforma): con el salto firme del feel el
+## alcance es ~231 px y la ventana que limpia los 180 px del foso son ~4
+## frames — un tick de reacción del bot FÁCIL (hasta 0,26 s = 86 px) caería
+## fuera y caminaría hasta caer dentro. El tap se inyecta por frame cuando
+## el borde está a <45 px en la dirección en la que corre.
+func _bot_pit_jump(p: Player) -> void:
+	if not p.is_on_floor() or p.state not in [Player.State.IDLE, Player.State.RUN]:
+		return
+	var want_r := bool(p.bot_held.get("right", false))
+	var want_l := bool(p.bot_held.get("left", false))
+	if want_r and p.position.x > PIT2_X0 - 45.0 and p.position.x < PIT2_X0 + 25.0:
+		p.bot_held["jump"] = true
+	elif want_l and p.position.x > PIT2_X1 - 10.0 and p.position.x < PIT2_X1 + 45.0:
+		p.bot_held["jump"] = true
 
 
 # =============================================================================
