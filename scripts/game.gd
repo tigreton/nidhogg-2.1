@@ -2260,6 +2260,8 @@ func _physics_process(delta: float) -> void:
 			_kill(p, null)
 	for p in players:
 		p.frozen = match_over or round_lock > 0.0 or net_wait_peer
+	_bot_observe_all()
+	for p in players:
 		if p.is_bot:
 			_bot_think(p, delta)
 			_bot_pit_jump(p)
@@ -3168,8 +3170,23 @@ func _bot_cfg(p: Player) -> Dictionary:
 	var lvl := bot_level
 	if p.player_id == 1 or p.player_id == 3:
 		lvl = maxi(ally_bot_level, 1)
-	return BOT_CFG[lvl - 1]
+	var c: Dictionary = BOT_CFG[lvl - 1].duplicate()
+	c["lvl"] = lvl
+	return c
 
+
+# =============================================================================
+# IA: percibir → puntuar → elegir
+# =============================================================================
+# El tick de reacción por nivel (bot_think/BOT_CFG) no cambia. Lo que era una
+# cadena de if/elif se descompone en tres dimensiones puntuadas con términos
+# aditivos (movimiento, estancia, tap) más capas duras que no se negocian
+# (salto de muro, divekick, arco, levantarse). Los sorteos randf()/randi()
+# viven en _bot_scores, dentro de cada rama en el mismo orden que la cadena
+# original: la equivalencia del esqueleto se probó con la semilla fija del
+# sim (trayectoria idéntica tic a tic, 83,2 s); los términos nuevos
+# (predicción, castigo, memoria de patrones) son la única divergencia, y es
+# buscada.
 
 func _bot_think(p: Player, delta: float) -> void:
 	var foe := _nearest_foe(p)
@@ -3178,97 +3195,260 @@ func _bot_think(p: Player, delta: float) -> void:
 		return
 	var cfg := _bot_cfg(p)
 	p.bot_think = float(cfg["react"])
-	var want := {}
-	var tap := ""
 	if foe == null:
-		p.bot_held = want
+		p.bot_held = {}
 		return
-	var adx := absf(foe.position.x - p.position.x)
-	var sd := 1.0 if foe.position.x >= p.position.x else -1.0
-	var on_floor := p.is_on_floor()
-	var row_team := -1 if right_of_way == null else _team(right_of_way)
+	var ctx := _bot_perceive(p, foe)
+	var s := _bot_scores(p, foe, cfg, ctx)
+	_bot_commit(p, foe, ctx, s)
 
+
+## Memoria de patrones (IA): lo que el rival HACE, no lo que es. Se observa a
+## TODOS los jugadores cada frame — humanos incluidos: aquí es donde el bot
+## "aprende" tus costumbres. Hoy: con qué altura ataca quien acaba de
+## aterrizar (la parada anticipada no necesita reacción, solo anticipación).
+## Vive mientras viva la partida: de una revancha a otra, ya te conoce.
+var _bot_mem := {}   # player_id → {"air", "was_atk", "land_ms", "after_land": {altura → veces}}
+
+
+func _bot_observe_all() -> void:
+	var now := Time.get_ticks_msec()
+	for q in players:
+		var m: Dictionary = _bot_mem.get_or_add(q.player_id,
+				{"air": false, "was_atk": false, "land_ms": 0, "after_land": {}})
+		var air := not q.is_on_floor()
+		if m["air"] and not air:
+			m["land_ms"] = now
+		m["air"] = air
+		var atk: bool = q.state == Player.State.ATTACK
+		if atk and not m["was_atk"] and now - int(m["land_ms"]) < 700:
+			# ataque en los 0,7 s posteriores al aterrizaje: cuéntalo por altura
+			m["after_land"][q.attack_height] = int(m["after_land"].get(q.attack_height, 0)) + 1
+		m["was_atk"] = atk
+
+
+## Altura que este rival suele atacar al aterrizar, si el patrón es claro
+## (≥3 muestras y mayoría estricta). Sin patrón → -1: nada que anticipar.
+func _bot_after_land_height(foe: Player) -> int:
+	var c: Dictionary = _bot_mem.get(foe.player_id, {}).get("after_land", {})
+	var best := -1
+	var best_n := 0
+	var total := 0
+	for h in [Player.H.LOW, Player.H.MID, Player.H.HIGH]:
+		var n := int(c.get(h, 0))
+		total += n
+		if n > best_n:
+			best_n = n
+			best = h
+	if total < 3 or best_n * 2 <= total:
+		return -1
+	return best
+
+
+## Percepción: todo lo observable que alimenta la puntuación. Aquí no se
+## sortea nada (ver cabecera de sección).
+func _bot_perceive(p: Player, foe: Player) -> Dictionary:
+	var row_team := -1 if right_of_way == null else _team(right_of_way)
+	var role := "duel"
 	if right_of_way != null and row_team == _team(p):
-		# corredor (o aliado escoltando): correr hacia la meta y cruzar el foso
-		# central por la plataforma
-		if p.goal_dir > 0:
-			want["right"] = true
-		else:
-			want["left"] = true
-		if on_floor and p.position.x > PLAT_X0 - 130.0 and p.position.x < PLAT_X1 + 130.0 and not (p.position.x > PLAT_X0 + 40.0 and p.position.x < PLAT_X1 - 40.0):
-			tap = "jump"
-	elif row_team >= 0 and foe != null:
-		# interceptor: adelantarse en la dirección hacia la que corre el portador
-		var tx: float = right_of_way.position.x + float(right_of_way.goal_dir) * 200.0
-		if tx > p.position.x + 20.0:
-			want["right"] = true
-		elif tx < p.position.x - 20.0:
-			want["left"] = true
-		if on_floor and p.position.x > PLAT_X0 - 130.0 and p.position.x < PLAT_X1 + 130.0 and not (p.position.x > PLAT_X0 + 40.0 and p.position.x < PLAT_X1 - 40.0):
-			tap = "jump"
-	elif foe != null:
-		# duelo: gestión de distancia y estancias
-		if adx > 260.0:
-			if sd > 0.0:
-				want["right"] = true
+		role = "run"
+	elif row_team >= 0:
+		role = "intercept"
+	var target_x := foe.position.x
+	if role == "run":
+		target_x = p.position.x + float(p.goal_dir) * 4000.0
+	elif role == "intercept":
+		# predicción (IA): interceptar donde el portador VA a estar, no donde
+		# está. A carrera completa (330 px/s) la lead es ~165 px — comparable a
+		# los 200 fijos de antes pero adaptativa: si frena o retrocede, el bot
+		# no se pasa de largo. Parado o dudando, suelo de 100 px hacia SU meta
+		# (la ventaja es suya: acabará corriendo hacia allí).
+		var lead := right_of_way.velocity.x * 0.5
+		if absf(right_of_way.velocity.x) < 80.0:
+			lead = float(right_of_way.goal_dir) * 100.0
+		target_x = right_of_way.position.x + lead
+	return {
+		"adx": absf(foe.position.x - p.position.x),
+		"sd": 1.0 if foe.position.x >= p.position.x else -1.0,
+		"on_floor": p.is_on_floor(),
+		"role": role,
+		"target_x": target_x,
+		# línea temporal del ataque rival (IA): windup legible → parry anticipado
+		# o castigo; hoja gastada en recuperación → golpe gratis
+		"foe_windup": foe.attack_windup(),
+		"foe_windup_left": foe.attack_from() - foe.attack_time,
+		"foe_recovery": foe.state == Player.State.ATTACK and foe.attack_time > foe.attack_to(),
+	}
+
+
+## Puntuación aditiva. Los términos base reproducen las bandas exactas de la
+## cadena original; los conocimientos nuevos (predicción del rival, memoria
+## de patrones) entran aquí como términos sin reordenar lo existente.
+func _bot_scores(p: Player, foe: Player, cfg: Dictionary, ctx: Dictionary) -> Dictionary:
+	var s := {"toward": 0.0, "away": 0.0, "hold": 0.0, "high": 0.0, "low": 0.0,
+			"jump": -1.0, "attack": -1.0, "throw": -1.0}
+	var adx: float = ctx["adx"]
+	match String(ctx["role"]):
+		"run":
+			# corredor (o aliado escoltando): correr hacia la meta y cruzar el
+			# foso central por la plataforma
+			s["toward"] = 1.0
+			if ctx["on_floor"] and _bot_near_plat_edge(p):
+				s["jump"] = 0.0
+		"intercept":
+			# interceptor: adelantarse en la dirección hacia la que corre el
+			# portador (histéresis de 20 px como la cadena original)
+			if absf(float(ctx["target_x"]) - p.position.x) > 20.0:
+				s["toward"] = 1.0
 			else:
-				want["left"] = true
-			if on_floor and randf() < 0.05:
-				tap = "jump"
-		elif adx < 55.0:
-			if sd > 0.0:
-				want["left"] = true
-			else:
-				want["right"] = true
-		elif foe.has_sword and foe.state == Player.State.IDLE and adx < 150.0:
-			# no caminar contra la guardia: atacar o retroceder
-			if randf() < float(cfg["atk"]) * 2.0:
-				tap = "attack"
-			elif sd > 0.0:
-				want["left"] = true
-			else:
-				want["right"] = true
-		elif foe.state == Player.State.ATTACK and foe.attack_is_active():
-			# cubrirse: igualar la altura del ataque rival para provocar choque
-			match foe.attack_height:
-				Player.H.HIGH:
-					want["up"] = true
-				Player.H.LOW:
-					want["down"] = true
-		else:
-			# con probabilidad "err" el bot se equivoca de estancia
-			if randf() < float(cfg["err"]):
-				var r := randi() % 3
-				if r == 0:
-					want["up"] = true
-				elif r == 1:
-					want["down"] = true
+				s["hold"] = 1.0
+			if ctx["on_floor"] and _bot_near_plat_edge(p):
+				s["jump"] = 0.0
+		_:
+			# duelo: gestión de distancia y estancias
+			if adx > 260.0:
+				s["toward"] = 1.0
+				if ctx["on_floor"] and randf() < 0.05:
+					s["jump"] = 0.0
+			elif adx < 55.0:
+				s["away"] = 1.0
+			elif foe.has_sword and foe.state == Player.State.IDLE and adx < 150.0:
+				# no caminar contra la guardia: atacar o retroceder
+				if randf() < float(cfg["atk"]) * 2.0:
+					s["attack"] = 0.0
 				else:
-					pass  # se queda en media por error
-			elif foe.stance == Player.H.MID:
-				want["down"] = true
-			if randf() < float(cfg["atk"]):
-				tap = "attack"
-			if p.has_sword and randf() < 0.03:
-				tap = "throw"
+					s["away"] = 1.0
+			elif foe.state == Player.State.ATTACK and (foe.attack_is_active() or foe.attack_windup()):
+				# cubrirse o castigar. Igualar la altura = parada (parry blando);
+				# el windup está telegrafiado, así que la cobertura empieza YA,
+				# no cuando la hoja ya vuela. El castigo (golpear a OTRA altura
+				# durante el windup) solo es de DIFÍCIL y solo si nuestra hoja
+				# saldría antes que la suya — un castigo desacertado degenera en
+				# parry (misma altura), nunca en comerse la hoja.
+				if int(cfg["lvl"]) >= 3 and ctx["foe_windup"] \
+						and float(ctx["foe_windup_left"]) > p.attack_from() + 0.02 \
+						and adx < p.weapon_reach() + 40.0 \
+						and _bot_kill_height_now(p, foe):
+					s["attack"] = maxf(float(s["attack"]), 1.5)
+					_bot_punish_stance(s, foe.stance)
+				else:
+					match foe.attack_height:
+						Player.H.HIGH:
+							s["high"] = 1.0
+						Player.H.LOW:
+							s["low"] = 1.0
+			else:
+				# con probabilidad "err" el bot se equivoca de estancia
+				if randf() < float(cfg["err"]):
+					var r := randi() % 3
+					if r == 0:
+						s["high"] = 1.0
+					elif r == 1:
+						s["low"] = 1.0
+				elif foe.stance == Player.H.MID:
+					s["low"] = 1.0
+				if randf() < float(cfg["atk"]):
+					s["attack"] = 0.0
+				if p.has_sword and randf() < 0.03:
+					s["throw"] = 0.0
+	# castigo de la recuperación (IA): la hoja gastada deja al rival indefenso
+	# el resto de la animación. Se planta la estancia de castigo SIEMPRE; el
+	# golpe solo si ya estamos a altura de kill (si no, sale en el próximo
+	# tick, cuando la hoja haya viajado).
+	if ctx["foe_recovery"] and int(cfg["lvl"]) >= 2 and adx < p.weapon_reach() + 40.0:
+		_bot_punish_stance(s, foe.stance)
+		if _bot_kill_height_now(p, foe):
+			s["attack"] = maxf(float(s["attack"]), 1.5)
+	elif foe.state == Player.State.STUNNED and int(cfg["lvl"]) >= 2 and p.has_sword \
+			and adx < p.weapon_reach() + 20.0:
+		# aturdido: kill a cualquier altura, no hay guardia que valga
+		s["attack"] = maxf(float(s["attack"]), 1.5)
+	# memoria de patrones (IA): si este rival suele atacar a una altura al
+	# aterrizar y ahora mismo cae hacia nosotros, la guardia se planta en esa
+	# altura mientras su hoja aún ni existe — parar sin reaccionar. La MEDIA
+	# no se puede cubrir con una tecla (limitación de siempre), solo se
+	# anticipan HIGH y LOW.
+	if String(ctx["role"]) == "duel" and int(cfg["lvl"]) >= 2 \
+			and not foe.is_on_floor() and foe.velocity.y > 0.0 and adx < 240.0:
+		var h := _bot_after_land_height(foe)
+		if h == Player.H.HIGH:
+			s["high"] = maxf(float(s["high"]), 1.2)
+		elif h == Player.H.LOW:
+			s["low"] = maxf(float(s["low"]), 1.2)
+	return s
+
+
+## ¿La estancia ACTUAL golpearía a este rival? La guardia quieta para la
+## altura IGUAL a la estancia del defensor (parry blando) y un HIGH contra un
+## rival agachado vuela por encima (miss).
+func _bot_kill_height_now(p: Player, foe: Player) -> bool:
+	return p.stance != foe.stance \
+			and not (p.stance == Player.H.HIGH and foe.stance == Player.H.LOW)
+
+
+## Estancia del castigo: golpear donde el rival NO tiene la hoja. Su guardia
+## para su propia altura; LOW nuestra golpea a cualquiera de pie, así que su
+## MID y su HIGH se castigan con nuestra LOW. Contra su LOW nos plantamos en
+## MID (sin tecla) — HIGH volaría por encima y su misma LOW se pararía sola.
+func _bot_punish_stance(s: Dictionary, foe_stance: int) -> void:
+	s["high"] = 0.0
+	s["low"] = 0.0
+	if foe_stance != Player.H.LOW:
+		s["low"] = 2.0
+
+
+## Franja de borde de la plataforma del foso central (para saltarla al correr).
+func _bot_near_plat_edge(p: Player) -> bool:
+	return p.position.x > PLAT_X0 - 130.0 and p.position.x < PLAT_X1 + 130.0 \
+			and not (p.position.x > PLAT_X0 + 40.0 and p.position.x < PLAT_X1 - 40.0)
+
+
+## Elección: argmax por dimensión + capas duras en el orden de la cadena
+## original (tap puntuado → salto de muro → divekick → arco → levantarse).
+## Las capas duras son correcciones ganadas a pulso (sim clavado a 0 puntos,
+## foso de ~4 frames) y no deben poder perder contra un argmax.
+func _bot_commit(p: Player, foe: Player, ctx: Dictionary, s: Dictionary) -> void:
+	var want := {}
+	# movimiento sobre el eje bot → objetivo (rival, portador de la ventaja o meta)
+	var dir := signf(float(ctx["target_x"]) - p.position.x)
+	var mv := "hold"
+	if float(s["toward"]) >= float(s["away"]) and float(s["toward"]) > float(s["hold"]):
+		mv = "toward"
+	elif float(s["away"]) > float(s["hold"]):
+		mv = "away"
+	if mv == "toward" and dir != 0.0:
+		want["right" if dir > 0.0 else "left"] = true
+	elif mv == "away" and dir != 0.0:
+		want["left" if dir > 0.0 else "right"] = true
+	# estancia: sin tecla = media (como siempre)
+	if float(s["high"]) > float(s["low"]) and float(s["high"]) > 0.0:
+		want["up"] = true
+	elif float(s["low"]) > 0.0:
+		want["down"] = true
+	# tap: uno solo — empate = prioridad de la cadena original (throw > attack > jump)
+	var tap := ""
+	for k in ["throw", "attack", "jump"]:
+		if float(s[k]) >= 0.0 and (tap == "" or float(s[k]) > float(s[tap])):
+			tap = k
 	# (el foso pequeño se salta por frame en _bot_pit_jump: la ventana segura
 	# son ~4 frames y un tick de reacción del bot FÁCIL —0,26 s— la saltaría)
 	# saltar cualquier muro bajo (peldaños de roca, etc.) al chocar de frente
-	if tap == "" and on_floor and p.is_on_wall() and (want.get("right", false) or want.get("left", false)):
+	if tap == "" and ctx["on_floor"] and p.is_on_wall() and (want.get("right", false) or want.get("left", false)):
 		tap = "jump"
 	# patada voladora si el rival está abajo y cerca — pero no contra un
 	# derribado: re-derribarlo refresca su caída y el bucle no termina nunca; ni
 	# rodando ni recién levantado (gracia de 0,3 s): el bot saltaba el peñasco
 	# en bucle divekickeando a un rival perpetuamente en el suelo y el partido
 	# quedaba clavado (el sim moría a 0 puntos exactamente así)
-	if not on_floor and foe != null and adx < 100.0 and foe.position.y > p.position.y + 40.0 \
+	if not ctx["on_floor"] and foe != null and float(ctx["adx"]) < 100.0 \
+			and foe.position.y > p.position.y + 40.0 \
 			and foe.state != Player.State.KNOCKDOWN and foe.state != Player.State.ROLL \
 			and foe.invuln_time <= 0.0:
 		tap = "attack"
 	# con el arco: tensar mientras el rival está a distancia de flecha
 	# (soltará al acercarse o alejarse → dispara con el tensado completo)
-	if p.weapon_id == "arco" and p.has_sword and foe != null and on_floor \
-			and adx > 100.0 and adx < 620.0:
+	if p.weapon_id == "arco" and p.has_sword and foe != null and ctx["on_floor"] \
+			and float(ctx["adx"]) > 100.0 and float(ctx["adx"]) < 620.0:
 		want["attack"] = true
 		tap = ""
 	# derribado: levantarse (arriba; con un poco de aleatorio, lateral)
@@ -3277,7 +3457,7 @@ func _bot_think(p: Player, delta: float) -> void:
 		if randf() < 0.3:
 			want["up"] = false
 			# rodar ALEJÁNDOSE del rival: hacia él solo re-alimenta la patada voladora
-			want["left" if sd > 0.0 else "right"] = true
+			want["left" if float(ctx["sd"]) > 0.0 else "right"] = true
 	p.bot_held = want
 	if tap != "" and p.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]:
 		p.bot_held[tap] = true

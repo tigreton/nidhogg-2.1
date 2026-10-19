@@ -22,8 +22,14 @@ func _ready() -> void:
 	# (el timer de reloj varía con la carga en headless y desincroniza el RNG)
 	for i in 12:
 		await get_tree().physics_frame
-	game.bot_level = 2        # P2/P4 a NORMAL
-	game.ally_bot_level = 2   # P1/P3 a NORMAL
+	# SIM_LVL=1/2/3 (env): nivel de TODOS los bots, para validar también los
+	# caminos exclusivos de FÁCIL y DIFÍCIL (p.ej. el castigo de windup).
+	var lvl := 2
+	var env := OS.get_environment("SIM_LVL")
+	if env in ["1", "2", "3"]:
+		lvl = int(env)
+	game.bot_level = lvl
+	game.ally_bot_level = lvl
 	for p in game.players:
 		p.is_bot = true
 		p.died.connect(func(_pl): _kills += 1)
@@ -45,7 +51,7 @@ func _ready() -> void:
 
 	var ok: bool = _kills >= 2 and _states.has("RUN") and _states.has("JUMP") \
 			and (_points >= 1 or game.match_over)
-	print("SIM RESULT t=%.1fs kills=%d puntos=%d match_over=%s" % [t / 60.0, _kills, _points, game.match_over])
+	print("SIM RESULT lvl=%d t=%.1fs kills=%d puntos=%d match_over=%s" % [lvl, t / 60.0, _kills, _points, game.match_over])
 	print("SIM states=", _states)
 	print("SIM ", "PASS" if ok else "FAIL")
 	get_tree().quit(0 if ok else 1)
