@@ -3205,32 +3205,64 @@ func _bot_think(p: Player, delta: float) -> void:
 
 ## Memoria de patrones (IA): lo que el rival HACE, no lo que es. Se observa a
 ## TODOS los jugadores cada frame — humanos incluidos: aquí es donde el bot
-## "aprende" tus costumbres. Hoy: con qué altura ataca quien acaba de
-## aterrizar (la parada anticipada no necesita reacción, solo anticipación).
+## "aprende" tus costumbres. Contextos observados: altura de ataque tras
+## aterrizar, tras rodar, altura favorita global y ritmo (cada cuánto ataca).
 ## Vive mientras viva la partida: de una revancha a otra, ya te conoce.
-var _bot_mem := {}   # player_id → {"air", "was_atk", "land_ms", "after_land": {altura → veces}}
+var _bot_mem := {}   # player_id → {"air","was_atk","was_roll","land_ms","roll_end_ms",
+                     #   "last_atk_ms","after_land":{},"after_roll":{},"heights":{},"gaps":[]}
 
 
 func _bot_observe_all() -> void:
 	var now := Time.get_ticks_msec()
 	for q in players:
 		var m: Dictionary = _bot_mem.get_or_add(q.player_id,
-				{"air": false, "was_atk": false, "land_ms": 0, "after_land": {}})
+				{"air": false, "was_atk": false, "was_roll": false, "land_ms": 0,
+				"roll_end_ms": 0, "last_atk_ms": 0,
+				"after_land": {}, "after_roll": {}, "heights": {}, "gaps": []})
 		var air := not q.is_on_floor()
 		if m["air"] and not air:
 			m["land_ms"] = now
 		m["air"] = air
+		var roll: bool = q.state == Player.State.ROLL
+		if m["was_roll"] and not roll:
+			m["roll_end_ms"] = now
+		m["was_roll"] = roll
 		var atk: bool = q.state == Player.State.ATTACK
-		if atk and not m["was_atk"] and now - int(m["land_ms"]) < 700:
-			# ataque en los 0,7 s posteriores al aterrizaje: cuéntalo por altura
-			m["after_land"][q.attack_height] = int(m["after_land"].get(q.attack_height, 0)) + 1
+		if atk and not m["was_atk"]:
+			# ataque nuevo: contarlo en sus contextos y medir el ritmo
+			if now - int(m["land_ms"]) < 700:
+				m["after_land"][q.attack_height] = int(m["after_land"].get(q.attack_height, 0)) + 1
+			if now - int(m["roll_end_ms"]) < 700:
+				m["after_roll"][q.attack_height] = int(m["after_roll"].get(q.attack_height, 0)) + 1
+			m["heights"][q.attack_height] = int(m["heights"].get(q.attack_height, 0)) + 1
+			if int(m["last_atk_ms"]) > 0:
+				var gaps: Array = m["gaps"]
+				gaps.append(float(now - int(m["last_atk_ms"])))
+				if gaps.size() > 8:
+					gaps.pop_front()
+			m["last_atk_ms"] = now
 		m["was_atk"] = atk
 
 
-## Altura que este rival suele atacar al aterrizar, si el patrón es claro
-## (≥3 muestras y mayoría estricta). Sin patrón → -1: nada que anticipar.
-func _bot_after_land_height(foe: Player) -> int:
-	var c: Dictionary = _bot_mem.get(foe.player_id, {}).get("after_land", {})
+## Enfriamiento del lanzamiento (IA): sin esto, el DIFÍCIL detecta una ventana
+## de compromiso cada tick (0,07 s) y desangra el campo de espadas — el sim
+## degradaba a puñetazos y derribos sin muertes (y sin muertes no reaparecen
+## armas). Un lanzamiento cada 3,5 s como mucho: sigue siendo un tiro
+## inteligente, deja de ser una metralleta.
+var _bot_last_throw := {}   # player_id → msec del último lanzamiento real
+
+## Enfriamiento de la finta (IA): la probabilidad es por TICK de decisión y
+## el DIFÍCIL decide cada 0,07 s — sin puerta temporal, finta el 99% de las
+## aproximaciones y dos DIFÍCIL se finton mutuamente para siempre (el sim se
+## rompía a saltos por encima + divekick + derribo). Ocasionales o nada.
+var _bot_feint_until := {}   # player_id → msec hasta el que no se re-finta
+
+
+## Altura preferida de este rival en un contexto dado ("after_land",
+## "after_roll", "heights"), si el patrón es claro (muestras mínimas y mayoría
+## estricta). Sin patrón → -1: nada que anticipar.
+func _bot_pattern_height(foe: Player, key: String, min_samples := 3) -> int:
+	var c: Dictionary = _bot_mem.get(foe.player_id, {}).get(key, {})
 	var best := -1
 	var best_n := 0
 	var total := 0
@@ -3240,9 +3272,26 @@ func _bot_after_land_height(foe: Player) -> int:
 		if n > best_n:
 			best_n = n
 			best = h
-	if total < 3 or best_n * 2 <= total:
+	if total < min_samples or best_n * 2 <= total:
 		return -1
 	return best
+
+
+## ¿Toca ya el siguiente ataque de este rival? Con ≥3 intervalos medidos hay
+## ritmo medio; si desde el último ataque ha pasado más de ese medio más un
+## 20% de margen, el swing está al caer — hora de cubrir su altura favorita.
+func _bot_attack_due(foe: Player) -> bool:
+	var m: Dictionary = _bot_mem.get(foe.player_id, {})
+	var gaps: Array = m.get("gaps", [])
+	if gaps.size() < 3 or int(m.get("last_atk_ms", 0)) <= 0:
+		return false
+	var avg := 0.0
+	for g in gaps:
+		avg += float(g)
+	avg /= float(gaps.size())
+	if avg < 400.0 or avg > 3000.0:
+		return false   # sin ritmo exploitable: spam (<0,4 s) o pasividad (>3 s)
+	return Time.get_ticks_msec() - int(m["last_atk_ms"]) > avg * 1.2 + 120.0
 
 
 ## Percepción: todo lo observable que alimenta la puntuación. Aquí no se
@@ -3278,6 +3327,10 @@ func _bot_perceive(p: Player, foe: Player) -> Dictionary:
 		"foe_windup": foe.attack_windup(),
 		"foe_windup_left": foe.attack_from() - foe.attack_time,
 		"foe_recovery": foe.state == Player.State.ATTACK and foe.attack_time > foe.attack_to(),
+		# terreno (IA): el hielo invalida el juego de pies — frenar cuesta ~4x
+		"on_ice": in_ice(p.position.x),
+		# ¿viene el rival hacia nosotros? (señal para el cebo de la finta)
+		"foe_closing": foe.velocity.x * (p.position.x - foe.position.x) > 60.0,
 	}
 
 
@@ -3305,12 +3358,15 @@ func _bot_scores(p: Player, foe: Player, cfg: Dictionary, ctx: Dictionary) -> Di
 			if ctx["on_floor"] and _bot_near_plat_edge(p):
 				s["jump"] = 0.0
 		_:
-			# duelo: gestión de distancia y estancias
+			# duelo: gestión de distancia y estancias. En hielo el frenado se
+			# alarga ~4x (tarea 69): la banda de "demasiado cerca" se ensancha y
+			# no se salta hacia dentro — el aterrizaje patinaría bajo su hoja.
+			var near: float = 85.0 if ctx["on_ice"] else 55.0
 			if adx > 260.0:
 				s["toward"] = 1.0
-				if ctx["on_floor"] and randf() < 0.05:
+				if ctx["on_floor"] and randf() < (0.0 if ctx["on_ice"] else 0.05):
 					s["jump"] = 0.0
-			elif adx < 55.0:
+			elif adx < near:
 				s["away"] = 1.0
 			elif foe.has_sword and foe.state == Player.State.IDLE and adx < 150.0:
 				# no caminar contra la guardia: atacar o retroceder
@@ -3349,7 +3405,29 @@ func _bot_scores(p: Player, foe: Player, cfg: Dictionary, ctx: Dictionary) -> Di
 					s["low"] = 1.0
 				if randf() < float(cfg["atk"]):
 					s["attack"] = 0.0
-				if p.has_sword and randf() < 0.03:
+				# economía del lanzamiento (IA): la hoja vuela a ~760 px/s y la
+				# desvía cualquier guardia quieta a altura alcanzable — tirarla
+				# a un rival parado es regalar el arma. Un rival COMPROMETIDO
+				# (windup, recuperación, rodada sin gracia, aturdido, patada
+				# voladora) no puede desviar: muere si su altura es alcanzable
+				# y si no, cae derribado. El arco no se lanza nunca: no mata a
+				# ninguna altura, como proyectil es un palo que derriba.
+				var thr := 0.03
+				if p.weapon_id != "arco" \
+						and Time.get_ticks_msec() - int(_bot_last_throw.get(p.player_id, 0)) >= 3500:
+					var k: Array = GameConfig.WEAPONS[p.weapon_id]["thrown_kills"]
+					var vs: String = ["LOW", "MID", "HIGH"][foe.stance]
+					var guard: bool = foe.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]
+					var committed: bool = foe.state in [Player.State.STUNNED, Player.State.DIVEKICK] \
+							or (foe.state == Player.State.ROLL and foe.invuln_time <= 0.0) \
+							or (foe.state == Player.State.ATTACK and not foe.attack_is_active())
+					if committed and adx > 80.0 and adx < 560.0:
+						thr = 0.35 if vs in k else 0.12
+					elif guard and vs in k and adx < 620.0:
+						thr = 0.0
+					elif adx < 160.0:
+						thr = 0.008
+				if p.has_sword and randf() < thr:
 					s["throw"] = 0.0
 	# castigo de la recuperación (IA): la hoja gastada deja al rival indefenso
 	# el resto de la animación. Se planta la estancia de castigo SIEMPRE; el
@@ -3370,10 +3448,46 @@ func _bot_scores(p: Player, foe: Player, cfg: Dictionary, ctx: Dictionary) -> Di
 	# anticipan HIGH y LOW.
 	if String(ctx["role"]) == "duel" and int(cfg["lvl"]) >= 2 \
 			and not foe.is_on_floor() and foe.velocity.y > 0.0 and adx < 240.0:
-		var h := _bot_after_land_height(foe)
+		var h := _bot_pattern_height(foe, "after_land", 3)
 		if h == Player.H.HIGH:
 			s["high"] = maxf(float(s["high"]), 1.2)
 		elif h == Player.H.LOW:
+			s["low"] = maxf(float(s["low"]), 1.2)
+	# finta y cebo (IA): contra el rival PLANTADO en guardia a distancia de
+	# estocada, un paso atrás le invita a lanzar — la hoja pasa corta y el
+	# castigo de recuperación hace el resto. SOLO contra humanos: dos bots
+	# finton mutuamente y el partido degrada a bucle de derribos sin muertes
+	# (el sim DIFÍCIL lo cazó dos veces, con la finta por aproximación y con
+	# la de cebo a tortuga). Contra el arco no se aleja uno (se sale de la
+	# flecha al revés: acercarse), y en hielo el pie no obedece para un paso
+	# quirúrgico.
+	if String(ctx["role"]) == "duel" and int(cfg["lvl"]) >= 2 and ctx["on_floor"] \
+			and not ctx["on_ice"] and foe.has_sword and foe.weapon_id != "arco" \
+			and not foe.is_bot \
+			and foe.state == Player.State.IDLE and not ctx["foe_closing"] \
+			and adx > p.weapon_reach() + 20.0 and adx < p.weapon_reach() + 150.0 \
+			and Time.get_ticks_msec() >= int(_bot_feint_until.get(p.player_id, 0)) \
+			and randf() < (0.35 if int(cfg["lvl"]) >= 3 else 0.18):
+		s["away"] = maxf(float(s["away"]), 1.3)
+		s["attack"] = -1.0   # el cebo es limpio: nada de hojas al aire
+		_bot_feint_until[p.player_id] = Time.get_ticks_msec() + 2500
+	# ritmo (IA): cuando el swing del rival está al caer según SU propio ritmo
+	# medio, la guardia se planta en su altura favorita antes de que exista un
+	# windup que leer.
+	if String(ctx["role"]) == "duel" and int(cfg["lvl"]) >= 2 and _bot_attack_due(foe) \
+			and adx > 55.0 and adx < 300.0:
+		var rh := _bot_pattern_height(foe, "heights", 4)
+		if rh == Player.H.HIGH:
+			s["high"] = maxf(float(s["high"]), 1.1)
+		elif rh == Player.H.LOW:
+			s["low"] = maxf(float(s["low"]), 1.1)
+	# tras rodar (IA): el que rueda suele salir atacando (y sale en LOW, la
+	# estancia de la rodada) — guardia plantada antes del desenlace.
+	if int(cfg["lvl"]) >= 2 and foe.state == Player.State.ROLL and adx < 220.0:
+		var ph := _bot_pattern_height(foe, "after_roll", 3)
+		if ph == Player.H.HIGH:
+			s["high"] = maxf(float(s["high"]), 1.2)
+		elif ph == Player.H.LOW:
 			s["low"] = maxf(float(s["low"]), 1.2)
 	return s
 
@@ -3461,6 +3575,8 @@ func _bot_commit(p: Player, foe: Player, ctx: Dictionary, s: Dictionary) -> void
 	p.bot_held = want
 	if tap != "" and p.state in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]:
 		p.bot_held[tap] = true
+		if tap == "throw":
+			_bot_last_throw[p.player_id] = Time.get_ticks_msec()
 
 
 ## Salto del foso pequeño (sin plataforma): con el salto firme del feel el
