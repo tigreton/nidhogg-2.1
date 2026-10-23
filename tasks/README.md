@@ -145,12 +145,16 @@ por punto).
 > `docs/online-netcode.md`; verificación E2E: `test/online_host.gd` +
 > `test/online_client.gd` (dos procesos).
 
-Las tareas **87–94 son PENDIENTES** (no están aplicadas): salen de la
-revisión profunda tras la fusión del online (2026-10-04) — siete bugs
+Las tareas **87–94 ya están aplicadas** (cerradas el 2026-10-23; salieron de
+la revisión profunda tras la fusión del online, 2026-10-04) — siete bugs
 reales de juego (barra de reaparición fuera de pantalla, reintento del
 arcade en la arena 1, bot ciego al piso superior de la torre, armas de
 P3/P4 en 2v2, tecla P dentro de arcade/copa, pips inflados por retroceso,
-sangre en superficies altas) y una limpieza de código muerto. Las ideas
+sangre en superficies altas) y una limpieza de código muerto. Notas de la
+aplicación: la 89 llegó tras el refactor percibir→puntuar→elegir y vive
+como capa dura `_bot_tower_floor` con su sonda `test/tower_bot_probe`; la
+94 dejó viva la señal `died` (conectada desde la vibración del mando,
+5a1f20a) y solo retiró `WIN_SCORE` y la rama muerta de flechas. Las ideas
 estructurales de esa misma revisión (dividir `game.gd`, orquestador del
 E2E, CI, online v2) viven en `secundarias.md`.
 

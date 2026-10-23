@@ -7,7 +7,7 @@
 > `online-multiplayer` (duelo 1v1 por red, ver `tasks/README.md` y
 > `docs/online-netcode.md`) y la revisión profunda posterior dejó DOS
 > colas: los **bugs de juego** ya están como tareas formales **87–94**
-> (PENDIENTES, en `tasks/`), y las **mejoras estructurales** —ideas que NO
+> (aplicadas el 2026-10-23, en `tasks/`), y las **mejoras estructurales** —ideas que NO
 > caben en una tarea atómica de una sesión— entran abajo. Cuando entre una
 > idea nueva, sigue la guía del final para convertirla en tarea con este
 > formato.
