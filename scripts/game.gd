@@ -1,7 +1,8 @@
 extends Node2D
 ## Juego estilo Nidhogg: duelo de esgrima a un golpe. Quien mata gana el "paso"
 ## y debe correr hasta su meta; el rival reaparece delante para frenarlo.
-## Primero en llegar a WIN_SCORE puntos gana el partido.
+## Primero en llegar a MatchRules.win_score puntos (1/3/5, se elige en el
+## título) gana el partido.
 ## Extras: mapa con alturas (puente alto, casa, torre de rocas), modo caos con
 ## lluvia de rocas (T) y modo 2v2 por equipos (V).
 
@@ -49,7 +50,6 @@ var LADDER_X := 1480.0  # escalera de plataformas: origen del primer peldaño
 var random_arena := false  # arena barajada por puntos (tarea 86, tecla X)
 var _shuffled := false     # el nivel del disco actual viene de un barajado
 const GOAL_W := 130.0
-const WIN_SCORE := 3
 const VIEW_W := 1152.0
 const VIEW_H := 648.0
 const RESPAWN_DELAY := 2.4
@@ -2848,9 +2848,6 @@ func _update_arrows(delta: float) -> void:
 			if absf(p.position.x - a.position.x) > 24.0 or absf(p.position.y - a.position.y) > 34.0:
 				continue
 			var guards: bool = (p.stance == a.height and p.state in [Player.State.IDLE, Player.State.RUN]) or p.attack_is_active()
-			# patada desarmada (tarea 74): el puñetazo activo refleja a cualquier altura
-			if not guards and p.attack_is_active() and not p.has_sword:
-				guards = true
 			if guards:
 				a.vel = Vector2(a.vel.x * -0.85, 0.0)
 				a.bounces += 1
