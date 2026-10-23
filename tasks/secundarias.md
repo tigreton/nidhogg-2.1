@@ -19,12 +19,19 @@
 No son tareas atómicas: cada una necesita su propio plan (o una mini-serie
 de tareas). Se promueven diseñándolas, no copiando la plantilla tal cual.
 
-- **Dividir `game.gd`** (4.068 líneas a 2026-10-23: 4 arenas, 7 modos, HUD,
-  IA y ~600 líneas de sincronización online). Cortes naturales: construcción de
-  arenas/layout, modos de juego (arcade, copa, pantallas), resolución de
-  combate, y sync online (que ya tiene su `net.gd` de apoyo). Riesgo alto
-  de regresión → batería completa (smoke + suites + countdown_probe +
-  E2E online) tras cada corte, un commit por corte.
+- ~~**Dividir `game.gd`**~~ — **HECHO (2026-10-23), 7 cortes**: 4.068 →
+  1.371 líneas. Cortes ejecutados en orden de desacoplamiento, un commit
+  cada uno con batería completa verde (smoke + suites + sondas + sims
+  exactos + E2E online): (1) las 11 clases internas → `scripts/entities/`;
+  (2) construcción de arenas → `arena_builder.gd`; (3) HUD → `hud.gd`;
+  (4) IA completa con su memoria → `bot_brain.gd` (las tareas de IA futuras
+  caen ahí: game.gd ya no crece con la IA); (5) modos → `modes.gd`;
+  (6) resolución de combate → `combat.gd`; (7) sync online → `net_sync.gd`
+  como NODO hijo (los @rpc van por ruta de nodo). Regla que lo hizo seguro:
+  el estado y la superficie pública siguen en game (`game.PIT_X0`,
+  `game.scores`...), los módulos lo tocan con `host.` y game delega con los
+  nombres originales — ni un test se tocó. Mapa completo en
+  `docs/ARQUITECTURA.md`.
 - ~~**Orquestador del E2E online**~~ — **HECHO (2026-10-23)**:
   `tools/online_e2e.sh` copia el proyecto a dos carpetas (excludes de lo
   pesado), importa recursos en cada una (caché `.godot` propia), lanza
