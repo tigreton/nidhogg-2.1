@@ -1,0 +1,116 @@
+name: CI
+
+# Batería headless completa en cada push/PR (secundarias.md: "CI headless").
+# La batería ya era determinista y headless; este arnés solo la ejecuta.
+# Job 1: smoke + suites + feel + sondas (countdown/p2-drift/pad/torre) + sims
+#        por nivel (FACIL/NORMAL/DIFICIL).
+# Job 2: pareja online host+cliente por ENet en localhost vía el orquestador
+#        tools/online_e2e.sh (copia el proyecto a dos carpetas e importa en
+#        cada una — no depende de la caché de este checkout).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VER: 4.6.2
+  # mismo binario que en dev (Desktop), variante linux x86_64 del release oficial
+  GODOT_URL: https://github.com/godotengine/godot/releases/download/4.6.2-stable/Godot_v4.6.2-stable_linux.x86_64.zip
+  GODOT: godot/Godot_v4.6.2-stable_linux.x86_64
+
+jobs:
+  bateria:
+    name: Batería headless (smoke, suites, feel, sondas, sims)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Caché del binario de Godot
+        uses: actions/cache@v4
+        with:
+          path: godot
+          key: godot-4.6.2-linux-x86_64
+
+      - name: Descargar Godot 4.6.2 si no está en caché
+        run: |
+          if [ ! -x "$GODOT" ]; then
+            mkdir -p godot
+            curl -fsSL -o /tmp/godot.zip "$GODOT_URL"
+            unzip -o /tmp/godot.zip -d godot
+            chmod +x "$GODOT"
+          fi
+          "$GODOT" --version
+
+      - name: Caché de importación (.godot/imported)
+        uses: actions/cache@v4
+        with:
+          path: .godot/imported
+          key: import-${{ runner.os }}-${{ hashFiles('art/**') }}
+          restore-keys: import-${{ runner.os }}-
+
+      - name: Importar recursos
+        run: '"$GODOT" --headless --path . --import'
+
+      - name: Smoke (~110 mecánicas)
+        run: bash .github/run_test.sh smoke_test "SMOKE OK"
+
+      - name: Suites (17 tests movimiento+combate)
+        run: bash .github/run_test.sh test_runner "ALL PASSED (17)"
+
+      - name: Feel de control
+        run: bash .github/run_test.sh feel_check "ALL PASSED (0 fallos)"
+
+      - name: Sonda cuenta atrás
+        run: 'bash .github/run_test.sh countdown_probe "RESULT: ALL OK"'
+
+      - name: Sonda deriva P2 sin input
+        run: 'bash .github/run_test.sh p2_drift_probe "PASS: P2 quieto"'
+
+      - name: Sonda mandos (35 comprobaciones)
+        run: bash .github/run_test.sh pad_probe "PAD OK"
+
+      - name: Sonda bot en la torre (arena 3)
+        run: bash .github/run_test.sh tower_bot_probe "TOWER BOT OK"
+
+      - name: Sim FACIL (SIM_LVL=1)
+        run: SIM_LVL=1 bash .github/run_test.sh sim_match "SIM PASS"
+
+      - name: Sim NORMAL (SIM_LVL=2)
+        run: SIM_LVL=2 bash .github/run_test.sh sim_match "SIM PASS"
+
+      - name: Sim DIFICIL (SIM_LVL=3)
+        run: SIM_LVL=3 bash .github/run_test.sh sim_match "SIM PASS"
+
+  online-e2e:
+    name: E2E online (host+cliente ENet en localhost)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Caché del binario de Godot
+        uses: actions/cache@v4
+        with:
+          path: godot
+          key: godot-4.6.2-linux-x86_64
+
+      - name: Descargar Godot 4.6.2 si no está en caché
+        run: |
+          if [ ! -x "$GODOT" ]; then
+            mkdir -p godot
+            curl -fsSL -o /tmp/godot.zip "$GODOT_URL"
+            unzip -o /tmp/godot.zip -d godot
+            chmod +x "$GODOT"
+          fi
+          "$GODOT" --version
+
+      # el orquestador hace sus propias copias + import; este checkout no
+      # necesita caché de recursos
+      - name: Pareja online (tools/online_e2e.sh)
+        run: GODOT="$PWD/$GODOT" bash tools/online_e2e.sh
