@@ -2,7 +2,9 @@ extends SceneTree
 ## E2E online — CLIENTE. Conecta al host, monta la partida y "juega" con P2
 ## (corre a la izquierda y ataca cada 0,5 s). Verifica que llegan snapshots,
 ## que su predicción de P2 sigue al host y que ve las mismas bajas.
-##   godot --headless --path . --script test/online_client.gd
+##   godot --headless --path . --script test/online_client.gd -- --ip=127.0.0.1 --port=24575
+## (--ip/--port opcionales: sin ellos, 127.0.0.1 y Net.DEFAULT_PORT; los
+## argumentos tras "--" son user args, ver OS.get_cmdline_user_args()).
 ## Net se rescata por ruta (el script de entrada se parsea antes que autoloads).
 ## Código de salida: 0 OK, 1 FALLO.
 
@@ -28,10 +30,13 @@ func _initialize() -> void:
 
 func _try_start() -> bool:
 	var ip := "127.0.0.1"
+	var port := 0
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--ip="):
 			ip = a.trim_prefix("--ip=")
-	var err: int = net.join(ip)
+		elif a.begins_with("--port="):
+			port = int(a.trim_prefix("--port="))
+	var err: int = net.join(ip, port if port > 0 else net.DEFAULT_PORT)
 	if err == ERR_UNAVAILABLE:
 		return false   # la API multiplayer tarda un frame: reintentar
 	if err != OK:

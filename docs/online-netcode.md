@@ -77,27 +77,45 @@ después: llega a 0 y se queda).
 
 ## E2E automatizado (test/online_host.gd + test/online_client.gd)
 
-Dos procesos Godot headless jugando de verdad por ENet en 127.0.0.1:24565.
-Cada lado "pulsa" teclas con `Input.action_press` (correr, ataque rítmico,
-saltar fosos/muros como el bot) y verifica lo suyo:
+Dos procesos Godot headless jugando de verdad por ENet en 127.0.0.1. Cada lado
+"pulsa" teclas con `Input.action_press` (correr, ataque rítmico, saltar
+fosos/muros como el bot) y verifica lo suyo.
+
+### Forma canónica: el orquestador (un solo comando)
 
 ```bash
-# ojo: dos instancias del MISMO directorio pisan la caché de .godot y la
-# segunda puede no ver su script ("File not found"). Se lanza cada una desde
-# su propia copia del proyecto:
-cp -r nidhogg-online nidhogg-online-client && rm -rf nidhogg-online-client/.git
-cd nidhogg-online && godot --headless --path . --audio-driver Dummy \
-    --script test/online_host.gd > /tmp/host.log 2>&1 &
+tools/online_e2e.sh          # o: GODOT=/ruta/a/godot tools/online_e2e.sh
+```
+
+El orquestador (ítem "Orquestador del E2E online" de `tasks/secundarias.md`)
+hace TODO el procedimiento por ti: copia el proyecto a dos carpetas temporales
+(sin `.git`/`art_raw`/`media`/`build`/`screens`/`.godot`, ~15 MB por copia —
+dos instancias del MISMO directorio pisan la caché de `.godot` y la segunda
+puede no ver su script, "File not found"), importa los recursos en cada copia,
+lanza el host en segundo plano, espera 6 s, lanza el cliente, y reporta los
+dos `RESULT` con un exit code agregado (0 = ambos OK). Opciones: `--port N`
+(por defecto 24575, para no pisar el 24565 de una partida de desarrollo),
+`--ip IP`, `--keep` (conserva copias y logs para depurar). Ambos scripts de
+test aceptan `--port=` como user arg (tras `--`; el cliente también `--ip=`).
+
+Resultado de la última ejecución del orquestador (2026-10-23):
+
+```
+HOST_RESULT:   OK — cliente_listo=true p1_movio=true p2_movio=true bajas=2 score=[0, 0]
+CLIENT_RESULT: OK — snapshots=true deriva_max=69px bajas_vistas=3 score=[0, 0]
+E2E ONLINE: OK (host rc=0, cliente rc=0)
+```
+
+### Forma manual (fallback / depuración a mano)
+
+```bash
+# cada instancia desde su propia copia del proyecto (ver aviso arriba):
+cp -r nidhogg nidhogg-client && rm -rf nidhogg-client/.git
+cd nidhogg && godot --headless --path . --audio-driver Dummy \
+    --script test/online_host.gd -- --port=24575 > /tmp/host.log 2>&1 &
 sleep 6
-cd ../nidhogg-online-client && godot --headless --path . --audio-driver Dummy \
-    --script test/online_client.gd > /tmp/client.log 2>&1
-```
-
-Resultado de la última ejecución (2026-10-04, ya sobre main fusionado):
-
-```
-HOST_RESULT:   OK — cliente_listo=true p1_movio=true p2_movio=true bajas=7 score=[1, 0]
-CLIENT_RESULT: OK — snapshots=true deriva_max=74px bajas_vistas=14 score=[1, 0]
+cd ../nidhogg-client && godot --headless --path . --audio-driver Dummy \
+    --script test/online_client.gd -- --ip=127.0.0.1 --port=24575 > /tmp/client.log 2>&1
 ```
 
 Es decir: handshake, cuenta atrás, duelo con bajas y reapariciones,

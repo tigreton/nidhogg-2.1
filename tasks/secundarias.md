@@ -14,22 +14,24 @@
 
 ---
 
-## Estructural (revisión post-fusión, 2026-10-04) — PENDIENTE
+## Estructural (revisión post-fusión, 2026-10-04) — EN CURSO
 
 No son tareas atómicas: cada una necesita su propio plan (o una mini-serie
-de tareas). Se promocionan diseñándolas, no copiando la plantilla tal cual.
+de tareas). Se promueven diseñándolas, no copiando la plantilla tal cual.
 
-- **Dividir `game.gd`** (~3.700 líneas: 4 arenas, 7 modos, HUD y ~600
-  líneas de sincronización online). Cortes naturales: construcción de
+- **Dividir `game.gd`** (4.068 líneas a 2026-10-23: 4 arenas, 7 modos, HUD,
+  IA y ~600 líneas de sincronización online). Cortes naturales: construcción de
   arenas/layout, modos de juego (arcade, copa, pantallas), resolución de
   combate, y sync online (que ya tiene su `net.gd` de apoyo). Riesgo alto
   de regresión → batería completa (smoke + suites + countdown_probe +
   E2E online) tras cada corte, un commit por corte.
-- **Orquestador del E2E online**: script (`.ps1`/`.sh`) que copia el
-  proyecto a dos carpetas, lanza `online_host.gd` + `online_client.gd`
-  headless contra `127.0.0.1` y reporta los dos `RESULT`. Hoy el flujo es
-  manual (documentado en `docs/online-netcode.md`); con el script se
-  podría colgar de la batería normal.
+- ~~**Orquestador del E2E online**~~ — **HECHO (2026-10-23)**:
+  `tools/online_e2e.sh` copia el proyecto a dos carpetas (excludes de lo
+  pesado), importa recursos en cada una (caché `.godot` propia), lanza
+  host+cliente headless con puerto configurable (`--port`, por defecto 24575
+  para no pisar el 24565 de dev) y reporta los dos `RESULT` con exit code
+  agregado. Los scripts `test/online_*.gd` aceptan `--port=` (y `--ip=`) como
+  user args. `docs/online-netcode.md` documenta el comando canónico.
 - **CI headless**: workflow (GitHub Actions o similar) que ejecute smoke,
   suites, `countdown_probe` y el sim en cada push con Godot 4.6 headless.
   La batería ya es determinista y headless: solo falta el arnés.

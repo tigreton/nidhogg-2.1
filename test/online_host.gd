@@ -2,7 +2,9 @@ extends SceneTree
 ## E2E online — HOST. Lanza el servidor, monta la partida y "juega" con P1
 ## (corre a la derecha y ataca cada 0,5 s). Verifica que el input del cliente
 ## mueve a P2, que hay bajas y que la partida avanza de verdad.
-##   godot --headless --path . --script test/online_host.gd
+##   godot --headless --path . --script test/online_host.gd -- --port=24575
+## (el puerto es opcional: sin --port usa Net.DEFAULT_PORT; los argumentos
+## tras "--" son user args, ver OS.get_cmdline_user_args()).
 ## Nota: el script de entrada se parsea antes que los autoloads, así que Net
 ## se rescata por ruta (/root/Net), nunca por identificador global.
 ## Código de salida: 0 OK, 1 FALLO.
@@ -26,15 +28,20 @@ func _initialize() -> void:
 func _try_start() -> bool:
 	# la API multiplayer puede tardar un frame en existir: reintenta hasta que
 	# host() devuelva algo distinto de ERR_UNAVAILABLE
-	var err: int = net.host()
+	var port := 0
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--port="):
+			port = int(a.trim_prefix("--port="))
+	var use_port: int = port if port > 0 else net.DEFAULT_PORT
+	var err: int = net.host(use_port)
 	if err == ERR_UNAVAILABLE:
 		return false
 	if err != OK:
-		print("HOST_RESULT: FALLO — no se pudo abrir el puerto %d (err=%d)" % [net.DEFAULT_PORT, err])
+		print("HOST_RESULT: FALLO — no se pudo abrir el puerto %d (err=%d)" % [use_port, err])
 		quit(1)
 		return true
 	_started = true
-	print("HOST: servidor ENet escuchando en el puerto %d (is_host=%s)" % [net.DEFAULT_PORT, net.is_host()])
+	print("HOST: servidor ENet escuchando en el puerto %d (is_host=%s)" % [use_port, net.is_host()])
 	game = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(game)
 	print("HOST: partida montada, esperando handshake del cliente...")
