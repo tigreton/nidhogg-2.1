@@ -9,12 +9,43 @@ versión simple pero sólida.
 
 **ENet host-cliente (listen server).** El anfitrión es P1 (Nacho) y ejecuta la
 simulación autoritativa completa; el cliente es P2 (Rodrigo). Sin servidor
-dedicado, sin NAT traversal: IP directa o LAN, puerto **24565**.
+dedicado, puerto **24565** (UDP). Para jugar más allá de la LAN ver
+§ *Jugar por Internet* más abajo.
 
 Decisión: es el modelo con menos infraestructura y encaja con el código
 existente (toda la resolución de combate ya vive en `game.gd`). Un lockstep
 determinista se descartó porque el código usa `randf()` en caminos del gameplay
 (sangre, cadáveres) y la física por floats no es portable entre plataformas.
+
+## Jugar por Internet (NAT, online v2)
+
+Por LAN siempre funciona (IP directa). Para jugar por Internet, del más al
+menos cómodo:
+
+1. **UPnP automático (lo normal).** Al crear partida, `Net.host()` intenta
+   mapear el 24565/UDP en el router con UPnP/IGD (timeout 2 s, silencioso).
+   Si lo logra, el título muestra la IP pública con la nota *"UPnP ya abrió
+   el puerto"*: se la pasas al rival y a jugar. Al cerrar (`Net.shutdown()`)
+   el mapeo se elimina. En headless (tests/CI) no se intenta.
+2. **Port-forwarding manual.** Si el router no tiene UPnP (o está apagado),
+   abre el **24565/UDP** apuntando a la IP local de tu PC y pásale al rival
+   tu IP pública (el título la muestra si UPnP la descubrió; si no,
+   cuál-es-mi-ip en el navegador). Receta genérica:
+   - Entra en la administración del router (suele ser `192.168.0.1` o
+     `192.168.1.1`; a veces `10.0.0.1`) y busca *Port Forwarding* /
+     *Virtual Server* / *Abrir puertos*.
+   - Regla: puerto externo **24565**, protocolo **UDP**, IP interna = la
+     IP local de tu PC (la que muestra el título al crear partida),
+     puerto interno 24565.
+   - Deja el protocolo en UDP solo (ENet no usa TCP aquí).
+3. **Diagnóstico rápido si no conecta**: ¿ambos ven la misma versión? ¿el
+   host dio la IP pública y no la local? ¿el rival escribió la IP sin
+   espacios? ¿el firewall del anfitrión permite a Godot por UDP? El error
+   típico es dar una IP `192.168.x.x` a alguien que está en otra red.
+
+Un **relay** (servidor de retransmisión para jugar sin abrir nada) queda
+fuera de v2: exige hospedar y mantener infraestructura; decisión pendiente
+para otro día.
 
 ## Autoridad y sincronización
 
@@ -142,4 +173,6 @@ del cliente se mantiene < 100 px durante el juego estable.
 - Predicción del rival / interpolación con buffer de 2 snapshots reales
   (ahora es suavizado exponencial hacia el último snapshot).
 - Reenvío de input con número de secuencia + reconciliación con rebobinado.
-- NAT punch / relay para jugar sin IP pública.
+- ~~NAT punch / relay para jugar sin IP pública.~~ UPnP automático y guía de
+  port-forwarding: HECHO (§ *Jugar por Internet*). El relay queda pendiente
+  de una decisión de hosting (exige infraestructura que alguien mantenga).
