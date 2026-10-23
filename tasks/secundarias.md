@@ -39,13 +39,26 @@ de tareas). Se promueven diseñándolas, no copiando la plantilla tal cual.
   para no pisar el 24565 de dev) y reporta los dos `RESULT` con exit code
   agregado. Los scripts `test/online_*.gd` aceptan `--port=` (y `--ip=`) como
   user args. `docs/online-netcode.md` documenta el comando canónico.
-- **CI headless**: workflow (GitHub Actions o similar) que ejecute smoke,
-  suites, `countdown_probe` y el sim en cada push con Godot 4.6 headless.
-  La batería ya es determinista y headless: solo falta el arnés.
-- **Online v2**: NAT traversal o al menos una guía de port-forwarding del
-  puerto 24565 (`docs/online-netcode.md` hoy asume IP directa/LAN);
-  considerar retransmisión (relay) si se quieren partidas abiertas por
-  Internet sin abrir puertos.
+- **CI headless**: **LISTO, pendiente de push** (2026-10-23):
+  `.github/workflows/ci.yml` (jobs `bateria` + `online-e2e` en ubuntu con
+  Godot 4.6.2 linux descargado del release oficial y cacheado) +
+  `.github/run_test.sh` (corre un test y exige exit 0 Y su línea de
+  aprobación; sirve también en local con `GODOT=<binario>`). El push
+  inicial está bloqueado porque el token gh del equipo no tiene scope
+  `workflow` (hace falta `gh auth refresh -s workflow`, interactivo, o
+  subirlo a mano). Validación sustituta hecha en WSL Debian con el mismo
+  binario linux que usaría CI: batería completa verde.
+- ~~**Online v2**~~ — **HECHO (2026-10-23), sin infraestructura**: UPnP
+  automático del 24565/UDP al crear partida (silencioso, saltado en
+  headless, mapeo liberado al cerrar) + IP pública en el menú del
+  anfitrión; guía de port-forwarding en `docs/online-netcode.md`
+  (§ *Jugar por Internet*, con diagnóstico de fallos típicos); netcode
+  endurecido (input con número de secuencia contra el canal no fiable
+  desordenado + marioneta interpolando entre los 2 últimos snapshots con
+  uno de retraso); y E2E bajo red mala (`tools/netem_proxy.py` +
+  `tools/online_e2e.sh --latency N`): verde a 80 y 150 ms de RTT con
+  0,5 % de pérdida. El **relay** queda explícitamente fuera: exige
+  hospedar y mantener infraestructura (decisión de otro día).
 
 ---
 
