@@ -391,7 +391,7 @@ func _kill(def: Player, atk: Player) -> void:
 			var d2 := signf(def.position.x - atk.position.x)
 			if d2 != 0.0:
 				dir = d2
-		host.ev_kill.rpc(def.player_id, atk.player_id if atk != null else 0, def.position.x, def.position.y, dir)
+		host.net_sync.ev_kill.rpc(def.player_id, atk.player_id if atk != null else 0, def.position.x, def.position.y, dir)
 	host._burst(def.position, def.color, 34, 440.0)
 	host._add_blood(def.position, def.color)
 	if def.has_sword:
@@ -470,7 +470,7 @@ func _respawn(p: Player) -> void:
 	p.revive(pos, face)
 	host.sfx(pos, "respawn", -12.0)
 	if Net.is_host() and Net.client_ready:
-		host.ev_respawn.rpc(p.player_id, pos.x, pos.y, face, p.weapon_id)
+		host.net_sync.ev_respawn.rpc(p.player_id, pos.x, pos.y, face, p.weapon_id)
 
 
 func _next_weapon(p: Player) -> String:
