@@ -34,6 +34,7 @@ var cel_col := Color(0.14, 0.13, 0.20)
 var cel_detail := Color(0.10, 0.09, 0.15)
 var arena_id := 0
 var arena: ArenaBuilder   # construcción de arenas (corte 2/7)
+var hud: Hud               # HUD y mensajes (corte 3/7)
 var level_root: Node2D
 var parallax_bg: ParallaxBackground
 var bg_tint_far := Color(0.7, 0.72, 0.9)
@@ -221,6 +222,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_setup_input()
 	arena = ArenaBuilder.new(self)
+	hud = Hud.new(self)
 	level_root = Node2D.new()
 	# la raíz del juego es ALWAYS (para leer ESC con el árbol en pausa), así que
 	# los hijos heredarían ALWAYS: el escenario y su decoración animada (humo,
@@ -787,150 +789,46 @@ func _build_camera() -> void:
 	camera.make_current()
 
 
+# --- HUD: la construcción y actualización viven en scripts/hud.gd (corte 3/7)
+# los nodos del HUD siguen siendo miembros de game (los tests los leen);
+# delegados finos para no cambiar ni una llamada externa.
+
 func _build_hud() -> void:
-	var cl := CanvasLayer.new()
-	cl.layer = 10
-	add_child(cl)
-
-	var l1 := Label.new()
-	l1.text = "P1  0  »"
-	l1.position = Vector2(28, 16)
-	l1.add_theme_font_size_override("font_size", 40)
-	l1.add_theme_color_override("font_color", P1_COLOR)
-	l1.add_theme_color_override("font_outline_color", Color.BLACK)
-	l1.add_theme_constant_override("outline_size", 10)
-	cl.add_child(l1)
-	score_labels.append(l1)
-
-	var l2 := Label.new()
-	l2.text = "«  0  P2"
-	l2.position = Vector2(VIEW_W - 340.0, 16)
-	l2.size = Vector2(312, 60)
-	l2.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	l2.add_theme_font_size_override("font_size", 40)
-	l2.add_theme_color_override("font_color", P2_COLOR)
-	l2.add_theme_color_override("font_outline_color", Color.BLACK)
-	l2.add_theme_constant_override("outline_size", 10)
-	cl.add_child(l2)
-	score_labels.append(l2)
-
-	msg_label = Label.new()
-	msg_label.position = Vector2(0, VIEW_H * 0.26)
-	msg_label.size = Vector2(VIEW_W, 130)
-	msg_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	msg_label.add_theme_font_size_override("font_size", 76)
-	msg_label.add_theme_color_override("font_color", Color.WHITE)
-	msg_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	msg_label.add_theme_constant_override("outline_size", 14)
-	msg_label.modulate.a = 0.0
-	cl.add_child(msg_label)
-
-	var hint := Label.new()
-	hint.text = "P1: A/D mover · W saltar/arriba · S agachar · F atacar · G lanzar    P2: ←/→ · ↑ · ↓ · K atacar · L lanzar    R: revancha\nB: bot P2 · H: aliado P3 · N: bot vs bot · V: 2v2 · T: lluvia de rocas · C: cambiar arena · X: arena barajada · M: música\nMando P1 (0) / P2 (1): stick o cruceta · A saltar · X atacar · B lanzar    solo P1: START revancha · SELECT pausa · L1 arena · R1 música"
-	hint.position = Vector2(22, VIEW_H - 80)
-	hint.add_theme_font_size_override("font_size", 14)
-	hint.add_theme_color_override("font_color", Color(0.62, 0.60, 0.72))
-	cl.add_child(hint)
-	hint_label = hint
-
-	run_label = Label.new()
-	run_label.position = Vector2(0, 64)
-	run_label.size = Vector2(VIEW_W, 44)
-	run_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	run_label.add_theme_font_size_override("font_size", 30)
-	run_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	run_label.add_theme_constant_override("outline_size", 8)
-	run_label.visible = false
-	cl.add_child(run_label)
-
-	dim = ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
-	dim.size = Vector2(VIEW_W, VIEW_H)
-	dim.visible = false
-	cl.add_child(dim)
-
-	pause_label = Label.new()
-	pause_label.text = "PAUSA"
-	pause_label.position = Vector2(0, VIEW_H * 0.4)
-	pause_label.size = Vector2(VIEW_W, 80)
-	pause_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pause_label.add_theme_font_size_override("font_size", 64)
-	pause_label.add_theme_color_override("font_color", Color.WHITE)
-	pause_label.visible = false
-	cl.add_child(pause_label)
-
-	stats_label = Label.new()
-	stats_label.position = Vector2(0, VIEW_H * 0.40)
-	stats_label.size = Vector2(VIEW_W, 190)
-	stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stats_label.add_theme_font_size_override("font_size", 22)
-	stats_label.add_theme_color_override("font_color", Color(0.85, 0.83, 0.90))
-	stats_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	stats_label.add_theme_constant_override("outline_size", 6)
-	stats_label.visible = false
-	cl.add_child(stats_label)
-
-	pips_row = Node2D.new()
-	pips_row.position = Vector2(VIEW_W * 0.5 - 2.0 * 44.0 + 16.0, 36.0)
-	pips_row.visible = false
-	cl.add_child(pips_row)
-	pips.clear()
-	for k in SECTION_COUNT:
-		var pip := Pip.new()
-		pip.position = Vector2(44.0 * float(k), 0.0)
-		pips_row.add_child(pip)
-		pips.append(pip)
-
-	respawn_bar = RespawnBar.new()
-	respawn_bar.visible = false
-	respawn_bar.z_index = 40
-	cl.add_child(respawn_bar)
-
-	fight_label = Label.new()
-	fight_label.text = "¡FIGHT!"
-	fight_label.position = Vector2(0, VIEW_H * 0.30)
-	fight_label.size = Vector2(VIEW_W, 110)
-	fight_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fight_label.add_theme_font_size_override("font_size", 88)
-	fight_label.add_theme_color_override("font_color", Color.WHITE)
-	fight_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	fight_label.add_theme_constant_override("outline_size", 16)
-	fight_label.pivot_offset = Vector2(VIEW_W * 0.5, 55.0)
-	fight_label.visible = false
-	cl.add_child(fight_label)
-
-	_apply_pixel_font(cl)
-
-	# flecha grande del derecho de avance (tarea 65)
-	step_arrow = TextureRect.new()
-	step_arrow.texture = ArtPack.tex("arrow_neutral")
-	step_arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	step_arrow.pivot_offset = Vector2(32.0, 21.0)
-	step_arrow.position = Vector2(VIEW_W * 0.5 - 32.0, 108.0)
-	step_arrow.modulate.a = 0.0
-	cl.add_child(step_arrow)
-
-
-## Fuente pixel opcional (tarea 64): si existe res://art/fonts/pixel.ttf se
-## aplica a todos los Labels del HUD; si no, todo queda con la fuente por defecto.
-const FONT_PATH := "res://art/fonts/pixel.ttf"
+	hud._build_hud()
 
 
 func _apply_pixel_font(root: Node) -> void:
-	if not ResourceLoader.exists(FONT_PATH):
-		return
-	var f: FontFile = load(FONT_PATH)
-	for n in _all_labels(root):
-		n.add_theme_font_override("font", f)
+	hud._apply_pixel_font(root)
 
 
 func _all_labels(node: Node) -> Array[Label]:
-	var out: Array[Label] = []
-	for c in node.get_children():
-		if c is Label:
-			out.append(c)
-		out.append_array(_all_labels(c))
-	return out
+	return hud._all_labels(node)
+
+
+func show_msg(text: String, dur: float) -> void:
+	hud.show_msg(text, dur)
+	if Net.is_host() and Net.client_ready:
+		ev_msg.rpc(text, dur)
+
+
+func _show_fight() -> void:
+	hud._show_fight()
+
+
+func _show_step_arrow(p: Player) -> void:
+	hud._show_step_arrow(p)
+
+
+func _update_hud() -> void:
+	hud._update_hud()
+
+
+func _update_pips() -> void:
+	hud._update_pips()
+
+
+func _update_respawn_bar() -> void:
+	hud._update_respawn_bar()
 
 
 func _start_round() -> void:
@@ -987,47 +885,6 @@ func _start_round() -> void:
 			await get_tree().create_timer(COUNTDOWN_STEP).timeout
 
 
-func show_msg(text: String, dur: float) -> void:
-	msg_label.text = text
-	msg_label.modulate.a = 1.0
-	if msg_tween:
-		msg_tween.kill()
-	msg_tween = msg_label.create_tween()
-	msg_tween.tween_interval(dur)
-	msg_tween.tween_property(msg_label, "modulate:a", 0.0, 0.4)
-	if Net.is_host() and Net.client_ready:
-		ev_msg.rpc(text, dur)
-
-
-func _show_fight() -> void:
-	sfx(Vector2(LEVEL_W * 0.5, 300.0), "fight", -4.0)
-	fight_label.visible = true
-	fight_label.modulate.a = 1.0
-	fight_label.scale = Vector2(1.7, 1.7)
-	if fight_tween:
-		fight_tween.kill()
-	fight_tween = fight_label.create_tween()
-	fight_tween.tween_property(fight_label, "scale", Vector2.ONE, 0.22)
-	fight_tween.tween_interval(0.45)
-	fight_tween.tween_property(fight_label, "modulate:a", 0.0, 0.3)
-	fight_tween.tween_callback(func(): fight_label.visible = false)
-
-
-func _show_step_arrow(p: Player) -> void:
-	# flecha grande del derecho de avance (tarea 65): color del verdugo, hacia su meta
-	if step_arrow == null:
-		return
-	step_arrow.flip_h = p.goal_dir < 0
-	step_arrow.modulate = Color(p.color.r, p.color.g, p.color.b, 0.0)
-	step_arrow.scale = Vector2(2.6, 2.6)
-	if step_arrow_tween:
-		step_arrow_tween.kill()
-	step_arrow_tween = step_arrow.create_tween()
-	step_arrow_tween.tween_property(step_arrow, "modulate:a", 1.0, 0.12)
-	step_arrow_tween.tween_interval(0.9)
-	step_arrow_tween.tween_property(step_arrow, "modulate:a", 0.0, 0.3)
-
-
 func _hitstop(dur: float) -> void:
 	if Net.active():
 		return   # pausar el árbol solo en un lado desincronizaría la predicción
@@ -1046,47 +903,6 @@ func _slowmo(scale: float, real_dur: float) -> void:
 	Engine.time_scale = scale
 	get_tree().create_timer(real_dur, true, false, true).timeout.connect(func():
 		Engine.time_scale = 1.0)
-
-
-func _update_hud() -> void:
-	if mode_2v2:
-		score_labels[0].text = "P1·P3  %d  »" % scores[0]
-		score_labels[1].text = "«  %d  P2·P4" % scores[1]
-	else:
-		score_labels[0].text = "P1  %d  »" % scores[0]
-		score_labels[1].text = "«  %d  P2" % scores[1]
-	_update_pips()
-
-
-func _update_pips() -> void:
-	pips_row.visible = sections_mode
-	if not sections_mode:
-		return
-	for k in SECTION_COUNT:
-		var fill := Color(0, 0, 0, 0)
-		var edge := Color(0.65, 0.63, 0.72)
-		if k < 3 and sect_conquered[1] >= 3 - k:
-			fill = P2_COLOR
-			edge = P2_COLOR
-		elif k > 3 and sect_conquered[0] >= k - 3:
-			fill = P1_COLOR
-			edge = P1_COLOR
-		pips[k].fill_col = fill
-		pips[k].edge_col = edge
-		pips[k].queue_redraw()
-
-
-func _update_respawn_bar() -> void:
-	var shown := false
-	for i in players.size():
-		if respawn_timers[i] > 0.0:
-			var p := players[i]
-			respawn_bar.position = _respawn_pos(p) + Vector2(0, -96)
-			respawn_bar.col = p.color
-			respawn_bar.frac = respawn_timers[i] / RESPAWN_DELAY
-			shown = true
-			break
-	respawn_bar.visible = shown
 
 
 func _burst(pos: Vector2, col: Color, amount := 24, speed := 380.0) -> void:
