@@ -36,6 +36,7 @@ var arena_id := 0
 var arena: ArenaBuilder   # construcción de arenas (corte 2/7)
 var hud: Hud               # HUD y mensajes (corte 3/7)
 var bots: BotBrain         # IA de los duelistas (corte 4/7)
+var modes: Modes           # modos de juego (corte 5/7)
 var level_root: Node2D
 var parallax_bg: ParallaxBackground
 var bg_tint_far := Color(0.7, 0.72, 0.9)
@@ -225,6 +226,7 @@ func _ready() -> void:
 	arena = ArenaBuilder.new(self)
 	hud = Hud.new(self)
 	bots = BotBrain.new(self)
+	modes = Modes.new(self)
 	level_root = Node2D.new()
 	# la raíz del juego es ALWAYS (para leer ESC con el árbol en pausa), así que
 	# los hijos heredarían ALWAYS: el escenario y su decoración animada (humo,
@@ -514,268 +516,39 @@ func _build_players() -> void:
 		p.process_mode = Node.PROCESS_MODE_PAUSABLE
 
 
+# --- modos: la lógica vive en scripts/modes.gd (corte 5/7); el estado de
+# los modos sigue siendo de game. Delegados para teclas, tests y el tick:
+
 func set_mode_2v2(on: bool) -> void:
-	if on == mode_2v2:
-		return
-	mode_2v2 = on
-	if on:
-		var ps := preload("res://scenes/player.tscn")
-		var p3 := ps.instantiate() as Player
-		p3.player_id = 3
-		p3.color = P3_COLOR
-		p3.goal_dir = 1
-		p3.is_bot = true
-		add_child(p3)
-		players.append(p3)
-		var p4 := ps.instantiate() as Player
-		p4.player_id = 4
-		p4.color = P4_COLOR
-		p4.goal_dir = -1
-		p4.is_bot = true
-		add_child(p4)
-		players.append(p4)
-		for p in [p3, p4]:
-			p.threw_sword.connect(_on_threw_sword)
-			p.fired_arrow.connect(_on_fired_arrow)
-			p.died.connect(_on_died_pad)
-			p.process_mode = Node.PROCESS_MODE_PAUSABLE
-		ally_bot_level = 2
-	else:
-		for i in [3, 2]:
-			if players.size() > i:
-				players[i].queue_free()
-				players.remove_at(i)
-	for s in projectiles:
-		s.queue_free()
-	projectiles.clear()
-	for pk in pickups:
-		pk.queue_free()
-	pickups.clear()
-	set_chaos(false)
-	respawn_timers.resize(players.size())
-	respawn_timers.fill(0.0)
-	last_x.resize(players.size())
-	last_x.fill(0.0)
-	stats = _fresh_stats()
-	scores = [0, 0]
-	match_over = false
-	stats_label.visible = false
-	if not sections_mode:
-		dynamic_zoom = not mode_2v2
-		camera.zoom = Vector2(0.9, 0.9) if mode_2v2 else Vector2.ONE
-	_update_hud()
-	_start_round()
-	show_msg("MODO 2v2: %s" % ("P1·P3 vs P2·P4" if mode_2v2 else "DESACTIVADO"), 1.0)
+	modes.set_mode_2v2(on)
 
 
 func set_chaos(on: bool) -> void:
-	if on == chaos:
-		return
-	chaos = on
-	chaos_timer = 1.0
-	for r in rocks:
-		r.queue_free()
-	rocks.clear()
-	if on:
-		show_msg("LLUVIA DE ROCAS: ACTIVADA", 1.0)
-	else:
-		show_msg("LLUVIA DE ROCAS: DESACTIVADA", 0.8)
+	modes.set_chaos(on)
 
 
 func set_sections(on: bool) -> void:
-	if on == sections_mode:
-		return
-	sections_mode = on
-	for g in gates:
-		g.queue_free()
-	gates.clear()
-	if on:
-		var w := LEVEL_W / float(SECTION_COUNT)
-		for k in range(1, SECTION_COUNT):
-			var g := SectionGate.new(w * float(k))
-			g.z_index = 5
-			add_child(g)
-			gates.append(g)
-	section_index = 3
-	if section_cam_tween != null and section_cam_tween.is_valid():
-		section_cam_tween.kill()
-	if on:
-		var z := VIEW_W / (LEVEL_W / float(SECTION_COUNT))
-		camera.zoom = Vector2(z, z)
-		camera.position_smoothing_enabled = false
-		camera.position = _section_cam_target()
-	else:
-		camera.zoom = Vector2(0.9, 0.9) if mode_2v2 else Vector2.ONE
-		camera.position_smoothing_enabled = true
-	sect_conquered = [0, 0]
-	scores = [0, 0]
-	stats = _fresh_stats()
-	match_over = false
-	stats_label.visible = false
-	set_chaos(false)
-	_update_hud()
-	_start_round()
-	show_msg("MODO PANTALLAS: %s" % ("ACTIVADO" if on else "DESACTIVADO"), 1.0)
-
-
-func _update_gates() -> void:
-	var w := LEVEL_W / float(SECTION_COUNT)
-	var rw := right_of_way
-	for i in gates.size():
-		var border := float(i + 1) * w
-		var open := false
-		if rw != null and rw.state != Player.State.DEAD:
-			if rw.goal_dir > 0:
-				open = rw.position.x > border - w and rw.position.x < border + 40.0
-			else:
-				open = rw.position.x < border + w and rw.position.x > border - 40.0
-		if gates[i].open != open:
-			gates[i].set_open(open)
-
-
-func _cross_section(sec: int) -> void:
-	var w := LEVEL_W / float(SECTION_COUNT)
-	var dir := 1 if sec > section_index else -1
-	section_index = sec
-	# solo el AVANCE hacia la meta conquista: retroceder no infla los pips
-	var prog := (sec - 3) if right_of_way.goal_dir > 0 else (3 - sec)
-	if prog > sect_conquered[_team(right_of_way)]:
-		sect_conquered[_team(right_of_way)] = prog
-		show_msg("¡SECCIÓN CONQUISTADA!", 0.9)
-		sfx(right_of_way.position, "point", -14.0)
-	var x_entry := w * float(sec) + 70.0 if dir > 0 else w * float(sec + 1) - 70.0
-	var x_far := w * float(sec + 1) - 90.0 if dir > 0 else w * float(sec) + 90.0
-	right_of_way.position.x = x_entry
-	for p in players:
-		if p == right_of_way or p.state == Player.State.DEAD:
-			continue
-		p.position.x = x_far
-		p.invuln_time = maxf(p.invuln_time, 0.8)
-	# pan suave hasta la nueva sección (nunca teleport)
-	if section_cam_tween != null and section_cam_tween.is_valid():
-		section_cam_tween.kill()
-	section_cam_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	section_cam_tween.tween_property(camera, "position", _section_cam_target(), SECTION_PAN_TIME)
-
-
-func _update_sections() -> void:
-	if not sections_mode:
-		return
-	_update_gates()
-	var rw := right_of_way
-	if rw == null or rw.state == Player.State.DEAD or round_lock > 0.0:
-		return
-	var w := LEVEL_W / float(SECTION_COUNT)
-	var sec := clampi(int(rw.position.x / w), 0, SECTION_COUNT - 1)
-	if sec != section_index:
-		_cross_section(sec)
+	modes.set_sections(on)
 
 
 func set_arcade(on: bool) -> void:
-	if on == arcade:
-		return
-	if on and mode_2v2:
-		set_mode_2v2(false)
-	if on and chaos:
-		set_chaos(false)
-	if on and sections_mode:
-		set_sections(false)
-	arcade = on
-	arcade_over = false
-	if on:
-		arcade_level = 1
-		bot_level = _arcade_difficulty()
-		players[1].is_bot = true
-		if arena_id != 0:
-			set_arena(0)
-		else:
-			# ya en la arena 1: set_arena saltaría por el guard de "misma
-			# arena" y el marcador/match_over quedarían sin resetear
-			scores = [0, 0]
-			stats = _fresh_stats()
-			match_over = false
-			stats_label.visible = false
-			_update_hud()
-			_start_round()
-		show_msg("ARCADE — NIVEL 1", 1.2)
-	else:
-		# sin esto el bot del arcade quedaba pegado a P2 al salir del modo:
-		# Rodrigo seguía moviéndose solo en partidas "normales"
-		players[1].is_bot = false
-		show_msg("ARCADE: DESACTIVADO", 0.8)
-
-
-func _arcade_difficulty() -> int:
-	return clampi(1 + (arcade_level - 1) / 2, 1, 3)
-
-
-func _arcade_next() -> void:
-	arcade_level += 1
-	bot_level = _arcade_difficulty()
-	right_of_way = null
-	scores = [0, 0]
-	stats = _fresh_stats()
-	_update_hud()
-	var want := (arcade_level - 1) % ARENA_NAMES.size()
-	if want != arena_id:
-		set_arena(want)
-	else:
-		match_over = false
-		stats_label.visible = false
-		_start_round()
-	show_msg("ARCADE — NIVEL %d  ·  BOT %s" % [arcade_level, ["FÁCIL", "NORMAL", "DIFÍCIL"][_arcade_difficulty() - 1]], 1.4)
+	modes.set_arcade(on)
 
 
 func set_cup(on: bool) -> void:
-	if on == cup:
-		return
-	if on and arcade:
-		set_arcade(false)
-	if on and mode_2v2:
-		set_mode_2v2(false)
-	if on and chaos:
-		set_chaos(false)
-	if on and sections_mode:
-		set_sections(false)
-	cup = on
-	cup_over = false
-	if on:
-		_cup_stage(0)
-	else:
-		players[0].is_bot = false
-		players[1].is_bot = false
-		show_msg("COPA: DESACTIVADA", 0.8)
+	modes.set_cup(on)
+
+
+func _arcade_next() -> void:
+	modes._arcade_next()
 
 
 func _cup_stage(stage: int) -> void:
-	cup_stage = stage
-	bot_level = 2
-	if stage == 0:
-		cup_alive = [true, true]
-	scores = [0, 0]
-	stats = _fresh_stats()
-	match_over = false
-	stats_label.visible = false
-	_update_hud()
-	match stage:
-		0:
-			players[0].is_bot = false
-			players[1].is_bot = true
-			show_msg("COPA — SEMIFINAL 1: P1 vs BOT", 1.6)
-		1:
-			players[0].is_bot = true
-			players[1].is_bot = false
-			show_msg("COPA — SEMIFINAL 2: P2 vs BOT", 1.6)
-		2:
-			if not cup_alive[0] and not cup_alive[1]:
-				cup_over = true
-				match_over = true
-				show_msg("EL BOT GANA LA COPA  ·  O: nueva copa", 12.0)
-				return
-			players[0].is_bot = not cup_alive[0]
-			players[1].is_bot = not cup_alive[1]
-			show_msg("COPA — FINAL", 1.6)
-	_start_round()
+	modes._cup_stage(stage)
+
+
+func _update_sections() -> void:
+	modes._update_sections()
 
 
 func _build_camera() -> void:
