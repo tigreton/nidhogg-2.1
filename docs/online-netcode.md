@@ -170,9 +170,16 @@ del cliente se mantiene < 100 px durante el juego estable.
 
 ## Pendiente (no v1)
 
-- Predicción del rival / interpolación con buffer de 2 snapshots reales
-  (ahora es suavizado exponencial hacia el último snapshot).
-- Reenvío de input con número de secuencia + reconciliación con rebobinado.
+- ~~Predicción del rival / interpolación con buffer de 2 snapshots reales~~ —
+  **HECHO (online v2)**: la marioneta P1 interpola entre los 2 últimos
+  snapshots con uno de retraso (~50 ms) — movimiento a velocidad constante.
+- ~~Reenvío de input con número de secuencia~~ — **HECHO (online v2)**: el
+  input del cliente viaja con seq y el host descarta los desordenados.
+  La reconciliación con rebobinado queda fuera (el juego es 1v1 y la
+  predicción propia ya reconcilia contra el snapshot).
 - ~~NAT punch / relay para jugar sin IP pública.~~ UPnP automático y guía de
   port-forwarding: HECHO (§ *Jugar por Internet*). El relay queda pendiente
   de una decisión de hosting (exige infraestructura que alguien mantenga).
+- E2E bajo latencia: `tools/online_e2e.sh --latency 150` (proxy UDP
+  `tools/netem_proxy.py` con delay/jitter/pérdida por dirección); validado
+  OK a 80 y 150 ms de RTT con deriva ~120 px.

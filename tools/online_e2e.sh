@@ -11,10 +11,12 @@
 # Uso:
 #   tools/online_e2e.sh                    # puerto 24575 (no pisar el 24565 de dev)
 #   tools/online_e2e.sh --port 24600       # puerto distinto
+#   tools/online_e2e.sh --latency 80       # ida y vuelta por tools/netem_proxy.py
 #   tools/online_e2e.sh --keep             # conservar las copias y logs (depurar)
 #   GODOT=/ruta/a/godot tools/online_e2e.sh
 #
-# Requisitos: bash (Git Bash en Windows / linux en CI), tar, timeout.
+# Requisitos: bash (Git Bash en Windows / linux en CI), tar, timeout;
+# con --latencia además python (3.8+, solo stdlib).
 # Salida: 0 si HOST_RESULT y CLIENT_RESULT son ambos OK, 1 en cualquier fallo.
 
 set -u
@@ -23,6 +25,7 @@ PORT=24575
 IP=127.0.0.1
 KEEP=0
 HOST_WAIT=6
+LATENCY=0
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -30,6 +33,8 @@ while [ $# -gt 0 ]; do
 		--port=*) PORT="${1#--port=}"; shift ;;
 		--ip) IP="$2"; shift 2 ;;
 		--ip=*) IP="${1#--ip=}"; shift ;;
+		--latency) LATENCY="$2"; shift 2 ;;
+		--latency=*) LATENCY="${1#--latency=}"; shift ;;
 		--keep) KEEP=1; shift ;;
 		--help|-h)
 			sed -n '2,20p' "$0"; exit 0 ;;
@@ -63,9 +68,14 @@ CLIENT_DIR="$WORK/client"
 mkdir -p "$HOST_DIR" "$CLIENT_DIR"
 
 HOST_PID=""
+PROXY_PID=""
+CLIENT_PORT="$PORT"
 cleanup() {
 	if [ -n "$HOST_PID" ] && kill -0 "$HOST_PID" 2>/dev/null; then
 		kill "$HOST_PID" 2>/dev/null
+	fi
+	if [ -n "$PROXY_PID" ] && kill -0 "$PROXY_PID" 2>/dev/null; then
+		kill "$PROXY_PID" 2>/dev/null
 	fi
 	if [ "$KEEP" = "1" ]; then
 		echo "E2E: copias y logs conservados en $WORK"
@@ -74,6 +84,24 @@ cleanup() {
 	fi
 }
 trap cleanup EXIT
+
+# --- 2b) red mala inyectada (opcional): proxy UDP con delay/loss ------------
+if [ "$LATENCY" -gt 0 ] 2>/dev/null; then
+	PYTHON="${PYTHON:-$(command -v python3 || command -v python)}"
+	if [ -z "$PYTHON" ]; then
+		echo "E2E FALLO: --latency necesita python (3.8+) en el PATH o en \$PYTHON"
+		exit 1
+	fi
+	PROXY_PORT=$((PORT + 1))
+	DELAY=$((LATENCY / 2))
+	JITTER=$((LATENCY / 8)); [ "$JITTER" -gt 10 ] && JITTER=10
+	echo "E2E: netem proxy ${IP}:${PROXY_PORT} -> ${IP}:${PORT}  (${LATENCY}ms RTT = ${DELAY}ms±${JITTER} por dirección, 0.5% de pérdida)"
+	"$PYTHON" "$SRC/tools/netem_proxy.py" --listen "${IP}:${PROXY_PORT}" --target "${IP}:${PORT}" \
+		--delay "$DELAY" --jitter "$JITTER" --loss 0.5 --seed 20261023 >"$WORK/netem.log" 2>&1 &
+	PROXY_PID=$!
+	CLIENT_PORT="$PROXY_PORT"
+	sleep 1
+fi
 
 echo "E2E: godot   = $GODOT"
 echo "E2E: origen  = $SRC"
@@ -112,9 +140,9 @@ HOST_PID=$!
 
 sleep "$HOST_WAIT"
 
-echo "E2E: lanzando CLIENTE (${IP}:${PORT})..."
+echo "E2E: lanzando CLIENTE (${IP}:${CLIENT_PORT})..."
 timeout 180 "$GODOT" --headless --path "$(native "$CLIENT_DIR")" --audio-driver Dummy \
-	--script test/online_client.gd -- --ip="$IP" --port="$PORT" >"$WORK/client.log" 2>&1
+	--script test/online_client.gd -- --ip="$IP" --port="$CLIENT_PORT" >"$WORK/client.log" 2>&1
 CLIENT_RC=$?
 
 # el host se auto-cierra a los ~40 s; esperar su veredicto
