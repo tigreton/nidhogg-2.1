@@ -284,7 +284,12 @@ func _do_host() -> void:
 		return
 	net_mode = "host_wait"
 	var ips := "  ·  ".join(Net.lan_addresses())
-	net_status.text = "PARTIDA CREADA — esperando al rival...\nDale esta IP: %s (puerto %d)\n\nTu rival elige «2 — UNIRSE» y la escribe.\nESC: cancelar" % [ips, Net.DEFAULT_PORT]
+	var pub := ""
+	if Net.upnp_mapped:
+		pub = "\nDesde INTERNET (UPnP ya abrió el puerto): %s" % Net.public_ip
+	elif not Net.public_ip.is_empty():
+		pub = "\nDesde INTERNET: %s  (UPnP no disponible: abre el %d/UDP en tu router)" % [Net.public_ip, Net.DEFAULT_PORT]
+	net_status.text = "PARTIDA CREADA — esperando al rival...\nDale esta IP: %s (puerto %d)%s\n\nTu rival elige «2 — UNIRSE» y la escribe.\nESC: cancelar" % [ips, Net.DEFAULT_PORT, pub]
 
 
 func _show_join_ip() -> void:

@@ -13,6 +13,12 @@ var role := Role.OFFLINE
 var remote_id := 0        # id del rival (host: id del cliente; cliente: 1)
 var client_ready := false # el cliente ya montó su escena de juego
 
+# NAT traversal casero (online v2): resultado del intento UPnP al hacer host
+var _upnp_dev: UPNP = null
+var _upnp_port := 0
+var public_ip := ""      # IP pública del router (vía UPnP; "" si no se supo)
+var upnp_mapped := false # true si el router abrió el puerto él solo (IGD)
+
 signal peer_joined
 signal peer_left
 signal connected_ok
@@ -53,7 +59,29 @@ func host(port := DEFAULT_PORT) -> Error:
 	role = Role.HOST
 	remote_id = 0
 	client_ready = false
+	_try_upnp(port)
 	return OK
+
+
+func _try_upnp(port: int) -> void:
+	# Intenta mapear el puerto en el router vía UPnP/IGD para jugar por
+	# Internet sin abrir puertos a mano. Todo es silencioso y opcional: sin
+	# UPnP se juega igual por LAN o con port-forwarding manual
+	# (docs/online-netcode.md § jugar por Internet). En headless (tests/CI)
+	# ni lo intenta: no hay router que descubrir y el multicast solo
+	# añadiría segundos de arranque al E2E.
+	if DisplayServer.get_name() == "headless":
+		return
+	var u := UPNP.new()
+	if u.discover(2000, 2, "InternetGatewayDevice") <= 0:
+		return
+	var ext := u.query_external_address()
+	if not ext.is_empty() and ext != "0.0.0.0":
+		public_ip = ext
+	if u.add_port_mapping(port, port, "nidhogg-duel", "UDP") == OK:
+		upnp_mapped = true
+		_upnp_dev = u
+		_upnp_port = port
 
 
 func join(ip: String, port := DEFAULT_PORT) -> Error:
@@ -70,6 +98,14 @@ func join(ip: String, port := DEFAULT_PORT) -> Error:
 
 
 func shutdown() -> void:
+	# cierra el mapeo UPnP si lo abrimos (el router lo caduca solo, pero
+	# ser educados cuesta una línea)
+	if _upnp_dev != null:
+		_upnp_dev.delete_port_mapping(_upnp_port, "UDP")
+		_upnp_dev = null
+		_upnp_port = 0
+	upnp_mapped = false
+	public_ip = ""
 	if multiplayer.multiplayer_peer != null:
 		multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = null
