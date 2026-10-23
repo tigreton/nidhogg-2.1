@@ -1704,7 +1704,17 @@ func set_arcade(on: bool) -> void:
 		arcade_level = 1
 		bot_level = _arcade_difficulty()
 		players[1].is_bot = true
-		set_arena(0)
+		if arena_id != 0:
+			set_arena(0)
+		else:
+			# ya en la arena 1: set_arena saltaría por el guard de "misma
+			# arena" y el marcador/match_over quedarían sin resetear
+			scores = [0, 0]
+			stats = _fresh_stats()
+			match_over = false
+			stats_label.visible = false
+			_update_hud()
+			_start_round()
 		show_msg("ARCADE — NIVEL 1", 1.2)
 	else:
 		# sin esto el bot del arcade quedaba pegado a P2 al salir del modo:
