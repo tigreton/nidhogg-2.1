@@ -3209,8 +3209,54 @@ func _bot_think(p: Player, delta: float) -> void:
 		p.bot_held = {}
 		return
 	var ctx := _bot_perceive(p, foe)
+	if _bot_tower_floor(p, foe, ctx):
+		return
 	var s := _bot_scores(p, foe, cfg, ctx)
 	_bot_commit(p, foe, ctx, s)
+
+
+## Torre del Centinela (tarea 89): si el rival juega en el otro piso, cambiar
+## de piso — subir por la escalera flotante más cercana (izq: se embarca
+## desde x<450 yendo a la derecha; dcha: desde x>4340 yendo a la izquierda)
+## o bajar andando hasta el hueco más cercano y caer por él. Nunca el
+## corredor: su ruta válida es el pasillo inferior. Capa dura con return: en
+## las arenas 0–2 no roba ni una decisión (y no adelanta ningún randf, así el
+## sim de la arena 0 mantiene su trayectoria tic a tic).
+func _bot_tower_floor(p: Player, foe: Player, ctx: Dictionary) -> bool:
+	if arena_id != 3 or String(ctx["role"]) == "run":
+		return false
+	var foe_up := foe.position.y < 450.0
+	var me_up := p.position.y < 330.0
+	if foe_up == me_up or p.state not in [Player.State.IDLE, Player.State.RUN, Player.State.JUMP]:
+		return false
+	var want := {}
+	var tap := ""
+	if foe_up:
+		var use_left := absf(p.position.x - 500.0) < absf(p.position.x - 4290.0)
+		if use_left:
+			if p.position.y > 450.0 and p.position.x > 450.0:
+				want["left"] = true
+			else:
+				want["right"] = true
+				if p.is_on_floor():
+					tap = "jump"
+		else:
+			if p.position.y > 450.0 and p.position.x < 4340.0:
+				want["right"] = true
+			else:
+				want["left"] = true
+				if p.is_on_floor():
+					tap = "jump"
+	else:
+		# bajar: andar hasta el centro del hueco más cercano y seguir: la
+		# gravedad hace el resto (no saltar dentro del hueco)
+		var hx := 1255.0 if absf(p.position.x - 1255.0) < absf(p.position.x - 3325.0) else 3325.0
+		want["right"] = hx > p.position.x
+		want["left"] = hx <= p.position.x
+	p.bot_held = want
+	if tap != "":
+		p.bot_held[tap] = true
+	return true
 
 
 ## Memoria de patrones (IA): lo que el rival HACE, no lo que es. Se observa a
