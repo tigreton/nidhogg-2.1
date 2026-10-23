@@ -75,10 +75,23 @@ func _on_net_drop() -> void:
 
 # --- host: aplicar input remoto y emitir snapshots --------------------------
 
+# estado de sincronización interno del nodo (lo demás vive en host/game)
+var _last_input_seq := 0          # host: último input del cliente aplicado
+var _input_seq := 0               # cliente: contador de mis envíos de input
+var _prev_p1 := Vector2.INF       # cliente: pos P1 del snapshot anterior
+var _last_p1 := Vector2.INF       # cliente: pos P1 del último snapshot
+var _snap_ms := 0                 # cliente: reloj de llegada del último snap
+
+
 @rpc("any_peer", "unreliable")
-func net_input(h: Dictionary) -> void:
+func net_input(seq: int, h: Dictionary) -> void:
 	if not Net.is_host() or host.players.size() < 2:
 		return
+	# el canal no fiable no ordena: un input VIEJO que llegue tarde no puede
+	# pisar uno más nuevo (congelaría a P2 un tick al revés de lo que tocaba)
+	if seq <= _last_input_seq:
+		return
+	_last_input_seq = seq
 	host.players[1].net_held = h
 
 
@@ -148,6 +161,14 @@ func net_snap(s: Dictionary) -> void:
 		return
 	host.net_last_ser = ser
 	host.net_last_snap = s
+	# buffer de 2 snapshots para la marioneta: el que era último pasa a
+	# previo y el reloj arranca ahora (la interpolación vive en _apply_puppet)
+	var p1d: Dictionary = s.get("p1", {})
+	if not p1d.is_empty():
+		var pos := Vector2(float(p1d.get("x", 0.0)), float(p1d.get("y", 0.0)))
+		_prev_p1 = _last_p1 if _last_p1 != Vector2.INF else pos
+		_last_p1 = pos
+		_snap_ms = Time.get_ticks_msec()
 
 
 # --- cliente: paso por tick de física ---------------------------------------
@@ -157,7 +178,8 @@ func _client_step(delta: float) -> void:
 	var h := {}
 	for a in ["left", "right", "up", "down", "jump", "attack", "throw"]:
 		h[a] = Input.is_action_pressed("p2_" + a)
-	net_input.rpc_id(1, h)
+	_input_seq += 1
+	net_input.rpc_id(1, _input_seq, h)
 	# 2) aplicar el snapshot más reciente y sus efectos derivados
 	if not host.net_last_snap.is_empty():
 		_client_apply_common()
@@ -194,13 +216,17 @@ func _client_apply_common() -> void:
 		_sync_net_entities(s)
 
 
-## El rival (P1) es una marioneta: interpola posición y copia el resto.
+## El rival (P1) es una marioneta: posición interpolada entre los DOS
+## últimos snapshots (uno de retraso, ~50 ms a 20 Hz: se mueve a velocidad
+## constante en vez de saltar cada snapshot) y el resto de campos copiados.
 func _apply_puppet(delta: float) -> void:
 	var rp: Dictionary = host.net_last_snap.get("p1", {})
-	if rp.is_empty():
+	if rp.is_empty() or _last_p1 == Vector2.INF:
 		return
 	var foe = host.players[0]
-	var target := Vector2(float(rp.get("x", foe.position.x)), float(rp.get("y", foe.position.y)))
+	var snap_ms := 1000.0 * float(host.NET_SNAP_EVERY) / 60.0
+	var alpha := clampf(float(Time.get_ticks_msec() - _snap_ms) / snap_ms, 0.0, 1.0)
+	var target := _prev_p1.lerp(_last_p1, alpha)
 	if foe.position.distance_to(target) > 200.0:
 		foe.position = target
 	else:
