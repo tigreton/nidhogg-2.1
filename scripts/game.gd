@@ -1698,6 +1698,8 @@ func set_arcade(on: bool) -> void:
 		set_mode_2v2(false)
 	if on and chaos:
 		set_chaos(false)
+	if on and sections_mode:
+		set_sections(false)
 	arcade = on
 	arcade_over = false
 	if on:
@@ -1753,6 +1755,8 @@ func set_cup(on: bool) -> void:
 		set_mode_2v2(false)
 	if on and chaos:
 		set_chaos(false)
+	if on and sections_mode:
+		set_sections(false)
 	cup = on
 	cup_over = false
 	if on:
@@ -2233,7 +2237,7 @@ func _physics_process(delta: float) -> void:
 				show_msg("ARENA BARAJADA: NO DISPONIBLE EN LA TORRE", 1.0)
 			else:
 				set_random_arena(not random_arena)
-		if Input.is_action_just_pressed("toggle_sections"):
+		if Input.is_action_just_pressed("toggle_sections") and not arcade and not cup:
 			set_sections(not sections_mode)
 		if Input.is_action_just_pressed("toggle_arcade"):
 			set_arcade(not arcade)
