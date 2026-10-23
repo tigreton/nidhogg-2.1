@@ -1988,7 +1988,8 @@ func _start_round() -> void:
 	sudden_death = false
 	section_index = 3
 	sect_conquered = [0, 0]
-	weapon_idx = [0, 0]
+	weapon_idx.resize(players.size())
+	weapon_idx.fill(0)
 	for p in players:
 		p.weapon_id = "florete"
 	respawn_timers.resize(players.size())
@@ -3966,7 +3967,8 @@ func ev_round() -> void:
 	net_had_sd = false
 	net_dead = [false, false]
 	net_wait_peer = false
-	weapon_idx = [0, 0]
+	weapon_idx.resize(players.size())
+	weapon_idx.fill(0)
 	for p in players:
 		p.weapon_id = "florete"
 	var offs := [-220.0, 220.0]
