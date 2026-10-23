@@ -1660,9 +1660,12 @@ func _cross_section(sec: int) -> void:
 	var w := LEVEL_W / float(SECTION_COUNT)
 	var dir := 1 if sec > section_index else -1
 	section_index = sec
-	sect_conquered[_team(right_of_way)] += 1
-	show_msg("¡SECCIÓN CONQUISTADA!", 0.9)
-	sfx(right_of_way.position, "point", -14.0)
+	# solo el AVANCE hacia la meta conquista: retroceder no infla los pips
+	var prog := (sec - 3) if right_of_way.goal_dir > 0 else (3 - sec)
+	if prog > sect_conquered[_team(right_of_way)]:
+		sect_conquered[_team(right_of_way)] = prog
+		show_msg("¡SECCIÓN CONQUISTADA!", 0.9)
+		sfx(right_of_way.position, "point", -14.0)
 	var x_entry := w * float(sec) + 70.0 if dir > 0 else w * float(sec + 1) - 70.0
 	var x_far := w * float(sec + 1) - 90.0 if dir > 0 else w * float(sec) + 90.0
 	right_of_way.position.x = x_entry
