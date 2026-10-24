@@ -11,10 +11,18 @@
 > caben en una tarea atómica de una sesión— entran abajo. Cuando entre una
 > idea nueva, sigue la guía del final para convertirla en tarea con este
 > formato.
+>
+> **2026-10-24: SECCIÓN ESTRUCTURAL COMPLETADA.** Los 4 items de abajo,
+> resueltos — el último en cerrarse fue el CI headless, hoy mismo: el
+> scope `workflow` del token gh ya está concedido, el push subió y el
+> primer run de Actions pasó en verde. Backlog cerrado de nuevo hasta
+> que entre una idea nueva (la única cosa aplazada de todo el proyecto
+> sigue siendo el relay de online: decisión de hosting, no tarea de
+> código, ver `docs/online-netcode.md`).
 
 ---
 
-## Estructural (revisión post-fusión, 2026-10-04) — EN CURSO
+## Estructural (revisión post-fusión, 2026-10-04) — COMPLETADO (2026-10-24)
 
 No son tareas atómicas: cada una necesita su propio plan (o una mini-serie
 de tareas). Se promueven diseñándolas, no copiando la plantilla tal cual.
