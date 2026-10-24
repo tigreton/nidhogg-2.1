@@ -1,0 +1,91 @@
+name: Relay debug
+
+# Diagnóstico puntual del fallo del job relay-e2e: python→python UDP en
+# loopback no se ve en los runners (Godot↔Godot sí), con los procesos vivos
+# y el datagrama CREATE perdido. Este workflow NO forma parte de la batería:
+# se lanza a mano (workflow_dispatch) desde la rama que lo lleve.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    name: Probe UDP loopback python↔python
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Info del sistema
+        run: |
+          python3 --version
+          uname -r
+          ip link show lo
+          ip addr show lo
+          cat /proc/sys/net/ipv4/conf/all/rp_filter || true
+          cat /proc/sys/net/ipv4/conf/lo/rp_filter || true
+
+      - name: Probe A - relay.py real con bind 127.0.0.1
+        run: |
+          python3 tools/relay.py --port 24599 --bind 127.0.0.1 & RPID=$!
+          sleep 1
+          python3 - <<'EOF'
+          import socket
+          s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+          s.bind(("127.0.0.1", 0)); s.settimeout(3)
+          s.sendto(b"NRELAY1 CREATE", ("127.0.0.1", 24599))
+          try:
+              d, _ = s.recvfrom(4096); print("PROBE A (bind 127.0.0.1): OK ->", d)
+          except socket.timeout:
+              print("PROBE A (bind 127.0.0.1): SIN RESPUESTA")
+          EOF
+          kill $RPID 2>/dev/null || true
+
+      - name: Probe B - relay.py real con bind 0.0.0.0
+        run: |
+          python3 tools/relay.py --port 24599 --bind 0.0.0.0 & RPID=$!
+          sleep 1
+          python3 - <<'EOF'
+          import socket
+          s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+          s.bind(("127.0.0.1", 0)); s.settimeout(3)
+          s.sendto(b"NRELAY1 CREATE", ("127.0.0.1", 24599))
+          try:
+              d, _ = s.recvfrom(4096); print("PROBE B (bind 0.0.0.0): OK ->", d)
+          except socket.timeout:
+              print("PROBE B (bind 0.0.0.0): SIN RESPUESTA")
+          EOF
+          kill $RPID 2>/dev/null || true
+
+      - name: Probe C - eco crudo con socket conectado (connect+recv)
+        run: |
+          python3 - <<'EOF' &
+          import socket
+          r = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+          r.bind(("127.0.0.1", 24598))
+          while True:
+              d, a = r.recvfrom(2048)
+              r.sendto(b"eco:" + d, a)
+          EOF
+          EPID=$!
+          sleep 1
+          python3 - <<'EOF'
+          import socket
+          s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+          s.bind(("127.0.0.1", 0)); s.settimeout(3)
+          s.connect(("127.0.0.1", 24598))
+          s.send(b"hola")
+          try:
+              print("PROBE C (eco crudo): OK ->", s.recv(2048))
+          except socket.timeout:
+              print("PROBE C (eco crudo): SIN RESPUESTA")
+          EOF
+          kill $EPID 2>/dev/null || true
+
+      - name: Sockets a la escucha (ss)
+        run: ss -lunp 2>/dev/null | head -30 || sudo netstat -lunp | head -30
+
+      - name: iptables NAT/mangle (por si algo redirige UDP)
+        run: |
+          sudo iptables -t nat -L -n 2>/dev/null | head -20 || true
+          sudo iptables -L -n 2>/dev/null | head -20 || true
