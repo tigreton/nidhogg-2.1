@@ -43,48 +43,72 @@ menos cómodo:
    espacios? ¿el firewall del anfitrión permite a Godot por UDP? El error
    típico es dar una IP `192.168.x.x` a alguien que está en otra red.
 
-Un **relay** (servidor de retransmisión para jugar sin abrir nada) queda
-fuera de v2: exige hospedar y mantener infraestructura; decisión pendiente
-para otro día.
+Un **relay** (servidor de retransmisión para jugar sin abrir nada) ya está
+desplegado: ver § *Relay* más abajo.
 
-## Relay (online v3, en despliegue) — jugar sin abrir NADA
+## Relay (online v3, 1/3) — jugar sin abrir NADA
 
-Decisión de hosting (2026-10-24): **fly.io**, región Madrid, máquina de
-256 MB (~2–3 $/mes de uso, sin plan ni prepago). El relay reenvía bytes
-crudos de ENet entre dos puntas que conectan AMBAS hacia fuera: ni el
-anfitrión ni el rival abren puerto alguno. Caída del riesgo técnico:
-`netem_proxy.py` ya demostró (E2E bajo latencia) que ENet atraviesa un
-forwarder UDP tonto sin enterarse.
+**Desplegado el 2026-10-24 en fly.io**: `nidhogg2-relay`, IP pública
+**188.93.145.30:24565/UDP**, una máquina de 256 MB en París (`cdg` — la
+región `mad` de fly está deprecated para recursos nuevos; `cdg` queda a
+~20-35 ms de España). Coste real: **~4 $/mes** (máquina ~2 $ + IPv4
+dedicada 2 $; sin ella el UDP no es alcanzable públicamente en fly).
+Despliegue automático en cada push que toque el relay
+(`.github/workflows/relay-deploy.yml`, ya ARMADO con el secret
+`FLY_API_TOKEN` y la variable `RELAY_DEPLOY=true`).
 
-**Piezas** (todas escritas y validadas; falta solo el alta de la cuenta
-fly.io, el `fly deploy` y la integración en el menú del juego):
+El relay reenvía bytes crudos de ENet entre dos puntas que conectan AMBAS
+hacia fuera: ni el anfitrión ni el rival abren puerto alguno. La base del
+riesgo técnico la había demostrado `netem_proxy.py` (ENet atraviesa un
+forwarder UDP tonto sin enterarse).
+
+**Piezas:**
 
 - `tools/relay.py` — el servidor: UN socket UDP (24565) y salas de dos
-  puntas por **código de 4 letras**. Protocolo de frames que empiezan por
+  puntas por **código de 4 letras**. Frames que empiezan por
   `NRELAY1`/`NRELAY1D` (que un datagrama ENet jamás empezará): CREATE /
   JOIN / PING / CLOSE de control y datos `NRELAY1D <código> <H|C> <bytes>`.
   El enrutado es por **código+rol**, no por dirección: cada frame
-  reaprende la punta (NAT que renueva, proxy que enmascara). Solo stdlib,
-  vale para el contenedor, un VPS o WSL. GC de salas por inactividad
-  (10 min sin rival, 2 h de vida máxima). «Autenticación» = el código
-  (1v1 entre amigos).
+  reaprende la punta (NAT que renueva, proxy que enmascara IPs mientras
+  los puertos de origen difieran). Solo stdlib. GC de salas (10 min sin
+  rival, 2 h de vida máxima). «Autenticación» = el código (1v1 entre
+  amigos). En fly arranca con `--bind fly-global-services`: el proxy de
+  fly entrega el UDP externo por esa dirección mágica y lo que sale de
+  ella vuelve al cliente con la IP pública correcta (bind 0.0.0.0 recibe
+  igual pero RESPONDE por la IP de egreso de la máquina y el NAT del
+  cliente lo tira — 33 ms de diagnóstico con `fly logs`).
 - `tools/relay_bench.py` — las dos patas locales (H hacia el host ENet,
   C a la escucha para el cliente): es exactamente lo que hará `net.gd`
-  dentro del juego; con esto el E2E valida el relay con ENet real sin
-  tocar el juego. `tools/online_e2e.sh --relay` lo monta todo (relay en
-  `PORT+3`, pata C en `PORT+2`), combinable con `--latency`.
-- `Dockerfile` + `fly.toml` (app `nidhogg2-relay`, `mad`, UDP 24565) +
-  `.github/workflows/relay-deploy.yml` — despliegue automático en cada
-  push que toque el relay, **apagado** hasta que existan el secret
-  `FLY_API_TOKEN` y la variable `RELAY_DEPLOY=true` (tras el alta).
-  Job 3 del CI (`relay-e2e`): la pareja online del orquestador pasa por
-  el relay en cada push.
+  dentro del juego. Soporta relay local o externo (con relay externo la
+  pata C abre una segunda toma hacia internet: una atada a 127.0.0.1 no
+  puede salir, WinError 10051). Todos los bucles tragan `OSError`
+  (Windows materializa un ICMP de puerto caído como
+  `ConnectionResetError` aunque la tome siga sana: sin la coraza, un hilo
+  muerto parte la partida a medias — visto y arreglado).
+- `tools/online_e2e.sh --relay` monta todo (relay en `PORT+3`, pata C en
+  `PORT+2`), combinable con `--latency`; `--relay-ip IP:PUERTO` hace lo
+  mismo contra un relay ya desplegado (solo levanta el bench: el tráfico
+  atraviesa internet de verdad).
+- `Dockerfile` + `fly.toml` + `.dockerignore` — el contenedor (solo
+  sube `relay.py` al builder) y la config de la app.
 
-**Validación (2026-10-24, local)**: smoke del protocolo (CREATE/JOIN,
-datos binarios en ambas direcciones, PING, NOROOM, CLOSE) OK; E2E completo
-`--relay` OK (deriva 76 px, 10 bajas, marcador idéntico); E2E
-`--relay --latency 80` OK (deriva 99 px, 5 bajas) — el escenario de
-partida hospedada con internet regular aguanta igual que el directo.
+**Curiosidad de CI**: en los runners de GitHub una toma UDP atada a
+`0.0.0.0` enviando a `127.0.0.1` no llega (el kernel elige una fuente
+que el receptor nunca ve; probes A/B/C del efímero `relay-debug.yml`,
+que ya está borrado). El bench ata `127.0.0.1` explícito contra relay
+local. En Windows/WSL pasa en ambos modos.
+
+**Validación (2026-10-24)**: smoke de protocolo en local y contra fly
+(CREATE/JOIN, datos binarios ida y vuelta, PING/NOROOM/CLOSE) OK; E2E
+`--relay` local OK (deriva 68 px); `--relay --latency 80` OK (99 px);
+**E2E `--relay-ip 188.93.145.30:24565` contra el relay REAL por internet
+OK (deriva 92 px)** — dos Godot jugando un duelo completo a través de
+París. Job `relay-e2e` del CI para regression en cada push.
+
+**Pendiente (online v3 2/3)**: integrarlo en el juego — el «modo relay»
+en `net.gd` (el puente que hoy hace el bench, con la misma coraza
+OSError) y la línea de menú en el título (crear → mostrar código,
+unirse → pedir código). El servidor ya está listo y esperando.
 
 ## Autoridad y sincronización
 
@@ -217,9 +241,9 @@ del cliente se mantiene < 100 px durante el juego estable.
   La reconciliación con rebobinado queda fuera (el juego es 1v1 y la
   predicción propia ya reconcilia contra el snapshot).
 - ~~NAT punch / relay para jugar sin IP pública.~~ UPnP automático y guía de
-  port-forwarding: HECHO (§ *Jugar por Internet*). El relay: decisión de
-  hosting tomada y código listo (§ *Relay* arriba — fly.io, pendiente del
-  alta de la cuenta, el deploy y la integración en el menú del juego).
+  port-forwarding: HECHO (§ *Jugar por Internet*). El relay: DESPLEGADO en
+  fly.io y validado por internet (§ *Relay* arriba); queda la integración
+  en el menú del juego (online v3 2/3).
 - E2E bajo latencia: `tools/online_e2e.sh --latency 150` (proxy UDP
   `tools/netem_proxy.py` con delay/jitter/pérdida por dirección); validado
   OK a 80 y 150 ms de RTT con deriva ~120 px.

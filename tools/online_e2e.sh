@@ -17,6 +17,11 @@
 #                                          # relay como en partida hospedada, sin
 #                                          # verse directamente (combinable con
 #                                          # --latency: relay + red mala)
+#   tools/online_e2e.sh --relay-ip IP:PUERTO
+#                                          # igual que --relay pero contra un relay
+#                                          # externo ya desplegado (el de fly.io);
+#                                          # solo levanta el bench: el trafico
+#                                          # atraviesa internet de verdad
 #   tools/online_e2e.sh --keep             # conservar las copias y logs (depurar)
 #   GODOT=/ruta/a/godot tools/online_e2e.sh
 #
@@ -32,6 +37,7 @@ KEEP=0
 HOST_WAIT=6
 LATENCY=0
 RELAY=0
+RELAY_IP=""
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -42,6 +48,8 @@ while [ $# -gt 0 ]; do
 		--latency) LATENCY="$2"; shift 2 ;;
 		--latency=*) LATENCY="${1#--latency=}"; shift ;;
 		--relay) RELAY=1; shift ;;
+		--relay-ip) RELAY=1; RELAY_IP="$2"; shift 2 ;;
+		--relay-ip=*) RELAY=1; RELAY_IP="${1#--relay-ip=}"; shift ;;
 		--keep) KEEP=1; shift ;;
 		--help|-h)
 			sed -n '2,20p' "$0"; exit 0 ;;
@@ -113,10 +121,18 @@ if [ "$RELAY" = "1" ]; then
 		echo "E2E FALLO: --relay necesita python (3.8+) en el PATH o en \$PYTHON"
 		exit 1
 	fi
-	echo "E2E: relay ${IP}:${RELAY_PORT}  (host ${IP}:${PORT} <-pata H | pata C-> ${IP}:${BENCH_CLIENT_PORT})"
-	"$PYTHON" -u "$SRC/tools/relay.py" --port "$RELAY_PORT" --bind "$IP" >"$WORK/relay.log" 2>&1 &
-	RELAY_PID=$!
-	"$PYTHON" -u "$SRC/tools/relay_bench.py" --relay "${IP}:${RELAY_PORT}" \
+	if [ -n "$RELAY_IP" ]; then
+		# relay externo (p.ej. el de produccion en fly.io): solo hace falta
+		# el bench; el host y el cliente de este E2E atraviesan internet real
+		RELAY_ADDR="$RELAY_IP"
+		echo "E2E: relay EXTERNO ${RELAY_ADDR}  (host ${IP}:${PORT} <-pata H | pata C-> ${IP}:${BENCH_CLIENT_PORT})"
+	else
+		RELAY_ADDR="${IP}:${RELAY_PORT}"
+		echo "E2E: relay ${IP}:${RELAY_PORT}  (host ${IP}:${PORT} <-pata H | pata C-> ${IP}:${BENCH_CLIENT_PORT})"
+		"$PYTHON" -u "$SRC/tools/relay.py" --port "$RELAY_PORT" --bind "$IP" >"$WORK/relay.log" 2>&1 &
+		RELAY_PID=$!
+	fi
+	"$PYTHON" -u "$SRC/tools/relay_bench.py" --relay "$RELAY_ADDR" \
 		--host-target "${IP}:${PORT}" --client-listen "${IP}:${BENCH_CLIENT_PORT}" \
 		>"$WORK/bench.log" 2>&1 &
 	BENCH_PID=$!
@@ -184,6 +200,7 @@ sleep "$HOST_WAIT"
 # diagnostico relay: si una de las piezas murio, decirlo ANTES del veredicto
 if [ "$RELAY" = "1" ]; then
 	for p in "$RELAY_PID" "$BENCH_PID"; do
+		[ -z "$p" ] && continue  # relay externo: no hay relay local
 		if ! kill -0 "$p" 2>/dev/null; then
 			echo "E2E AVISO: la pieza del relay (pid $p) murio durante la partida"
 		fi

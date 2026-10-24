@@ -8,4 +8,6 @@ COPY tools/relay.py /app/relay.py
 ENV PYTHONUNBUFFERED=1
 EXPOSE 24565/udp
 USER nobody
-CMD ["python", "/app/relay.py"]
+# fly-global-services: la direccion por la que el proxy de fly entrega el UDP
+# externo (y por la que las respuestas vuelven con la IP publica correcta)
+CMD ["python", "/app/relay.py", "--bind", "fly-global-services"]

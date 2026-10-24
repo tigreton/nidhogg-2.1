@@ -17,8 +17,9 @@
 > scope `workflow` del token gh ya está concedido, el push subió y el
 > primer run de Actions pasó en verde. Backlog cerrado de nuevo hasta
 > que entre una idea nueva (la única cosa aplazada de todo el proyecto
-> sigue siendo el relay de online: decisión de hosting, no tarea de
-> código, ver `docs/online-netcode.md`).
+> sigue siendo la parte final del relay de online: el servidor ya está
+> DESPLEGADO en fly.io y validado por internet — queda integrarlo en el
+> menú del juego, tarea de código, ver `docs/online-netcode.md` § Relay).
 
 ---
 
@@ -66,8 +67,10 @@ de tareas). Se promueven diseñándolas, no copiando la plantilla tal cual.
   desordenado + marioneta interpolando entre los 2 últimos snapshots con
   uno de retraso); y E2E bajo red mala (`tools/netem_proxy.py` +
   `tools/online_e2e.sh --latency N`): verde a 80 y 150 ms de RTT con
-  0,5 % de pérdida. El **relay** queda explícitamente fuera: exige
-  hospedar y mantener infraestructura (decisión de otro día).
+  0,5 % de pérdida. El **relay** quedó fuera de v2... y el 2026-10-24
+  (online v3 1/3) se desplegó en fly.io: servidor de salas por código
+  listo, validado por internet y con deploy automático por CI —
+  `docs/online-netcode.md` § Relay.
 
 ---
 

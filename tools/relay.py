@@ -64,11 +64,21 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Relay UDP de salas 1v1 para Nidhogg")
     ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", "24565")),
                     help="puerto UDP a la escucha (default 24565, o $PORT)")
-    ap.add_argument("--bind", default="0.0.0.0", help="IP a la escucha (default 0.0.0.0)")
+    ap.add_argument("--bind", default="0.0.0.0",
+                    help="IP a la escucha (default 0.0.0.0; en fly.io usa "
+                         "'fly-global-services': responde por la IP del proxy "
+                         "para que las respuestas vuelvan al cliente con la "
+                         "IP publica correcta — ver docs fly Networking/UDP)")
+
     args = ap.parse_args()
+    bind_addr = args.bind
+    if bind_addr == "fly-global-services":
+        # direccion magica de fly.io: el proxy entrega aqui el UDP externo y
+        # lo que sale de ella vuelve al cliente con la IP de ingress
+        bind_addr = socket.gethostbyname(bind_addr)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((args.bind, args.port))
+    sock.bind((bind_addr, args.port))
     sock.settimeout(5.0)  # el bucle caduca y aprovecha para barrer salas muertas
 
     rooms = {}  # code -> {"addr_h": ..., "addr_c": ..., "last": ...}
@@ -95,6 +105,11 @@ def main() -> None:
         except KeyboardInterrupt:
             print("relay: cierre", flush=True)
             return
+        except OSError:
+            # en Windows un ICMP de puerto inalcanzable (una punta que cerro)
+            # a veces salta aqui como ConnectionResetError: la toma sigue sana,
+            # tragarlo y seguir — un hilo no puede morir y llevarse las salas
+            continue
 
         # ---- frames de datos: "NRELAY1D <code> <H|C> <bytes ENet>" ----------
         if data.startswith(MAGIC_D):
