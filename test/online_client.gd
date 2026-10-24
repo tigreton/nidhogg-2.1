@@ -10,9 +10,11 @@ extends SceneTree
 
 const DUR := 42.0
 const CONNECT_TIMEOUT := 12.0
+const CONNECT_TIMEOUT_RELAY := 30.0  # el ayudante tarda unos s en bootear
 var t := 0.0
 var game: Node
 var net: Node
+var relay_mode := false
 var got_snap := false
 var max_drift := 0.0
 var kills_seen := 0
@@ -31,12 +33,27 @@ func _initialize() -> void:
 func _try_start() -> bool:
 	var ip := "127.0.0.1"
 	var port := 0
+	var relay_code := ""
+	var relay_addr := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--ip="):
 			ip = a.trim_prefix("--ip=")
 		elif a.begins_with("--port="):
 			port = int(a.trim_prefix("--port="))
-	var err: int = net.join(ip, port if port > 0 else net.DEFAULT_PORT)
+		elif a.begins_with("--relay-join="):
+			relay_code = a.trim_prefix("--relay-join=")
+		elif a.begins_with("--relay="):
+			relay_addr = a.trim_prefix("--relay=")
+	var err: int
+	if not relay_code.is_empty():
+		# modo relay (online v3): sala por codigo con el puente DEL JUEGO
+		relay_mode = true
+		err = net.join_relay(relay_code, relay_addr if not relay_addr.is_empty() else net.RELAY_DEFAULT)
+		net.relay_failed.connect(func(reason: String) -> void:
+			print("CLIENT_RESULT: FALLO — relay (%s), ¿código correcto y anfitrión dentro?" % reason)
+			quit(1))
+	else:
+		err = net.join(ip, port if port > 0 else net.DEFAULT_PORT)
 	if err == ERR_UNAVAILABLE:
 		return false   # la API multiplayer tarda un frame: reintentar
 	if err != OK:
@@ -46,7 +63,7 @@ func _try_start() -> bool:
 	_started = true
 	net.connect_failed.connect(_on_connect_failed)
 	net.server_lost.connect(_on_server_lost)
-	print("CLIENT: conectando a %s ..." % ip)
+	print("CLIENT: conectando a %s ..." % ("sala %s del relay" % relay_code if not relay_code.is_empty() else ip))
 	return true
 
 
@@ -54,6 +71,15 @@ var _retries := 0
 
 
 func _on_connect_failed() -> void:
+	if relay_mode:
+		# modo relay: Net reintenta el ENet el solo contra el puente local
+		# (matar el ayudante a mitad de boot fue la fuente de zombis)
+		_retries += 1
+		print("CLIENT: reintento de ENet contra el puente local (%d)..." % _retries)
+		if _retries > 15:
+			print("CLIENT_RESULT: FALLO — el puente local nunca contestó")
+			quit(1)
+		return
 	# el host puede tardar en abrir (o estar reescaneando el proyecto): reintentar
 	_retries += 1
 	if _retries > 10:
@@ -84,13 +110,17 @@ func _process(delta: float) -> bool:
 	if game != null and not is_instance_valid(game):
 		return true   # el juego se desmontó (host fuera): el handler de drop evalúa
 	# 1) esperar el enlace antes de montar la partida (el juego hace handshake)
+	# OJO: sin peer montado, multiplayer.multiplayer_peer es un OfflineMultiplayerPeer
+	# que dice CONNECTED — hay que exigir ademas que Net haya llamado join()
 	if game == null:
-		if root.get_multiplayer().multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+		if relay_mode and t > 1.5 and fmod(t, 2.0) < delta:
+			net.relay_join_poll()  # los SceneTreeTimer no van bajo MainLoop script
+		if net.is_client() and root.get_multiplayer().multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 			print("CLIENT: enlace OK en t=%.1f — montando partida" % t)
 			game = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 			root.add_child(game)
-		elif t > CONNECT_TIMEOUT:
-			print("CLIENT_RESULT: FALLO — sin conexión en %.0fs" % CONNECT_TIMEOUT)
+		elif t > (CONNECT_TIMEOUT_RELAY if relay_mode else CONNECT_TIMEOUT):
+			print("CLIENT_RESULT: FALLO — sin conexión en %.0fs" % (CONNECT_TIMEOUT_RELAY if relay_mode else CONNECT_TIMEOUT))
 			quit(1)
 			return true
 		return false
@@ -164,6 +194,8 @@ func _finish() -> void:
 	var score_txt := "?"
 	if is_instance_valid(game):
 		score_txt = str(game.scores)
+	if net.relay_node != null:
+		print("CLIENT: %s" % net.relay_node.stats())
 	print("CLIENT_RESULT: %s — snapshots=%s deriva_max=%.0fpx bajas_vistas=%d score=%s" % [
 		"OK" if ok else "FALLO", got_snap, max_drift, kills_seen, score_txt,
 	])

@@ -5,6 +5,9 @@ extends SceneTree
 ##   godot --headless --path . --script test/online_host.gd -- --port=24575
 ## (el puerto es opcional: sin --port usa Net.DEFAULT_PORT; los argumentos
 ## tras "--" son user args, ver OS.get_cmdline_user_args()).
+## Modo relay (online v3): --relay-host [--relay IP:PUERTO] crea la partida
+## con el puente DEL JUEGO (net_relay.gd) e imprime "RELAY_CODE XXXX" para
+## que el orquestador se lo pase al cliente.
 ## Nota: el script de entrada se parsea antes que los autoloads, así que Net
 ## se rescata por ruta (/root/Net), nunca por identificador global.
 ## Código de salida: 0 OK, 1 FALLO.
@@ -19,6 +22,9 @@ var p2_moved := false
 var _tap_tick := -1
 var _tick := 0
 var _started := false
+var _relay_host := false
+var _relay_addr := ""
+var _code_printed := false
 
 
 func _initialize() -> void:
@@ -32,8 +38,19 @@ func _try_start() -> bool:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--port="):
 			port = int(a.trim_prefix("--port="))
+		elif a == "--relay-host":
+			_relay_host = true
+		elif a.begins_with("--relay="):
+			_relay_addr = a.trim_prefix("--relay=")
 	var use_port: int = port if port > 0 else net.DEFAULT_PORT
-	var err: int = net.host(use_port)
+	var err: int
+	if _relay_host:
+		err = net.host_relay(use_port, _relay_addr if not _relay_addr.is_empty() else net.RELAY_DEFAULT)
+		net.relay_failed.connect(func(reason: String) -> void:
+			print("HOST_RESULT: FALLO — el relay falló (%s)" % reason)
+			quit(1))
+	else:
+		err = net.host(use_port)
 	if err == ERR_UNAVAILABLE:
 		return false
 	if err != OK:
@@ -41,7 +58,8 @@ func _try_start() -> bool:
 		quit(1)
 		return true
 	_started = true
-	print("HOST: servidor ENet escuchando en el puerto %d (is_host=%s)" % [use_port, net.is_host()])
+	print("HOST: servidor ENet escuchando en el puerto %d (is_host=%s)%s" % [
+		use_port, net.is_host(), " vía RELAY" if _relay_host else ""])
 	game = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(game)
 	print("HOST: partida montada, esperando handshake del cliente...")
@@ -66,6 +84,9 @@ func _process(delta: float) -> bool:
 		return false
 	if game == null:
 		return true
+	if _relay_host and not _code_printed and not net.relay_code.is_empty():
+		_code_printed = true
+		print("HOST: RELAY_CODE %s" % net.relay_code)
 	var p1: Node = game.players[0]
 	var p2: Node = game.players[1]
 	# "jugador humano" P1: corre a la derecha, ataca, y salta muros y fosos
@@ -111,6 +132,8 @@ func _process(delta: float) -> bool:
 		])
 	if t >= DUR:
 		var ok: bool = net.client_ready and p2_moved and kills > 0
+		if net.relay_node != null:
+			print("HOST: %s" % net.relay_node.stats())
 		print("HOST_RESULT: %s — cliente_listo=%s p1_movio=%s p2_movio=%s bajas=%d score=%s" % [
 			"OK" if ok else "FALLO", net.client_ready, p1_moved, p2_moved, kills, str(game.scores),
 		])

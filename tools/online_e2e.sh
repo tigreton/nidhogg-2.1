@@ -22,6 +22,16 @@
 #                                          # externo ya desplegado (el de fly.io);
 #                                          # solo levanta el bench: el trafico
 #                                          # atraviesa internet de verdad
+#   tools/online_e2e.sh --relay-game       # E2E del MODO RELAY DEL JUEGO (online
+#                                          # v3): host con --relay-host y cliente
+#                                          # con --join-relay=CODIGO — el puente
+#                                          # es net_relay.gd dentro de los Godot,
+#                                          # con relay local (relay.py en PORT+3);
+#                                          # el orquestador pesca el CODIGO del
+#                                          # log del host
+#   tools/online_e2e.sh --relay-game-ip IP:PUERTO
+#                                          # igual pero contra un relay externo
+#                                          # (el de produccion en fly.io)
 #   tools/online_e2e.sh --keep             # conservar las copias y logs (depurar)
 #   GODOT=/ruta/a/godot tools/online_e2e.sh
 #
@@ -38,6 +48,8 @@ HOST_WAIT=6
 LATENCY=0
 RELAY=0
 RELAY_IP=""
+RELAY_GAME=0      # 0 no; 1 = puente del juego + relay local; 2 = relay externo
+RELAY_GAME_ADDR=""
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -50,6 +62,9 @@ while [ $# -gt 0 ]; do
 		--relay) RELAY=1; shift ;;
 		--relay-ip) RELAY=1; RELAY_IP="$2"; shift 2 ;;
 		--relay-ip=*) RELAY=1; RELAY_IP="${1#--relay-ip=}"; shift ;;
+		--relay-game) RELAY_GAME=1; shift ;;
+		--relay-game-ip) RELAY_GAME=2; RELAY_GAME_ADDR="$2"; shift 2 ;;
+		--relay-game-ip=*) RELAY_GAME=2; RELAY_GAME_ADDR="${1#--relay-game-ip=}"; shift ;;
 		--keep) KEEP=1; shift ;;
 		--help|-h)
 			sed -n '2,20p' "$0"; exit 0 ;;
@@ -142,6 +157,50 @@ if [ "$RELAY" = "1" ]; then
 	sleep 1
 fi
 
+# --- 2b2) relay-game (opcional): el MODO RELAY DEL JUEGO (online v3) -------
+# Diferencia con --relay: aqui no hay bench — el puente es net_relay.gd
+# dentro de los propios Godot (host --relay-host / cliente --join-relay),
+# exactamente como jugara la gente. Con relay local (modo 1) se lanza
+# relay.py; con direccion externa (modo 2, el de fly.io) no se lanza nada.
+# Con --latency N ademas se cuela un netem entre el PUENTE DEL CLIENTE y el
+# relay (la geometria que rompia el dialogo ENet del puente por frame).
+GAME_RELAY_ADDR=""
+GAME_CLIENT_RELAY=""
+if [ "$RELAY_GAME" != "0" ]; then
+	if [ "$RELAY_GAME" = "2" ]; then
+		GAME_RELAY_ADDR="$RELAY_GAME_ADDR"
+		echo "E2E: relay-game EXTERNO ${GAME_RELAY_ADDR} (puente dentro del juego)"
+	else
+		PYTHON="${PYTHON:-$(command -v python3 || command -v python)}"
+		if [ -z "$PYTHON" ]; then
+			echo "E2E FALLO: --relay-game necesita python (3.8+) en el PATH o en \$PYTHON"
+			exit 1
+		fi
+		GAME_RELAY_ADDR="${IP}:$((PORT + 3))"
+		echo "E2E: relay-game ${GAME_RELAY_ADDR} (puente dentro del juego)"
+		"$PYTHON" -u "$SRC/tools/relay.py" --port "$((PORT + 3))" --bind "$IP" >"$WORK/relay.log" 2>&1 &
+		RELAY_PID=$!
+	fi
+	GAME_CLIENT_RELAY="$GAME_RELAY_ADDR"
+	if [ "$LATENCY" -gt 0 ] 2>/dev/null; then
+		# netem SOLO en la pata cliente→relay (ida con delay, vuelta limpia
+		# como fly): es la geometria del bug del puente; combinable con el
+		# relay externo (delay adicional sobre el de internet)
+		PYTHON="${PYTHON:-$(command -v python3 || command -v python)}"
+		DELAY=$((LATENCY / 2))
+		JITTER=$((LATENCY / 8)); [ "$JITTER" -gt 10 ] && JITTER=10
+		LOSS_PCT=0
+		[ "$RELAY_GAME" = "2" ] && LOSS_PCT=0.5
+		GAME_CLIENT_RELAY="${IP}:$((PORT + 4))"
+		echo "E2E: netem ${GAME_CLIENT_RELAY} -> ${GAME_RELAY_ADDR}  (${DELAY}ms ida cliente->relay, jitter ${JITTER})"
+		"$PYTHON" -u "$SRC/tools/netem_proxy.py" --listen "$GAME_CLIENT_RELAY" --target "$GAME_RELAY_ADDR" \
+			--delay "$DELAY" --jitter "$JITTER" --loss "$LOSS_PCT" --seed 20261024 >"$WORK/netem-game.log" 2>&1 &
+		PROXY_PID=$!
+		LATENCY=0  # el bloque 2c no debe montar otro netem
+	fi
+	sleep 1
+fi
+
 # --- 2c) red mala inyectada (opcional): proxy UDP con delay/loss ------------
 if [ "$LATENCY" -gt 0 ] 2>/dev/null; then
 	PYTHON="${PYTHON:-$(command -v python3 || command -v python)}"
@@ -190,9 +249,13 @@ if ! run_import "$CLIENT_DIR" "$WORK/client-import.log"; then
 fi
 
 # --- 3) host en segundo plano, espera, cliente en primer plano -------------
-echo "E2E: lanzando HOST (puerto $PORT)..."
+HOST_UARGS="--port=$PORT"
+if [ "$RELAY_GAME" != "0" ]; then
+	HOST_UARGS="--port=$PORT --relay-host --relay=$GAME_RELAY_ADDR"
+fi
+echo "E2E: lanzando HOST (puerto $PORT${GAME_RELAY_ADDR:+, relay $GAME_RELAY_ADDR})..."
 "$GODOT" --headless --path "$(native "$HOST_DIR")" --audio-driver Dummy \
-	--script test/online_host.gd -- --port="$PORT" >"$WORK/host.log" 2>&1 &
+	--script test/online_host.gd -- $HOST_UARGS >"$WORK/host.log" 2>&1 &
 HOST_PID=$!
 
 sleep "$HOST_WAIT"
@@ -207,9 +270,28 @@ if [ "$RELAY" = "1" ]; then
 	done
 fi
 
+# relay-game: el cliente necesita el CODIGO de sala que el host imprime
+CLIENT_UARGS="--ip=$IP --port=$CLIENT_PORT"
+if [ "$RELAY_GAME" != "0" ]; then
+	ROOM_CODE=""
+	for i in $(seq 1 30); do
+		ROOM_CODE="$(grep -a 'RELAY_CODE' "$WORK/host.log" | tail -1 | awk '{print $NF}')"
+		[ -n "$ROOM_CODE" ] && break
+		sleep 1
+	done
+	if [ -z "$ROOM_CODE" ]; then
+		echo "E2E FALLO: el host no obtuvo código de sala (30 s) — cola del host:"
+		tail -5 "$WORK/host.log"
+		tail -5 "$WORK/relay.log" 2>/dev/null
+		exit 1
+	fi
+	echo "E2E: sala de relay $ROOM_CODE — lanzando cliente por el puente del juego..."
+	CLIENT_UARGS="--relay-join=$ROOM_CODE --relay=$GAME_CLIENT_RELAY"
+fi
+
 echo "E2E: lanzando CLIENTE (${IP}:${CLIENT_PORT})..."
 timeout 180 "$GODOT" --headless --path "$(native "$CLIENT_DIR")" --audio-driver Dummy \
-	--script test/online_client.gd -- --ip="$IP" --port="$CLIENT_PORT" >"$WORK/client.log" 2>&1
+	--script test/online_client.gd -- $CLIENT_UARGS >"$WORK/client.log" 2>&1
 CLIENT_RC=$?
 
 # el host se auto-cierra a los ~40 s; esperar su veredicto

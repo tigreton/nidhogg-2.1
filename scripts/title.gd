@@ -1,15 +1,20 @@
 extends Control
 ## Pantalla de título: reglas del partido y arranque.
 ## Online (tarea 85): O abre el menú para crear partida (host) o unirse por IP.
+## Online v3: 3/4 son el modo RELAY — jugar por Internet sin abrir puertos ni
+## dar IPs, solo un código de 4 letras (docs/online-netcode.md § Relay).
 ## Args de usuario para pruebas: godot --path . -- --host   /   -- --join IP
+##   --host-relay [--relay IP:PUERTO]  /  --join-relay=CODE [--relay IP:PUERTO]
 
 var rules_label: Label
 var hint_label: Label
 var net_panel: Control        # menú online (se crea al pulsar O)
 var net_status: Label
 var net_edit: LineEdit
-var net_mode := ""            # "", "menu", "host_wait", "join_ip", "connecting"
-var net_sel := 0              # menú online: 0 = crear, 1 = unirse (mando P1)
+var net_mode := ""            # "", "menu", "host_wait", "join_ip", "connecting",
+                              # "relay_wait" (host esperando sala/rival),
+                              # "join_relay" (tecleando código)
+var net_sel := 0              # menú online: 0..3 (mando P1)
 
 const SKY := Color(0.055, 0.05, 0.09)
 const CFG_PATH := "user://online.cfg"
@@ -92,6 +97,8 @@ func _update_rules() -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if _helper_mode:
+		return  # proceso ayudante del relay: nada de UI ni teclas
 	var k := event as InputEventKey
 	if k == null or not k.pressed or k.echo:
 		return
@@ -133,6 +140,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _helper_mode:
+		return  # proceso ayudante del relay: nada de UI ni mandos
 	# la configuración del título se maneja también con el mando de P1
 	# (device 0): P1 es quien configura y arranca, P2 solo juega
 	var jb := event as InputEventJoypadButton
@@ -167,18 +176,23 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _net_pad(jb: InputEventJoypadButton) -> void:
-	# menú online con mando: ↑/↓ elige, A confirma, B vuelve (la IP se teclea)
+	# menú online con mando: ↑/↓ elige (4 opciones), A confirma, B vuelve
+	# (la IP y el código se teclean)
 	match net_mode:
 		"menu":
 			match jb.button_index:
-				JOY_BUTTON_DPAD_UP, JOY_BUTTON_DPAD_DOWN:
-					net_sel = 1 - net_sel
+				JOY_BUTTON_DPAD_UP:
+					net_sel = wrapi(net_sel - 1, 0, 4)
+					_net_show_menu()
+				JOY_BUTTON_DPAD_DOWN:
+					net_sel = wrapi(net_sel + 1, 0, 4)
 					_net_show_menu()
 				JOY_BUTTON_A:
-					if net_sel == 0:
-						_do_host()
-					else:
-						_show_join_ip()
+					match net_sel:
+						0: _do_host()
+						1: _show_join_ip()
+						2: _do_host_relay()
+						3: _show_join_relay()
 				JOY_BUTTON_B, JOY_BUTTON_BACK:
 					_close_net_menu()
 		"join_ip":
@@ -188,7 +202,14 @@ func _net_pad(jb: InputEventJoypadButton) -> void:
 					_do_join(ip if not ip.is_empty() else "127.0.0.1")
 				JOY_BUTTON_B, JOY_BUTTON_BACK:
 					_net_show_menu()
-		"host_wait":
+		"join_relay":
+			match jb.button_index:
+				JOY_BUTTON_A:
+					if net_edit != null:
+						_do_join_relay(net_edit.text)
+				JOY_BUTTON_B, JOY_BUTTON_BACK:
+					_net_show_menu()
+		"host_wait", "relay_wait":
 			if jb.button_index == JOY_BUTTON_B or jb.button_index == JOY_BUTTON_BACK:
 				_close_net_menu()
 
@@ -198,11 +219,26 @@ func _net_pad(jb: InputEventJoypadButton) -> void:
 # =============================================================================
 
 func _parse_cli_args() -> void:
-	# godot --path . -- --host  ·  godot --path . -- --join 192.168.1.50
+	# modo ayudante del relay (proceso aparte lanzado por Net.join_relay):
+	# ni título ni juego — solo el puente C vivo hasta que lo maten
+	for a in OS.get_cmdline_user_args():
+		if a == "--relay-helper":
+			_run_relay_helper()
+			return
+	# godot --path . -- --host  ·  --join 192.168.1.50  ·  --host-relay
+	#   --join-relay=AB3F [--relay 127.0.0.1:24578] (relay a mano para tests)
+	var relay := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--relay="):
+			relay = a.trim_prefix("--relay=")
 	for a in OS.get_cmdline_user_args():
 		if a == "--host":
 			_open_net_menu()
 			_do_host()
+			return
+		if a == "--host-relay":
+			_open_net_menu()
+			_do_host_relay(relay)
 			return
 		if a == "--join":
 			_open_net_menu()
@@ -212,6 +248,75 @@ func _parse_cli_args() -> void:
 			_open_net_menu()
 			_do_join(a.trim_prefix("--join="))
 			return
+		if a.begins_with("--join-relay="):
+			_open_net_menu()
+			_do_join_relay(a.trim_prefix("--join-relay="), relay)
+			return
+
+
+## Puente C del relay como proceso aparte (lo lanza Net.join_relay con el
+## propio ejecutable --headless): el ENet cliente del juego no tolera
+## convivir con su puente en el mismo proceso bajo latencia (v3 2/3).
+## Mismo net_relay.gd que el anfitrión usa dentro del proceso (ese sí va bien).
+var _helper_mode := false
+
+
+func _run_relay_helper() -> void:
+	_helper_mode = true
+	var code := ""
+	var relay := ""
+	var listen := Net.RELAY_CLIENT_PORT
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--code="):
+			code = a.trim_prefix("--code=")
+		elif a.begins_with("--relay="):
+			relay = a.trim_prefix("--relay=")
+		elif a.begins_with("--listen="):
+			listen = int(a.trim_prefix("--listen="))
+	var bridge: Node = load("res://scripts/net_relay.gd").new()
+	add_child(bridge)
+	var err: int = bridge.setup_client(relay, code, listen)
+	print("RELAY_HELPER: sala=%s relay=%s escucha=%d err=%d" % [code, relay, listen, err])
+	# trazas a archivo (su stdout no se ve desde el juego que lo lanza)
+	var log_path := "user://relay_helper.log"
+	var f := FileAccess.open(log_path, FileAccess.WRITE)
+	if f != null:
+		f.store_line("helper pid=%d sala=%s relay=%s escucha=%d err=%d" % [
+			OS.get_process_id(), code, relay, listen, err])
+		f.close()
+	_helper_bridge = bridge
+
+
+var _helper_bridge: Node = null
+var _helper_last_line := ""
+
+
+func _helper_log(line: String) -> void:
+	# append (FileAccess no tiene modo APPEND en 4.x): abrir, ir al final
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists("user://relay_helper.log") \
+			else FileAccess.WRITE
+	var f := FileAccess.open("user://relay_helper.log", mode)
+	if f != null:
+		f.seek_end(0)
+		f.store_line(line)
+		f.close()
+
+
+func _process(_d: float) -> void:
+	# ayudante: watchdog de actividad — si el juego muere o lo abandona (un
+	# kill duro no mata el arbol en Windows), el puente deja de recibir y este
+	# proceso se va solo en vez de quedar eterno agarrando el puerto
+	if not _helper_mode:
+		return
+	if _helper_bridge != null and _helper_bridge.idle_msec() > 60000:
+		print("RELAY_HELPER: sin actividad 60 s — cierro")
+		get_tree().quit()
+		return
+	if _helper_bridge != null:
+		var line := "%s" % _helper_bridge.stats()
+		if line != _helper_last_line:
+			_helper_last_line = line
+			_helper_log("%d ms  %s" % [Time.get_ticks_msec(), line])
 
 
 func _open_net_menu() -> void:
@@ -250,13 +355,18 @@ func _open_net_menu() -> void:
 		Net.connect_failed.connect(_on_connect_failed)
 		Net.server_lost.connect(_on_net_lost_title)
 		Net.peer_left.connect(_on_net_lost_title)
+		Net.relay_room_ready.connect(_on_relay_room_ready)
+		Net.relay_join_ok.connect(_on_relay_join_ok)
+		Net.relay_failed.connect(_on_relay_failed)
 
 
 func _net_show_menu() -> void:
 	net_mode = "menu"
-	net_status.text = "%s 1 — CREAR PARTIDA (eres P1, anfitrión)\n%s 2 — UNIRSE A UNA PARTIDA (eres P2)\n\nLas reglas del partido las fija el anfitrión.\nMando: ↑/↓ elegir · A aceptar · B volver      ESC: volver" % [
+	net_status.text = "%s 1 — CREAR PARTIDA (eres P1, anfitrión: IP o UPnP)\n%s 2 — UNIRSE A UNA PARTIDA (IP del anfitrión)\n%s 3 — CREAR POR RELAY (sin abrir nada: te sale un CÓDIGO)\n%s 4 — UNIRSE POR RELAY (teclea el código de 4 letras)\n\nLas reglas del partido las fija el anfitrión.\nMando: ↑/↓ elegir · A aceptar · B volver      ESC: volver" % [
 		"▶" if net_sel == 0 else " ",
 		"▶" if net_sel == 1 else " ",
+		"▶" if net_sel == 2 else " ",
+		"▶" if net_sel == 3 else " ",
 	]
 	if net_edit != null:
 		net_edit.visible = false
@@ -269,11 +379,17 @@ func _net_key(k: InputEventKey) -> void:
 				_do_host()
 			KEY_2:
 				_show_join_ip()
+			KEY_3:
+				_do_host_relay()
+			KEY_4:
+				_show_join_relay()
 	elif net_mode == "join_ip" and k.keycode == KEY_ENTER and net_edit != null:
 		var ip := net_edit.text.strip_edges()
 		if ip.is_empty():
 			ip = "127.0.0.1"
 		_do_join(ip)
+	elif net_mode == "join_relay" and k.keycode == KEY_ENTER and net_edit != null:
+		_do_join_relay(net_edit.text)
 
 
 func _do_host() -> void:
@@ -294,19 +410,9 @@ func _do_host() -> void:
 
 func _show_join_ip() -> void:
 	net_mode = "join_ip"
-	if net_edit == null:
-		net_edit = LineEdit.new()
-		net_edit.position = Vector2(1152 * 0.5 - 180.0, 330.0)
-		net_edit.size = Vector2(360, 46)
-		net_edit.add_theme_font_size_override("font_size", 28)
-		net_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
-		net_edit.text = _load_last_ip()
-		net_panel.add_child(net_edit)
-		net_edit.text_submitted.connect(func(_t: String) -> void:
-			var ip := net_edit.text.strip_edges()
-			if ip.is_empty():
-				ip = "127.0.0.1"
-			_do_join(ip))
+	_ensure_net_edit()
+	net_edit.text = _load_last_ip()
+	net_edit.max_length = 0
 	net_edit.visible = true
 	net_edit.grab_focus()
 	net_status.text = "Escribe la IP del anfitrión y pulsa ENTER\n(vacío = 127.0.0.1, partida en este mismo PC)\nESC: volver"
@@ -321,6 +427,90 @@ func _do_join(ip: String) -> void:
 	_save_last_ip(ip)
 	net_mode = "connecting"
 	net_status.text = "Conectando a %s ..." % ip
+
+
+# =============================================================================
+# MODO RELAY (online v3): sin abrir puertos, sin IPs — solo un código
+# =============================================================================
+
+func _do_host_relay(relay_override := "") -> void:
+	var err := Net.host_relay(Net.DEFAULT_PORT, relay_override if not relay_override.is_empty() else Net.RELAY_DEFAULT)
+	if err != OK:
+		net_mode = "menu"
+		net_status.text = "No se pudo abrir el puerto %d (¿otra partida abierta?).\nESC: volver" % Net.DEFAULT_PORT
+		return
+	net_mode = "relay_wait"
+	net_status.text = "Creando la sala en el relay...\n(nadie abre puertos: el rival solo necesita el código)"
+
+
+func _show_join_relay() -> void:
+	net_mode = "join_relay"
+	_ensure_net_edit()
+	net_edit.text = ""
+	net_edit.max_length = 4
+	net_edit.visible = true
+	net_edit.grab_focus()
+	net_status.text = "Teclea el CÓDIGO de 4 letras del anfitrión y pulsa ENTER\n(ejemplo: 7KXW)      ESC: volver"
+
+
+## LineEdit compartido por «unirse por IP» y «unirse por relay»: el ENTER se
+## despacha por net_mode (un solo handler conectado, así reutilizar el edit
+## no dispara el handler del otro modo).
+func _ensure_net_edit() -> void:
+	if net_edit != null:
+		return
+	net_edit = LineEdit.new()
+	net_edit.position = Vector2(1152 * 0.5 - 180.0, 330.0)
+	net_edit.size = Vector2(360, 46)
+	net_edit.add_theme_font_size_override("font_size", 28)
+	net_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	net_panel.add_child(net_edit)
+	net_edit.text_submitted.connect(_on_edit_submitted)
+
+
+func _on_edit_submitted(txt: String) -> void:
+	if net_mode == "join_ip":
+		var ip := txt.strip_edges()
+		_do_join(ip if not ip.is_empty() else "127.0.0.1")
+	elif net_mode == "join_relay":
+		_do_join_relay(txt)
+
+
+func _do_join_relay(code_txt: String, relay_override := "") -> void:
+	var code := code_txt.strip_edges().to_upper()
+	if code.length() != 4:
+		net_status.text = "El código son 4 letras: %s\nESC: volver" % code_txt.strip_edges()
+		return
+	var err := Net.join_relay(code, relay_override if not relay_override.is_empty() else Net.RELAY_DEFAULT)
+	if err != OK:
+		net_status.text = "Código no válido (4 letras, sin la O ni la I).\nESC: volver"
+		return
+	net_mode = "connecting"
+	net_status.text = "Buscando la sala %s en el relay..." % code
+
+
+func _on_relay_room_ready(code: String) -> void:
+	# host: la sala existe — el código es lo único que el rival necesita
+	if net_panel == null:
+		return
+	net_status.text = "SALA CREADA — dale este CÓDIGO a tu rival:\n\n        %s\n\nEl rival elige «4 — UNIRSE POR RELAY» y lo teclea.\nESC: cancelar" % code
+
+
+func _on_relay_join_ok() -> void:
+	if net_panel == null:
+		return
+	net_status.text = "Sala encontrada — conectando...\n"
+
+
+func _on_relay_failed(reason: String) -> void:
+	if net_panel == null:
+		return
+	Net.shutdown()
+	net_mode = "menu"
+	if reason == "NOROOM":
+		net_status.text = "No hay ninguna sala con ese código.\n¿Está el anfitrión en «3 — CREAR POR RELAY» aún?\n\nESC: volver"
+	else:
+		net_status.text = "El relay falló (%s). ¿Internet bien?\n\nESC: volver" % reason
 
 
 func _on_peer_joined() -> void:

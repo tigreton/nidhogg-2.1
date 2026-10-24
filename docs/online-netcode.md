@@ -105,10 +105,31 @@ local. En Windows/WSL pasa en ambos modos.
 OK (deriva 92 px)** — dos Godot jugando un duelo completo a través de
 París. Job `relay-e2e` del CI para regression en cada push.
 
-**Pendiente (online v3 2/3)**: integrarlo en el juego — el «modo relay»
-en `net.gd` (el puente que hoy hace el bench, con la misma coraza
-OSError) y la línea de menú en el título (crear → mostrar código,
-unirse → pedir código). El servidor ya está listo y esperando.
+**Pendiente (online v3 2/3)**: ~~integrarlo en el juego~~ — **HECHO
+(2026-10-24)**: el menú del título gana «3 — CREAR POR RELAY» (el anfitrión
+ve su código de 4 letras en grande) y «4 — UNIRSE POR RELAY» (teclear el
+código). El anfitrión lleva el puente DENTRO del proceso (`net_relay.gd`,
+hilos por socket); el rival lo lleva en un **proceso ayudante** — el propio
+ejecutable re-lanzado `--headless --relay-helper` (Net lo crea con
+`OS.create_process`, lo mata en `shutdown()` y el ayudante se va solo tras
+60 s sin tráfico del juego: un kill duro del juego no deja huérfanos
+agarrando el puerto). E2E: `tools/online_e2e.sh --relay-game [--latency N |
+--relay-game-ip IP:PUERTO]` — en CI cada push; validado en local a 0 ms
+(136 px), 80 ms en la pata cliente (109 px) y **contra el relay real de
+fly por internet (68 px de deriva)**.
+
+**Las dos trampas de Godot que costaron la tarde** (documentadas para la
+próxima): (1) sin peer montado, `multiplayer.multiplayer_peer` es un
+`OfflineMultiplayerPeer` que reporta `CONNECTION_CONNECTED` — cualquier
+"¿estoy conectado?" debe exigir además que `Net` haya llamado `join()`;
+(2) el ENet **cliente** no tolera convivir en su mismo proceso con el
+puente UDP bajo latencia del relay (handshake OK y luego el servidor se
+queda sordo con tormentas de retransmisión; mismo `net_relay.gd` en
+proceso aparte, verde) — el anfitrión en cambio convive sin problema.
+
+**Pendiente (online v3 3/3, cuando toque)**: UX de errores del código
+equivocado (hoy acaba en «sin conexión»), recordar el último relay si
+algún día hay más de uno, y quizá un «jugar de nuevo por relay» directo.
 
 ## Autoridad y sincronización
 

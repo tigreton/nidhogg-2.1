@@ -143,3 +143,9 @@ jobs:
 
       - name: Pareja online por el relay (tools/online_e2e.sh --relay)
         run: GODOT="$PWD/$GODOT" bash tools/online_e2e.sh --relay
+
+      # el MODO RELAY DEL JUEGO (online v3): el puente es net_relay.gd dentro
+      # del host y un proceso ayudante en el cliente; el orquestador pesca el
+      # codigo de sala del log del host
+      - name: Modo relay del juego (tools/online_e2e.sh --relay-game)
+        run: GODOT="$PWD/$GODOT" bash tools/online_e2e.sh --port 24585 --relay-game

@@ -42,13 +42,16 @@ def main():
     ap.add_argument("--relay", required=True, help="ip:puerto del relay")
     ap.add_argument("--host-target", required=True, help="ip:puerto del servidor ENet del host")
     ap.add_argument("--client-listen", required=True, help="ip:puerto donde conecta el cliente")
+    ap.add_argument("--code", default=None,
+                    help="codigo de sala existente: hace JOIN en vez de CREATE "
+                         "(la pata H reenviara igual; util para pruebas mixtas)")
     args = ap.parse_args()
 
     relay_addr = parse_addr(args.relay)
     host_addr = parse_addr(args.host_target)
     relay_is_local = relay_addr[0] in ("127.0.0.1", "localhost")
 
-    state = {"code": None, "client": None, "joined": False}
+    state = {"code": args.code, "client": None, "joined": False}
 
     # pata H: una sola toma para el relay y para el host (el host le responde
     # a esta direccion, como hacia con netem_proxy). Contra un relay LOCAL se
@@ -159,7 +162,11 @@ def main():
     print("bench: relay=%s:%d  host-target=%s:%d  client-listen=%s:%d%s"
           % (relay_addr + host_addr + parse_addr(args.client_listen)
              + ("" if relay_is_local else "  (relay externo)",)), flush=True)
-    s_h.sendto(MAGIC + b"CREATE", relay_addr)
+    if state["code"] is not None:
+        print("bench: uniendome a la sala %s desde la pata C" % state["code"], flush=True)
+        s_c_r.sendto(MAGIC + b"JOIN " + state["code"].encode(), relay_addr)
+    else:
+        s_h.sendto(MAGIC + b"CREATE", relay_addr)
     while True:
         time.sleep(3600)
 

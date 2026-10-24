@@ -126,9 +126,15 @@ def main() -> None:
             # la punta se reaprende de cada frame: NAT/proxy pueden moverla
             peer = None
             if role_b == b"H":
+                if not room.get("saw_h"):
+                    room["saw_h"] = True
+                    print("relay: primer dato H en %s (%d bytes)" % (code, len(payload)), flush=True)
                 room["addr_h"] = addr
                 peer = room["addr_c"]
             elif role_b == b"C":
+                if not room.get("saw_c"):
+                    room["saw_c"] = True
+                    print("relay: primer dato C en %s (%d bytes)" % (code, len(payload)), flush=True)
                 room["addr_c"] = addr
                 peer = room["addr_h"]
             if peer is not None:
