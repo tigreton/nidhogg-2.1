@@ -47,6 +47,45 @@ Un **relay** (servidor de retransmisión para jugar sin abrir nada) queda
 fuera de v2: exige hospedar y mantener infraestructura; decisión pendiente
 para otro día.
 
+## Relay (online v3, en despliegue) — jugar sin abrir NADA
+
+Decisión de hosting (2026-10-24): **fly.io**, región Madrid, máquina de
+256 MB (~2–3 $/mes de uso, sin plan ni prepago). El relay reenvía bytes
+crudos de ENet entre dos puntas que conectan AMBAS hacia fuera: ni el
+anfitrión ni el rival abren puerto alguno. Caída del riesgo técnico:
+`netem_proxy.py` ya demostró (E2E bajo latencia) que ENet atraviesa un
+forwarder UDP tonto sin enterarse.
+
+**Piezas** (todas escritas y validadas; falta solo el alta de la cuenta
+fly.io, el `fly deploy` y la integración en el menú del juego):
+
+- `tools/relay.py` — el servidor: UN socket UDP (24565) y salas de dos
+  puntas por **código de 4 letras**. Protocolo de frames que empiezan por
+  `NRELAY1`/`NRELAY1D` (que un datagrama ENet jamás empezará): CREATE /
+  JOIN / PING / CLOSE de control y datos `NRELAY1D <código> <H|C> <bytes>`.
+  El enrutado es por **código+rol**, no por dirección: cada frame
+  reaprende la punta (NAT que renueva, proxy que enmascara). Solo stdlib,
+  vale para el contenedor, un VPS o WSL. GC de salas por inactividad
+  (10 min sin rival, 2 h de vida máxima). «Autenticación» = el código
+  (1v1 entre amigos).
+- `tools/relay_bench.py` — las dos patas locales (H hacia el host ENet,
+  C a la escucha para el cliente): es exactamente lo que hará `net.gd`
+  dentro del juego; con esto el E2E valida el relay con ENet real sin
+  tocar el juego. `tools/online_e2e.sh --relay` lo monta todo (relay en
+  `PORT+3`, pata C en `PORT+2`), combinable con `--latency`.
+- `Dockerfile` + `fly.toml` (app `nidhogg2-relay`, `mad`, UDP 24565) +
+  `.github/workflows/relay-deploy.yml` — despliegue automático en cada
+  push que toque el relay, **apagado** hasta que existan el secret
+  `FLY_API_TOKEN` y la variable `RELAY_DEPLOY=true` (tras el alta).
+  Job 3 del CI (`relay-e2e`): la pareja online del orquestador pasa por
+  el relay en cada push.
+
+**Validación (2026-10-24, local)**: smoke del protocolo (CREATE/JOIN,
+datos binarios en ambas direcciones, PING, NOROOM, CLOSE) OK; E2E completo
+`--relay` OK (deriva 76 px, 10 bajas, marcador idéntico); E2E
+`--relay --latency 80` OK (deriva 99 px, 5 bajas) — el escenario de
+partida hospedada con internet regular aguanta igual que el directo.
+
 ## Autoridad y sincronización
 
 - **Host autoritativo**: combate, muertes, puntos, rondas, reapariciones y
@@ -178,8 +217,9 @@ del cliente se mantiene < 100 px durante el juego estable.
   La reconciliación con rebobinado queda fuera (el juego es 1v1 y la
   predicción propia ya reconcilia contra el snapshot).
 - ~~NAT punch / relay para jugar sin IP pública.~~ UPnP automático y guía de
-  port-forwarding: HECHO (§ *Jugar por Internet*). El relay queda pendiente
-  de una decisión de hosting (exige infraestructura que alguien mantenga).
+  port-forwarding: HECHO (§ *Jugar por Internet*). El relay: decisión de
+  hosting tomada y código listo (§ *Relay* arriba — fly.io, pendiente del
+  alta de la cuenta, el deploy y la integración en el menú del juego).
 - E2E bajo latencia: `tools/online_e2e.sh --latency 150` (proxy UDP
   `tools/netem_proxy.py` con delay/jitter/pérdida por dirección); validado
   OK a 80 y 150 ms de RTT con deriva ~120 px.

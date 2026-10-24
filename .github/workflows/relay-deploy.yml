@@ -1,0 +1,38 @@
+name: Relay deploy
+
+# Despliegue automatico del relay del online (tools/relay.py + Dockerfile +
+# fly.toml) a fly.io en cada push a main que lo toque.
+#
+# APAGADO por defecto: solo corre cuando la VARIABLE de repositorio
+# RELAY_DEPLOY vale "true", que se activa despues de crear el app en fly
+# y guardar el token de deploy como secret (una sola vez):
+#   fly tokens create deploy -a nidhogg2-relay | gh secret set FLY_API_TOKEN
+#   gh variable set RELAY_DEPLOY true
+# Asi el workflow puede llegar al repo antes que la cuenta de fly sin romper
+# la CI en verde.
+
+on:
+  push:
+    branches: [main]
+    paths: [tools/relay.py, Dockerfile, fly.toml, .github/workflows/relay-deploy.yml]
+  workflow_dispatch:
+
+concurrency:
+  group: relay-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: fly deploy (nidhogg2-relay, region mad)
+    if: vars.RELAY_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Desplegar el relay
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

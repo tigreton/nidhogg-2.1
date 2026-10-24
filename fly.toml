@@ -1,0 +1,23 @@
+# fly.io — Relay del online de Nidhogg (docs/online-netcode.md § relay).
+#
+# Una unica maquina de 256 MB en Madrid (primary_region "mad") con el
+# 24565/UDP publicado por el anycast de fly. Coste: ~2-3 $/mes de uso.
+#
+#   fly auth login && fly deploy        # desde la raiz del proyecto
+#
+# El deploy automatico por CI (.github/workflows/relay-deploy.yml) esta
+# apagado hasta que exista el secret FLY_API_TOKEN y la variable de
+# repositorio RELAY_DEPLOY= true (ver el workflow).
+app = "nidhogg2-relay"
+primary_region = "mad"
+
+[vm]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[[services]]
+  protocol = "udp"
+  internal_port = 24565
+
+  [[services.ports]]
+    port = 24565

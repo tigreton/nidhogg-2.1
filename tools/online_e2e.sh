@@ -12,11 +12,16 @@
 #   tools/online_e2e.sh                    # puerto 24575 (no pisar el 24565 de dev)
 #   tools/online_e2e.sh --port 24600       # puerto distinto
 #   tools/online_e2e.sh --latency 80       # ida y vuelta por tools/netem_proxy.py
+#   tools/online_e2e.sh --relay            # por tools/relay.py + relay_bench.py:
+#                                          # host y cliente conectan AMBOS hacia el
+#                                          # relay como en partida hospedada, sin
+#                                          # verse directamente (combinable con
+#                                          # --latency: relay + red mala)
 #   tools/online_e2e.sh --keep             # conservar las copias y logs (depurar)
 #   GODOT=/ruta/a/godot tools/online_e2e.sh
 #
 # Requisitos: bash (Git Bash en Windows / linux en CI), tar, timeout;
-# con --latencia además python (3.8+, solo stdlib).
+# con --latency o --relay además python (3.8+, solo stdlib).
 # Salida: 0 si HOST_RESULT y CLIENT_RESULT son ambos OK, 1 en cualquier fallo.
 
 set -u
@@ -26,6 +31,7 @@ IP=127.0.0.1
 KEEP=0
 HOST_WAIT=6
 LATENCY=0
+RELAY=0
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -35,6 +41,7 @@ while [ $# -gt 0 ]; do
 		--ip=*) IP="${1#--ip=}"; shift ;;
 		--latency) LATENCY="$2"; shift 2 ;;
 		--latency=*) LATENCY="${1#--latency=}"; shift ;;
+		--relay) RELAY=1; shift ;;
 		--keep) KEEP=1; shift ;;
 		--help|-h)
 			sed -n '2,20p' "$0"; exit 0 ;;
@@ -69,6 +76,8 @@ mkdir -p "$HOST_DIR" "$CLIENT_DIR"
 
 HOST_PID=""
 PROXY_PID=""
+RELAY_PID=""
+BENCH_PID=""
 CLIENT_PORT="$PORT"
 cleanup() {
 	if [ -n "$HOST_PID" ] && kill -0 "$HOST_PID" 2>/dev/null; then
@@ -76,6 +85,12 @@ cleanup() {
 	fi
 	if [ -n "$PROXY_PID" ] && kill -0 "$PROXY_PID" 2>/dev/null; then
 		kill "$PROXY_PID" 2>/dev/null
+	fi
+	if [ -n "$BENCH_PID" ] && kill -0 "$BENCH_PID" 2>/dev/null; then
+		kill "$BENCH_PID" 2>/dev/null
+	fi
+	if [ -n "$RELAY_PID" ] && kill -0 "$RELAY_PID" 2>/dev/null; then
+		kill "$RELAY_PID" 2>/dev/null
 	fi
 	if [ "$KEEP" = "1" ]; then
 		echo "E2E: copias y logs conservados en $WORK"
@@ -85,7 +100,33 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# --- 2b) red mala inyectada (opcional): proxy UDP con delay/loss ------------
+# --- 2b) relay (opcional): sala real de dos puntas por tools/relay.py -------
+# El host escucha en $PORT como siempre, el cliente entra por la pata C del
+# bench ($PORT+2) y todo el trafico pasa por el relay ($PORT+3): nadie
+# conecta con nadie directamente, igual que en una partida hospedada.
+RELAY_PORT=$((PORT + 3))
+BENCH_CLIENT_PORT=$((PORT + 2))
+NETEM_TARGET="${IP}:${PORT}"
+if [ "$RELAY" = "1" ]; then
+	PYTHON="${PYTHON:-$(command -v python3 || command -v python)}"
+	if [ -z "$PYTHON" ]; then
+		echo "E2E FALLO: --relay necesita python (3.8+) en el PATH o en \$PYTHON"
+		exit 1
+	fi
+	echo "E2E: relay ${IP}:${RELAY_PORT}  (host ${IP}:${PORT} <-pata H | pata C-> ${IP}:${BENCH_CLIENT_PORT})"
+	"$PYTHON" "$SRC/tools/relay.py" --port "$RELAY_PORT" --bind "$IP" >"$WORK/relay.log" 2>&1 &
+	RELAY_PID=$!
+	"$PYTHON" "$SRC/tools/relay_bench.py" --relay "${IP}:${RELAY_PORT}" \
+		--host-target "${IP}:${PORT}" --client-listen "${IP}:${BENCH_CLIENT_PORT}" \
+		>"$WORK/bench.log" 2>&1 &
+	BENCH_PID=$!
+	CLIENT_PORT="$BENCH_CLIENT_PORT"
+	# si ademas hay netem, debe colarse entre cliente y pata C (no hasta el host)
+	NETEM_TARGET="${IP}:${BENCH_CLIENT_PORT}"
+	sleep 1
+fi
+
+# --- 2c) red mala inyectada (opcional): proxy UDP con delay/loss ------------
 if [ "$LATENCY" -gt 0 ] 2>/dev/null; then
 	PYTHON="${PYTHON:-$(command -v python3 || command -v python)}"
 	if [ -z "$PYTHON" ]; then
@@ -95,8 +136,8 @@ if [ "$LATENCY" -gt 0 ] 2>/dev/null; then
 	PROXY_PORT=$((PORT + 1))
 	DELAY=$((LATENCY / 2))
 	JITTER=$((LATENCY / 8)); [ "$JITTER" -gt 10 ] && JITTER=10
-	echo "E2E: netem proxy ${IP}:${PROXY_PORT} -> ${IP}:${PORT}  (${LATENCY}ms RTT = ${DELAY}ms±${JITTER} por dirección, 0.5% de pérdida)"
-	"$PYTHON" "$SRC/tools/netem_proxy.py" --listen "${IP}:${PROXY_PORT}" --target "${IP}:${PORT}" \
+	echo "E2E: netem proxy ${IP}:${PROXY_PORT} -> ${NETEM_TARGET}  (${LATENCY}ms RTT = ${DELAY}ms±${JITTER} por dirección, 0.5% de pérdida)"
+	"$PYTHON" "$SRC/tools/netem_proxy.py" --listen "${IP}:${PROXY_PORT}" --target "$NETEM_TARGET" \
 		--delay "$DELAY" --jitter "$JITTER" --loss 0.5 --seed 20261023 >"$WORK/netem.log" 2>&1 &
 	PROXY_PID=$!
 	CLIENT_PORT="$PROXY_PORT"

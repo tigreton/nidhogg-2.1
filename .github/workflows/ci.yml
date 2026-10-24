@@ -7,6 +7,9 @@ name: CI
 # Job 2: pareja online host+cliente por ENet en localhost vía el orquestador
 #        tools/online_e2e.sh (copia el proyecto a dos carpetas e importa en
 #        cada una — no depende de la caché de este checkout).
+# Job 3: igual que el 2 pero con --relay: host y cliente no se ven, todo el
+#        tráfico pasa por tools/relay.py + relay_bench.py como en una
+#        partida hospedada en el relay de fly.io.
 
 on:
   push:
@@ -114,3 +117,29 @@ jobs:
       # necesita caché de recursos
       - name: Pareja online (tools/online_e2e.sh)
         run: GODOT="$PWD/$GODOT" bash tools/online_e2e.sh
+
+  relay-e2e:
+    name: E2E online vía relay (salas de dos puntas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Caché del binario de Godot
+        uses: actions/cache@v4
+        with:
+          path: godot
+          key: godot-4.6.2-linux-x86_64
+
+      - name: Descargar Godot 4.6.2 si no está en caché
+        run: |
+          if [ ! -x "$GODOT" ]; then
+            mkdir -p godot
+            curl -fsSL -o /tmp/godot.zip "$GODOT_URL"
+            unzip -o /tmp/godot.zip -d godot
+            chmod +x "$GODOT"
+          fi
+          "$GODOT" --version
+
+      - name: Pareja online por el relay (tools/online_e2e.sh --relay)
+        run: GODOT="$PWD/$GODOT" bash tools/online_e2e.sh --relay
