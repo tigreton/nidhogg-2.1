@@ -114,9 +114,9 @@ if [ "$RELAY" = "1" ]; then
 		exit 1
 	fi
 	echo "E2E: relay ${IP}:${RELAY_PORT}  (host ${IP}:${PORT} <-pata H | pata C-> ${IP}:${BENCH_CLIENT_PORT})"
-	"$PYTHON" "$SRC/tools/relay.py" --port "$RELAY_PORT" --bind "$IP" >"$WORK/relay.log" 2>&1 &
+	"$PYTHON" -u "$SRC/tools/relay.py" --port "$RELAY_PORT" --bind "$IP" >"$WORK/relay.log" 2>&1 &
 	RELAY_PID=$!
-	"$PYTHON" "$SRC/tools/relay_bench.py" --relay "${IP}:${RELAY_PORT}" \
+	"$PYTHON" -u "$SRC/tools/relay_bench.py" --relay "${IP}:${RELAY_PORT}" \
 		--host-target "${IP}:${PORT}" --client-listen "${IP}:${BENCH_CLIENT_PORT}" \
 		>"$WORK/bench.log" 2>&1 &
 	BENCH_PID=$!
@@ -181,6 +181,15 @@ HOST_PID=$!
 
 sleep "$HOST_WAIT"
 
+# diagnostico relay: si una de las piezas murio, decirlo ANTES del veredicto
+if [ "$RELAY" = "1" ]; then
+	for p in "$RELAY_PID" "$BENCH_PID"; do
+		if ! kill -0 "$p" 2>/dev/null; then
+			echo "E2E AVISO: la pieza del relay (pid $p) murio durante la partida"
+		fi
+	done
+fi
+
 echo "E2E: lanzando CLIENTE (${IP}:${CLIENT_PORT})..."
 timeout 180 "$GODOT" --headless --path "$(native "$CLIENT_DIR")" --audio-driver Dummy \
 	--script test/online_client.gd -- --ip="$IP" --port="$CLIENT_PORT" >"$WORK/client.log" 2>&1
@@ -203,6 +212,14 @@ HOST_LINE="$(grep -a 'HOST_RESULT' "$WORK/host.log" | tail -1)"
 CLIENT_LINE="$(grep -a 'CLIENT_RESULT' "$WORK/client.log" | tail -1)"
 echo "$HOST_LINE"
 echo "$CLIENT_LINE"
+
+# en fallo, volcar tambien los logs del relay/bench (CI no conserva $WORK)
+if [ "$RELAY" = "1" ]; then
+	echo "================ RELAY (relay.log) ===================="
+	tail -8 "$WORK/relay.log" 2>/dev/null || echo "(sin relay.log)"
+	echo "================ BENCH (bench.log) ==================="
+	tail -8 "$WORK/bench.log" 2>/dev/null || echo "(sin bench.log)"
+fi
 
 VERDICTO=OK
 if [ "$HOST_RC" -ne 0 ] || [ -z "$HOST_LINE" ] || ! printf '%s' "$HOST_LINE" | grep -q 'HOST_RESULT: OK'; then
