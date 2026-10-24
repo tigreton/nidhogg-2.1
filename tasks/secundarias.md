@@ -39,15 +39,16 @@ de tareas). Se promueven diseñándolas, no copiando la plantilla tal cual.
   para no pisar el 24565 de dev) y reporta los dos `RESULT` con exit code
   agregado. Los scripts `test/online_*.gd` aceptan `--port=` (y `--ip=`) como
   user args. `docs/online-netcode.md` documenta el comando canónico.
-- **CI headless**: **LISTO, pendiente de push** (2026-10-23):
+- **CI headless**: **HECHO (2026-10-23), empujado y en verde (2026-10-24)**:
   `.github/workflows/ci.yml` (jobs `bateria` + `online-e2e` en ubuntu con
   Godot 4.6.2 linux descargado del release oficial y cacheado) +
   `.github/run_test.sh` (corre un test y exige exit 0 Y su línea de
-  aprobación; sirve también en local con `GODOT=<binario>`). El push
-  inicial está bloqueado porque el token gh del equipo no tiene scope
-  `workflow` (hace falta `gh auth refresh -s workflow`, interactivo, o
-  subirlo a mano). Validación sustituta hecha en WSL Debian con el mismo
-  binario linux que usaría CI: batería completa verde.
+  aprobación; sirve también en local con `GODOT=<binario>`). El bloqueo
+  del push inicial se resolvió con `gh auth refresh -s workflow` (flujo
+  de dispositivo, autorizado en el navegador): el token gh del equipo ya
+  tiene el scope `workflow` para siempre. Primer run en Actions en verde:
+  batería 4m30s + E2E online 1m1s. Validación previa en WSL Debian con
+  el mismo binario linux que usa CI.
 - ~~**Online v2**~~ — **HECHO (2026-10-23), sin infraestructura**: UPnP
   automático del 24565/UDP al crear partida (silencioso, saltado en
   headless, mapeo liberado al cerrar) + IP pública en el menú del
