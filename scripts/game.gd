@@ -212,6 +212,8 @@ var net_last_rl := 0.0     # cliente: round_lock del tick anterior (para el ¡FI
 var net_had_sd := false    # cliente: muerte súbita ya anunciada
 var net_dead := [false, false]  # cliente: muertes ya aplicadas localmente
 var net_wait_peer := false      # host: congelado esperando el handshake del cliente
+var net_ping_ms := -1           # RTT del enlace (chispazos v3): -1 = aún sin medir
+var ping_label: Label           # etiqueta del HUD online (la llena net_sync)
 var rematch_pending := false    # fix bucle de cuenta atrás: expirar el lock ¿reinicia ronda?
 
 

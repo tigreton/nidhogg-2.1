@@ -455,3 +455,51 @@ func ev_sfx(x: float, y: float, id: String, db: float, pitch: float) -> void:
 @rpc("authority", "reliable")
 func ev_burst(x: float, y: float, col: Color, amount: int, speed: float) -> void:
 	host._burst(Vector2(x, y), col, amount, speed)
+
+
+# =============================================================================
+# PING DEL ENLACE (chispazos v3): ida y vuelta cada segundo desde AMBOS lados
+# y el RTT pintado en el HUD — responde a "¿va tirando mi red o es la suya?"
+# (con el relay de París os dice cuánto os cuesta el salto). El canal
+# unreliable sobra y sobra: se re-intenta cada segundo.
+# =============================================================================
+
+var _ping_t := 0.0
+var _ping_seq := 0
+var _ping_sent := {}   # seq -> ticks_msec al enviar (limpieza de perdidos)
+
+
+func _process(delta: float) -> void:
+	if not Net.active():
+		if host.ping_label != null:
+			host.ping_label.text = ""
+		return
+	_ping_t += delta
+	if _ping_t >= 1.0:
+		_ping_t = 0.0
+		var target := Net.remote_id if Net.is_host() else 1
+		if target > 0:
+			_ping_seq += 1
+			_ping_sent[_ping_seq] = Time.get_ticks_msec()
+			ev_ping.rpc_id(target, _ping_seq)
+			# los ping perdidos (unreliable) no deben eternizar el diccionario
+			if _ping_sent.size() > 8:
+				var ks: Array = _ping_sent.keys()
+				ks.sort()
+				for k in ks.slice(0, ks.size() - 8):
+					_ping_sent.erase(k)
+	if host.ping_label != null:
+		host.ping_label.text = "" if host.net_ping_ms < 0 else "%d ms" % host.net_ping_ms
+
+
+@rpc("any_peer", "unreliable")
+func ev_ping(seq: int) -> void:
+	ev_pong.rpc_id(multiplayer.get_remote_sender_id(), seq)
+
+
+@rpc("any_peer", "unreliable")
+func ev_pong(seq: int) -> void:
+	var t0: int = _ping_sent.get(seq, -1)
+	if t0 >= 0:
+		_ping_sent.erase(seq)
+		host.net_ping_ms = Time.get_ticks_msec() - t0

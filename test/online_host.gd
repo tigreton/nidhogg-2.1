@@ -134,6 +134,8 @@ func _process(delta: float) -> bool:
 		var ok: bool = net.client_ready and p2_moved and kills > 0
 		if net.relay_node != null:
 			print("HOST: %s" % net.relay_node.stats())
+		if game.net_ping_ms >= 0:
+			print("HOST: ping=%d ms" % game.net_ping_ms)
 		print("HOST_RESULT: %s — cliente_listo=%s p1_movio=%s p2_movio=%s bajas=%d score=%s" % [
 			"OK" if ok else "FALLO", net.client_ready, p1_moved, p2_moved, kills, str(game.scores),
 		])

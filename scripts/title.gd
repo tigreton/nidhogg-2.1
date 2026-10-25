@@ -390,6 +390,9 @@ func _net_key(k: InputEventKey) -> void:
 		_do_join(ip)
 	elif net_mode == "join_relay" and k.keycode == KEY_ENTER and net_edit != null:
 		_do_join_relay(net_edit.text)
+	elif net_mode == "relay_wait" and k.keycode == KEY_C and not Net.relay_code.is_empty():
+		DisplayServer.clipboard_set(Net.relay_code)
+		net_status.text = "Código %s copiado al portapapeles — pégaselo a tu rival\npor donde queráis (Discord, wasap, lo que sea)." % Net.relay_code
 
 
 func _do_host() -> void:
@@ -493,7 +496,7 @@ func _on_relay_room_ready(code: String) -> void:
 	# host: la sala existe — el código es lo único que el rival necesita
 	if net_panel == null:
 		return
-	net_status.text = "SALA CREADA — dale este CÓDIGO a tu rival:\n\n        %s\n\nEl rival elige «4 — UNIRSE POR RELAY» y lo teclea.\nESC: cancelar" % code
+	net_status.text = "SALA CREADA — dale este CÓDIGO a tu rival:\n\n        %s\n\nC: copiar el código al portapapeles\nEl rival elige «4 — UNIRSE POR RELAY» y lo teclea.\n(Si nadie entra en 10 min la sala se renueva sola: verás un código NUEVO aquí)\nESC: cancelar" % code
 
 
 func _on_relay_join_ok() -> void:
@@ -514,7 +517,9 @@ func _on_relay_failed(reason: String) -> void:
 
 
 func _on_peer_joined() -> void:
-	# host: el rival ya está — a pelear
+	# host: el rival ya está — avisar con fanfarria y a pelear
+	if net_panel != null:
+		Sfx.play(self, Vector2(576, 324), "fight", -8.0)
 	_enter_game()
 
 

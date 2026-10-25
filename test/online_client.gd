@@ -196,6 +196,8 @@ func _finish() -> void:
 		score_txt = str(game.scores)
 	if net.relay_node != null:
 		print("CLIENT: %s" % net.relay_node.stats())
+	if is_instance_valid(game):
+		print("CLIENT: ping=%d ms" % game.net_ping_ms if game.net_ping_ms >= 0 else "CLIENT: ping sin medir")
 	print("CLIENT_RESULT: %s — snapshots=%s deriva_max=%.0fpx bajas_vistas=%d score=%s" % [
 		"OK" if ok else "FALLO", got_snap, max_drift, kills_seen, score_txt,
 	])

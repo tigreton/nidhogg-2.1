@@ -46,6 +46,21 @@ menos cómodo:
 Un **relay** (servidor de retransmisión para jugar sin abrir nada) ya está
 desplegado: ver § *Relay* más abajo.
 
+## Chispazos de comodidad (2026-10-25)
+
+- **RTT en el HUD**: `net_sync.gd` manda un ping ida y vuelta cada segundo
+  desde AMBOS lados (`ev_ping`/`ev_pong`, unreliable — si se pierde, al
+  segundo siguiente llega) y el RTT se pinta entre los dos marcadores.
+  Responde a «¿va tirando mi red o es la suya?»; con el relay os dice lo
+  que cuesta el salto a París. Los E2E imprimen `ping=N ms` en su
+  veredicto (local directo: ~8 ms; por el puente del juego: ~14 ms).
+- **C copia el código de sala** en la pantalla de espera del anfitrión
+  (`DisplayServer.clipboard_set`), con confirmación en pantalla.
+- **Fanfarria al entrar el rival** (SFX «fight») en la espera del anfitrión.
+- **Nota de caducidad**: la pantalla de sala avisa de que a los 10 min sin
+  rival la sala se renueva sola con un código nuevo (ya pasaba; ahora se
+  sabe).
+
 ## Relay (online v3, 1/3) — jugar sin abrir NADA
 
 **Desplegado el 2026-10-24 en fly.io**: `nidhogg2-relay`, IP pública

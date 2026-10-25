@@ -41,6 +41,19 @@ func _build_hud() -> void:
 	cl.add_child(l2)
 	host.score_labels.append(l2)
 
+	# RTT del enlace online (chispazos v3), entre los dos marcadores; en
+	# local se queda vacío (lo llena net_sync solo con partida online)
+	var ping := Label.new()
+	ping.position = Vector2(host.VIEW_W * 0.5 - 60.0, 22)
+	ping.size = Vector2(120, 30)
+	ping.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ping.add_theme_font_size_override("font_size", 18)
+	ping.add_theme_color_override("font_color", Color(0.62, 0.60, 0.72))
+	ping.add_theme_color_override("font_outline_color", Color.BLACK)
+	ping.add_theme_constant_override("outline_size", 6)
+	cl.add_child(ping)
+	host.ping_label = ping
+
 	host.msg_label = Label.new()
 	host.msg_label.position = Vector2(0, host.VIEW_H * 0.26)
 	host.msg_label.size = Vector2(host.VIEW_W, 130)
