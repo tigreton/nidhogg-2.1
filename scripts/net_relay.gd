@@ -31,7 +31,7 @@ const PING_EVERY := 10.0  # mantiene el mapping NAT y la sala fresca
 
 signal room_ready(code: String)  # H: la sala existe en el relay (y su codigo)
 signal join_ok                    # C: sala encontrada — a conectar el ENet
-signal failed(reason: String)     # algo insalvable (p.ej. NORROOM sin entrar)
+signal failed(reason: String)     # algo insalvable (p.ej. NOROOM sin entrar)
 
 var relay_ip := "127.0.0.1"
 var relay_port := 24565

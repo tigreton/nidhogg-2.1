@@ -132,17 +132,103 @@ func host_relay(port := DEFAULT_PORT, relay_addr := RELAY_DEFAULT) -> Error:
 	return _spawn_relay().setup_host(relay_addr, port)
 
 
-## Rival: busca la sala por codigo. El puente C va en un PROCESO APARTE (el
-## propio ejecutable re-lanzado con --headless --relay-helper, ver title.gd):
-## el ENet cliente y su puente en el mismo proceso rompen el dialogo con
-## latencia en el relay (v3 2/3: tormentas de retransmision con el servidor
-## sordo; el mismo net_relay.gd en proceso aparte, verde a 80 ms y en fly).
-## Cuando el ayudante ha tenido tiempo de entrar en la sala (~1,5 s), se
-## conecta el ENet como en una partida normal (reintenta solo si llega tarde).
+## Rival: busca la sala por codigo. Primero una SONDA (un JOIN de prueba
+## desde una toma efimera, en su propio hilo): si el relay responde NOROOM
+## se sabe AL INSTANTE que el codigo no existe — relay_failed("NOROOM") y el
+## titulo lo dice claro en vez de un "sin conexion" generico. Si la sala
+## existe (o el relay no contesta: mejor intentarlo de todos modos), se
+## arranca el proceso ayudante (ver abajo) y el ENet reintenta contra su
+## puente local mientras aquel bootea.
 func join_relay(room_code: String, relay_addr := RELAY_DEFAULT) -> Error:
 	room_code = room_code.to_upper()
 	if room_code.length() != 4:
 		return ERR_INVALID_PARAMETER
+	if _relay_probe_thread != null or _relay_helper_pid > 0:
+		return ERR_ALREADY_IN_USE
+	_relay_active = true
+	_relay_probe_code = room_code
+	_relay_probe_addr = relay_addr
+	_relay_probe_thread = Thread.new()
+	_relay_probe_thread.start(_relay_join_probe)
+	return OK
+
+
+var _relay_probe_thread: Thread = null
+var _relay_probe_code := ""
+var _relay_probe_addr := ""
+var _relay_active := false
+var _relay_probe_result := -1  # -1 sondeando, 0 NOROOM, 1 sala existe
+# (el resultado lo pone el hilo y lo consume _process o relay_join_poll:
+# call_deferred no cuenta bajo un MainLoop script, leccion de la v3 2/3)
+
+
+func _process(_d: float) -> void:
+	# consumir la sonda de sala cuando termine (en los tests, relay_join_poll)
+	if _relay_probe_thread != null and _relay_probe_result >= 0:
+		var ok := _relay_probe_result != 0
+		_relay_probe_result = -1
+		_relay_probe_done(ok)
+
+
+func _relay_join_probe() -> void:
+	# hilo propio: nadie mas toca esta toma. JOIN de prueba (la sala no
+	# distingue quien la une; el JOIN del ayudante re-apuntara addr_c).
+	var rip := _relay_probe_addr
+	var rport := 24565
+	if rip.contains(":"):
+		var parts := rip.rsplit(":", true, 1)
+		if not parts[0].is_empty():
+			rip = parts[0]
+		rport = int(parts[1])
+	var loopy := rip == "127.0.0.1" or rip == "localhost"
+	var s := PacketPeerUDP.new()
+	if s.bind(0, "127.0.0.1" if loopy else "*") != OK:
+		_relay_probe_result = 1  # sin sonda: seguir con el ayudante
+		return
+	for round in 6:
+		s.set_dest_address(rip, rport)
+		s.put_packet(("NRELAY1 JOIN " + _relay_probe_code).to_ascii_buffer())
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < 500:
+			OS.delay_usec(5000)
+			while s.get_available_packet_count() > 0:
+				var pkt := s.get_packet()
+				if s.get_packet_ip() != rip or s.get_packet_port() != rport:
+					continue
+				var txt := pkt.get_string_from_ascii()
+				if txt.begins_with("NRELAY1 NOROOM"):
+					_relay_probe_result = 0
+					return
+				if txt.begins_with("NRELAY1 JOINED"):
+					_relay_probe_result = 1
+					return
+	# 3 s sin respuesta: proseguir con el ayudante (el reintentara el JOIN)
+	_relay_probe_result = 1
+
+
+func _relay_probe_done(sala_existe: bool) -> void:
+	if _relay_probe_thread != null:
+		_relay_probe_thread.wait_to_finish()
+		_relay_probe_thread = null
+	if not _relay_active:
+		return   # cancelaron (shutdown) mientras sondeabamos
+	if not sala_existe:
+		_relay_active = false
+		relay_failed.emit("NOROOM")
+		return
+	_relay_start_helper()
+
+
+## El puente C va en un PROCESO APARTE (el propio ejecutable re-lanzado con
+## --headless --relay-helper, ver title.gd): el ENet cliente y su puente en
+## el mismo proceso rompen el dialogo con latencia en el relay (v3 2/3:
+## tormentas de retransmision con el servidor sordo; el mismo net_relay.gd
+## en proceso aparte, verde a 80 ms y en fly). Cuando el ayudante ha tenido
+## tiempo de entrar en la sala (~1,5 s), se conecta el ENet como en una
+## partida normal (reintenta solo si llega tarde).
+func _relay_start_helper() -> void:
+	var room_code := _relay_probe_code
+	var relay_addr := _relay_probe_addr
 	# el ayudante es el juego entero re-lanzado: tarda unos segundos en
 	# bootear — se reusa entre reintentos y muere solo si este proceso muere
 	if _relay_helper_pid <= 0 or not OS.is_process_running(_relay_helper_pid):
@@ -158,16 +244,22 @@ func join_relay(room_code: String, relay_addr := RELAY_DEFAULT) -> Error:
 				"--relay=" + relay_addr, "--listen=%d" % RELAY_CLIENT_PORT])
 		_relay_helper_pid = OS.create_process(OS.get_executable_path(), args)
 		if _relay_helper_pid < 0:
-			return ERR_CANT_CREATE
+			_relay_active = false
+			relay_failed.emit("helper")
+			return
 		_relay_join_tries = 0
 	get_tree().create_timer(1.5).timeout.connect(_relay_join_tick)
-	return OK
 
 
 ## Sondeo del join relay para scripts SceneTree (test/online_client.gd): los
-## SceneTreeTimer no cuentan bajo un MainLoop script, asi que el test llama
-## aqui cada ~2 s; en el juego normal el timer de arriba hace lo mismo.
+## SceneTreeTimer y los call_deferred no cuentan bajo un MainLoop script,
+## asi que el test llama aqui cada ~2 s (en el juego normal lo hace _process).
 func relay_join_poll() -> void:
+	if _relay_probe_thread != null and _relay_probe_result >= 0:
+		var ok := _relay_probe_result != 0
+		_relay_probe_result = -1
+		_relay_probe_done(ok)
+		return
 	_relay_join_tick()
 
 
@@ -214,6 +306,7 @@ func _spawn_relay() -> Node:
 
 
 func shutdown() -> void:
+	_relay_active = false   # la sonda en curso (si la hay) se ignorara
 	if _relay_helper_pid > 0:
 		OS.kill(_relay_helper_pid)
 		_relay_helper_pid = 0

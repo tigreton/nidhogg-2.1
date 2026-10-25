@@ -127,9 +127,15 @@ puente UDP bajo latencia del relay (handshake OK y luego el servidor se
 queda sordo con tormentas de retransmisión; mismo `net_relay.gd` en
 proceso aparte, verde) — el anfitrión en cambio convive sin problema.
 
-**Pendiente (online v3 3/3, cuando toque)**: UX de errores del código
-equivocado (hoy acaba en «sin conexión»), recordar el último relay si
-algún día hay más de uno, y quizá un «jugar de nuevo por relay» directo.
+**Pendiente (online v3 3/3) — HECHO (2026-10-25)**: la UX del código
+equivocado ya no acaba en un «sin conexión» genérico — `join_relay` lanza
+primero una **sonda de sala** (un JOIN de prueba desde una toma efímera en
+su propio hilo, hasta 6 rondas de 500 ms): `NORROOM` → al instante «No hay
+ninguna sala con ese código» en el título; sala existente o relay mudo →
+se arranca el ayudante como siempre. La revancha por relay ya funcionaba
+por diseño (la R es del anfitrión y el relay es transparente al enlace), y
+«recordar el último relay» queda sin sentido habiendo un solo relay. **Con
+esto, online v3 está COMPLETO.**
 
 ## Autoridad y sincronización
 

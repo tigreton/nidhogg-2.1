@@ -16,10 +16,11 @@
 > resueltos — el último en cerrarse fue el CI headless, hoy mismo: el
 > scope `workflow` del token gh ya está concedido, el push subió y el
 > primer run de Actions pasó en verde. Backlog cerrado de nuevo hasta
-> que entre una idea nueva (el relay de online quedó COMPLETO el
-> 2026-10-24, online v3 1/3 y 2/3: servidor en fly.io + despliegue
-> automático + modo relay en el menú del juego validado por internet —
-> ver `docs/online-netcode.md` § Relay).
+> que entre una idea nueva (el relay de online quedó COMPLETO los días
+> 2026-24/25, online v3 1/3+2/3+3/3: servidor en fly.io + despliegue
+> automático + modo relay en el menú del juego validado por internet +
+> sonda de sala para el código equivocado — ver `docs/online-netcode.md`
+> § Relay).
 
 ---
 
