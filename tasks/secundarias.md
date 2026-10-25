@@ -17,10 +17,36 @@
 > scope `workflow` del token gh ya está concedido, el push subió y el
 > primer run de Actions pasó en verde. Backlog cerrado de nuevo hasta
 > que entre una idea nueva (el relay de online quedó COMPLETO los días
-> 2026-24/25, online v3 1/3+2/3+3/3: servidor en fly.io + despliegue
+> 2026-10-24/25, online v3 1/3+2/3+3/3: servidor en fly.io + despliegue
 > automático + modo relay en el menú del juego validado por internet +
 > sonda de sala para el código equivocado — ver `docs/online-netcode.md`
-> § Relay).
+> § Relay). El 2026-10-25 se reabre con DOS ideas del online v3 que
+> quedaron en el tintero (abajo).
+
+---
+
+## Pendientes del online v3 (aportados el 2026-10-25)
+
+Ideas del cierre del relay, ordenadas por valor. No son tareas atómicas
+todavía: promotiónalas diseñándolas (ver guía del final).
+
+- **Lobby con nombres de sala** — el salto de UX que queda: extender el
+  protocolo del relay (`tools/relay.py`) con `LIST` y nombre de sala (el
+  anfitrión pone el suyo al crear, p.ej. su nick), y en el título una
+  opción «5 — VER SALAS ABIERTAS» que lista nombre+ocupación y entra con
+  ENTER. El código de 4 letras SIGUE existiendo como fallback (teléfono,
+  y para no romper `--relay-join` de los E2E). Alcance estimado: una
+  tarde (protocolo + deploy + menú + E2E `--relay-game` contra lobby).
+  Cuidado con el tamaño de la lista de salas en un datagrama: cap a las
+  N más recientes.
+- **Auto-stop del relay en fly** — bajar la factura de ~4 $/mes a ~2 $:
+  `min_machines_running = 0` en `fly.toml` (la máquina duerme sin
+  tráfico y el primer datagrama la despierta). El riesgo es el arranque
+  en frío (~1-2 s): el primer paquete puede perderse, pero la sonda de
+  sala ya reintenta por diseño y ENet retransmite — mitigado sobre el
+  papel, HAY que validarlo con una partida real contra fly antes de
+  darlo por hecho (y con el E2E `--relay-game-ip`). Media hora + probar;
+  si el despertar se traga saludos, revertir y anotar por qué.
 
 ---
 
